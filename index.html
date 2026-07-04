@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <title>盛世集团 · 经营模拟</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <!-- 核心模块 -->
+  <script src="js/data.js"></script>
+  <script src="js/state.js"></script>
+  <script src="js/engine.js"></script>
+  <script src="js/time.js"></script>
+  <script src="js/employees.js"></script>
+  <script src="js/ui.js"></script>
+
+  <!-- 页面模块 -->
+  <script src="js/pages/home.js"></script>
+  <script src="js/pages/deposit.js"></script>
+  <script src="js/pages/stocks.js"></script>
+  <script src="js/pages/stockDetail.js"></script>
+  <script src="js/pages/funds.js"></script>
+  <script src="js/pages/metals.js"></script>
+  <script src="js/pages/industry.js"></script>
+  <script src="js/pages/staff.js"></script>
+  <script src="js/pages/warehouse.js"></script>
+  <script src="js/pages/overview.js"></script>
+
+  <!-- 启动 -->
+  <script>
+    window.addEventListener('load', () => {
+      // Service Worker 仅在 http/https 下注册（file:// 打开时跳过）
+      if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+      }
+      State.init();
+      TimeManager.start();
+    });
+  </script>
+</body>
+</html>
