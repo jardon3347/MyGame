@@ -149,17 +149,17 @@ const UI = {
   /* 数量选择器：滑块 + 快捷按钮 */
   numberPicker({ title, unit, unitName, unitLabel, max, quickAdds, onConfirm }) {
     const id = 'np_' + Date.now();
-    window._npState = { id, unit, unitName, max, value: 0, onConfirm };
+    window._npState = { id, unit, unitName, max, value: 1, onConfirm };
 
     const content = `
       <div class="np-info">
         <div class="np-unit">${unitLabel}</div>
         <div class="np-max">最多 ${max.toLocaleString('zh-CN')}</div>
       </div>
-      <div class="np-display" id="${id}_val">0</div>
+      <div class="np-display" id="${id}_val">1</div>
       <div class="np-unit-text" id="${id}_unit">${unitName || ''}</div>
       <input type="range" class="np-slider" id="${id}_slider"
-             min="0" max="${max}" value="0" step="1"
+             min="1" max="${max}" value="1" step="1"
              oninput="UI._npUpdate('${id}', this.value)">
       <div class="np-quick">
         ${quickAdds.map(n => `<button class="np-quick-btn" onclick="UI._npAdd('${id}', ${n})" ${n > max ? 'disabled' : ''}>+${n.toLocaleString('zh-CN')}</button>`).join('')}
@@ -259,7 +259,7 @@ const UI = {
     return `
       <div class="bottombar">
         <button onclick="Router.goRoot('overview')">集团概览</button>
-        <button onclick="Router.goRoot('deposit')">存款</button>
+        <button onclick="Router.goRoot('deposit')">银行</button>
         <button onclick="Router.goRoot('news')">新闻</button>
       </div>
     `;

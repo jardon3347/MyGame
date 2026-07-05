@@ -58,7 +58,8 @@ Pages.overview = {
         <div class="section-title">资产分布</div>
         <div class="list-item">
           ${this.assetRow('现金', s.cash, total)}
-          ${this.assetRow('存款', s.deposit, total)}
+          ${this.assetRow('银行存款', s.deposit, total)}
+          ${(s.loan || 0) > 0 ? this.assetRow('贷款', -s.loan, total) : ''}
           ${this.assetRow('股票', stockValue, total)}
           ${this.assetRow('基金', fundValue, total)}
           ${this.assetRow('贵金属', metalValue, total)}
@@ -144,11 +145,62 @@ Pages.overview = {
 
   /* 新闻页 */
   renderNews(app) {
-    const news = State.data.news;
+    const s = State.data;
+    const news = s.news || [];
+    const activeEffects = s.activeEffects || [];
+
+    let activeHTML = '';
+    if (activeEffects.length > 0) {
+      activeHTML = `
+        <div class="section-title">⚡ 当前生效事件（${activeEffects.length} 个）</div>
+        ${activeEffects.map(eff => {
+          const tags = Engine.getNewsTags(eff);
+          const remainingPercent = Math.max(0, eff.remainingDays / (eff.effects._origDuration || 5));
+          return `
+            <div class="news-item active" style="border-left: 3px solid var(--warning); margin-bottom: 8px;">
+              <div class="flex between" style="margin-bottom: 4px;">
+                <span class="news-title" style="font-size:13px;">📌 ${eff.title}</span>
+                <span class="text-sm" style="color:var(--warning); white-space:nowrap;">剩 ${eff.remainingDays} 天</span>
+              </div>
+              <div class="time-bar-track" style="height:3px; margin-bottom:6px; background:var(--bg-secondary);">
+                <div class="time-bar-fill" style="width:${remainingPercent*100}%; height:3px; background:var(--warning);"></div>
+              </div>
+              ${tags.length ? `<div class="news-tags">${tags.map(t => `<span class="news-tag ${t.type}">${t.label}</span>`).join('')}</div>` : ''}
+            </div>
+          `;
+        }).join('')}
+      `;
+    }
+
+    // 利率变化历史
+    const rateEvents = news.filter(n => n.effects && n.effects.interestRate != null);
+    let rateHTML = '';
+    if (rateEvents.length > 0) {
+      rateHTML = `
+        <div class="section-title">📊 利率变动记录</div>
+        <div class="list-item">
+          ${rateEvents.slice(0, 8).map(n => {
+            const dir = n.effects.interestRate > 0 ? 'up' : 'down';
+            const sign = n.effects.interestRate > 0 ? '+' : '';
+            return `
+              <div class="list-row">
+                <span class="list-label">${n.date || ''} ${n.title}</span>
+                <span class="list-value ${dir}">${sign}${(n.effects.interestRate*100).toFixed(1)}%</span>
+              </div>
+            `;
+          }).join('')}
+        </div>
+      `;
+    }
+
     app.innerHTML = `
       <div class="page">
         ${UI.navbar('市场新闻')}
-        <div class="section-title">历史新闻（${news.length} 条）</div>
+        
+        ${activeHTML}
+        ${rateHTML}
+
+        <div class="section-title">📰 新闻历史（${news.length} 条）</div>
         ${news.length === 0 ? '<div class="empty">暂无新闻，多推进几天试试</div>' :
           news.map(n => this.newsItem(n)).join('')}
         ${UI.bottombar()}

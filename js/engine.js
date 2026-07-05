@@ -1,6 +1,11 @@
 /* engine.js — 核心引擎：每日结算、价格波动、新闻触发 */
 
 const Engine = {
+  /* 等级倍率：每级 1.2x（上限 5 级） */
+  levelMultiplier(level) {
+    return (level || 1) * 1.2;
+  },
+
 
   /* 推进 N 天 */
   advance(days) {
@@ -64,7 +69,7 @@ const Engine = {
         Employees.consumeSmelterMaterials(ind.category, qty, recipeSat);
       }
       // 现金收入
-      let daily = cat.dailyIncome * (ind.level || 1) * qty * empMult * recipeSat;
+      let daily = cat.dailyIncome * Engine.levelMultiplier(ind.level || 1) * qty * empMult * recipeSat;
       if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
       State.data.cash += daily;
       log.income += daily;
@@ -89,7 +94,7 @@ const Engine = {
         recipeSat = Employees.recipeSatisfaction(ind.category, qty);
         Employees.consumeFactoryMaterials(ind.category, qty, recipeSat);
       }
-      let daily = cat.dailyIncome * (ind.level || 1) * qty * empMult * recipeSat;
+      let daily = cat.dailyIncome * Engine.levelMultiplier(ind.level || 1) * qty * empMult * recipeSat;
       if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
       State.data.cash += daily;
       log.income += daily;
@@ -106,7 +111,7 @@ const Engine = {
       const qty = ind.quantity || 1;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
-      let daily = cat.dailyIncome * (ind.level || 1) * qty * empMult;
+      let daily = cat.dailyIncome * Engine.levelMultiplier(ind.level || 1) * qty * empMult;
       if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
       State.data.cash += daily;
       log.income += daily;
@@ -122,17 +127,35 @@ const Engine = {
       log.details.push({ label: `员工薪水（${Employees.count()}人）`, amount: salary, type: 'expense' });
     }
 
-    // 2. 存款利息
-    const interest = State.data.deposit * DATA.deposit.annualRate / 365;
+    // 2. 存款利息（按当前浮动利率）
+    const depoRate = State.data.interestRate || DATA.bank.baseRate;
+    const interest = State.data.deposit * depoRate / 365;
     State.data.deposit += interest;
     log.income += interest;
-    if (interest > 0) log.details.push({ label: '存款利息', amount: interest, type: 'income' });
+    if (interest > 0) log.details.push({ label: `存款利息 (${(depoRate*100).toFixed(2)}%)`, amount: interest, type: 'income' });
+
+    // 2b. 贷款利息
+    if ((State.data.loan || 0) > 0) {
+      const loanRate = depoRate * DATA.bank.loanRateMultiplier;
+      const loanInterest = State.data.loan * loanRate / 365;
+      State.data.cash -= loanInterest;
+      log.expense += loanInterest;
+      log.details.push({ label: `贷款利息 (${(loanRate*100).toFixed(2)}%)`, amount: loanInterest, type: 'expense' });
+    }
+
+    // 2c. 处理活跃效果到期
+    this.processActiveEffects();
+
+    // 2d. 利率自然波动（每日微小随机漂移）
+    const drift = (Math.random() - 0.5) * 2 * (DATA.bank.rateDriftPerDay || 0.0003);
+    State.data.interestRate = (State.data.interestRate || DATA.bank.baseRate) + drift;
+    State.data.interestRate = Math.max(DATA.bank.rateMin, Math.min(DATA.bank.rateMax, State.data.interestRate));
 
     // 3. 产业维护成本（日均 1%，乘以数量）
     let maintenance = 0;
     State.data.industries.forEach(ind => {
       const cat = State.findIndustryCategory(ind.type, ind.category);
-      if (cat) maintenance += cat.cost * 0.0001 * (ind.level || 1) * (ind.quantity || 1);
+      if (cat) maintenance += cat.cost * 0.0001 * Engine.levelMultiplier(ind.level || 1) * (ind.quantity || 1);
     });
     State.data.cash -= maintenance;
     log.expense += maintenance;
@@ -242,88 +265,145 @@ const Engine = {
     return `${d.year}年${d.month}月${d.day}日 周${wd}`;
   },
 
-  /* 触发新闻（按概率） */
+  /* 触发新闻（确定性调度：每 3-5 天必定触发一次） */
   rollNews() {
     const d = State.data.date;
-    const daysSinceLast = d.totalDays - State.data.lastNewsDay;
+    const now = d.totalDays;
 
-    // 至少间隔 3 天
-    if (daysSinceLast < 3) return null;
+    // 初始化下次新闻日
+    if (State.data.nextNewsDay == null) {
+      State.data.nextNewsDay = now + 3 + Math.floor(Math.random() * 3);
+    }
 
-    // 概率随间隔增加而提高
-    let chance = 0;
-    if (daysSinceLast >= 3 && daysSinceLast < 5) chance = 0.15;
-    else if (daysSinceLast >= 5 && daysSinceLast < 8) chance = 0.35;
-    else chance = 0.6;
+    // 还没到下次新闻触发日
+    if (now < State.data.nextNewsDay) return null;
 
-    if (Math.random() > chance) return null;
+    // 获取当前可用的事件池（历史+预设+随机）
+    const pool = getNewsPool(now);
+    if (pool.length === 0) {
+      // 无可用事件，推迟到明天再试
+      State.data.nextNewsDay = now + 1;
+      return null;
+    }
 
-    // 筛选可用新闻（minDay 限制）
-    const available = NEWS_LIBRARY.filter(n => d.totalDays >= n.minDay);
-    if (available.length === 0) return null;
+    // 避免与最近 8 条重复
+    const recentIds = (State.data.news || []).slice(0, 8).map(n => n.id);
+    const fresh = pool.filter(n => !recentIds.includes(n.id));
+    const pick = fresh.length > 0 ? fresh[Math.floor(Math.random() * fresh.length)]
+                                  : pool[Math.floor(Math.random() * pool.length)];
 
-    // 避免重复（最近 10 条不重）
-    const recentIds = State.data.news.slice(0, 10).map(n => n.id);
-    const pool = available.filter(n => !recentIds.includes(n.id));
-    const news = pool[Math.floor(Math.random() * pool.length)] || available[Math.floor(Math.random() * available.length)];
+    // 随机持续天数：3-7 天
+    pick.duration = 3 + Math.floor(Math.random() * 5);
 
-    State.data.lastNewsDay = d.totalDays;
-    return news;
+    // 设定下次新闻日：3-5 天后
+    State.data.nextNewsDay = now + 3 + Math.floor(Math.random() * 3);
+    State.data.lastNewsDay = now;
+
+    return pick;
   },
 
-  /* 应用新闻影响 */
+  /* 应用新闻影响：存储为活跃效果（带持续天数） */
   applyNewsEffects(news) {
     const e = news.effects;
     if (!e) return;
 
-    // 影响产业相关股票
+    const duration = news.duration || 4;
+    const now = State.data.date.totalDays;
+
+    // 立即应用一次效果
     if (e.sectors) {
-      Object.entries(e.sectors).forEach(([code, pct]) => {
-        const sector = DATA.sectorMap[code];
-        if (sector) {
-          Object.entries(DATA.stockSectorMap).forEach(([stockCode, stockSector]) => {
-            if (sector.includes(stockSector)) {
-              const stock = DATA.stocks.find(s => s.code === stockCode);
-              const old = State.data.stockPrices[stockCode] || (stock ? stock.basePrice : 1);
-              State.data.stockPrices[stockCode] = Math.round(old * (1 + pct) * 100) / 100;
-            }
-          });
-          // 影响相关基金
-          if (State.data.fundPrices) {
-            DATA.funds.forEach(f => {
-              if (sector.includes(f.sector) || f.sector === 'mixed' || f.sector === 'index') {
-                const old = State.data.fundPrices[f.code] || f.basePrice;
-                State.data.fundPrices[f.code] = Math.round(old * (1 + pct * 0.6) * 10000) / 10000;
-              }
-            });
-          }
-          // 影响原料市场价格（sector code → material code 映射）
-          const matCodeMap = { rare: 'rare_earth', precious: 'precious_m', phos: 'phos_ore', quartz: 'quartz_ore' };
-          const matCode = matCodeMap[code] || code;
-          const mat = DATA.rawMaterials.find(m => m.code === matCode);
-          if (mat) {
-            if (!State.data.materialPrices) State.data.materialPrices = {};
-            const oldMat = State.data.materialPrices[matCode] || mat.price;
-            State.data.materialPrices[matCode] = Math.round(oldMat * (1 + pct) * 100) / 100;
-          }
+      Object.entries(e.sectors).forEach(([code, pct]) => { this._applySectorEffect(code, pct); });
+    }
+    if (e.metals) {
+      Object.entries(e.metals).forEach(([code, pct]) => { this._applyMetalEffect(code, pct); });
+    }
+    if (e.materials) {
+      Object.entries(e.materials).forEach(([code, pct]) => { this._applyMaterialEffect(code, pct); });
+    }
+    if (e.marketSentiment != null) {
+      State.data.marketSentiment = (State.data.marketSentiment || 0) + e.marketSentiment;
+      State.data.marketSentiment = Math.max(-0.05, Math.min(0.05, State.data.marketSentiment));
+    }
+    if (e.interestRate != null) {
+      State.data.interestRate = (State.data.interestRate || DATA.bank.baseRate) + e.interestRate;
+      State.data.interestRate = Math.max(DATA.bank.rateMin, Math.min(DATA.bank.rateMax, State.data.interestRate));
+    }
+
+    // 存入活跃效果列表
+    if (!State.data.activeEffects) State.data.activeEffects = [];
+    e._origDuration = duration;
+    State.data.activeEffects.push({
+      id: news.id + '_' + now,
+      title: news.title,
+      effects: e,
+      duration: duration,
+      remainingDays: duration,
+      startDay: now
+    });
+  },
+
+  /* 每日处理活跃效果：减天数，到期反转利率和情绪 */
+  processActiveEffects() {
+    if (!State.data.activeEffects) State.data.activeEffects = [];
+    State.data.activeEffects = State.data.activeEffects.filter(eff => {
+      eff.remainingDays--;
+      if (eff.remainingDays <= 0) {
+        const e = eff.effects;
+        if (e.marketSentiment != null) {
+          State.data.marketSentiment = (State.data.marketSentiment || 0) - e.marketSentiment;
+          State.data.marketSentiment = Math.max(-0.05, Math.min(0.05, State.data.marketSentiment));
+        }
+        if (e.interestRate != null) {
+          State.data.interestRate = (State.data.interestRate || DATA.bank.baseRate) - e.interestRate;
+          State.data.interestRate = Math.max(DATA.bank.rateMin, Math.min(DATA.bank.rateMax, State.data.interestRate));
+        }
+        return false;
+      }
+      return true;
+    });
+  },
+
+  _applySectorEffect(code, pct) {
+    const sector = DATA.sectorMap[code];
+    if (!sector) return;
+    Object.entries(DATA.stockSectorMap).forEach(([stockCode, stockSector]) => {
+      if (sector.includes(stockSector)) {
+        const stock = DATA.stocks.find(s => s.code === stockCode);
+        const old = State.data.stockPrices[stockCode] || (stock ? stock.basePrice : 1);
+        State.data.stockPrices[stockCode] = Math.round(old * (1 + pct) * 100) / 100;
+      }
+    });
+    if (State.data.fundPrices) {
+      DATA.funds.forEach(f => {
+        if (sector.includes(f.sector) || f.sector === 'mixed' || f.sector === 'index') {
+          const old = State.data.fundPrices[f.code] || f.basePrice;
+          State.data.fundPrices[f.code] = Math.round(old * (1 + pct * 0.6) * 10000) / 10000;
         }
       });
     }
-
-    // 影响贵金属
-    if (e.metals) {
-      Object.entries(e.metals).forEach(([code, pct]) => {
-        const m = DATA.metals.find(x => x.code === code);
-        const old = State.data.metalPrices[code] || (m ? m.basePrice : 1);
-        State.data.metalPrices[code] = Math.round(old * (1 + pct) * 100) / 100;
-      });
+    const matCodeMap = { rare: 'rare_earth', precious: 'precious_m', phos: 'phos_ore', quartz: 'quartz_ore' };
+    const matCode = matCodeMap[code] || code;
+    const mat = DATA.rawMaterials.find(m => m.code === matCode);
+    if (mat) {
+      if (!State.data.materialPrices) State.data.materialPrices = {};
+      const oldMat = State.data.materialPrices[matCode] || mat.price;
+      State.data.materialPrices[matCode] = Math.round(oldMat * (1 + pct) * 100) / 100;
     }
+  },
 
-    // 影响大盘情绪
-    if (e.marketSentiment) {
-      State.data.marketSentiment += e.marketSentiment;
-      State.data.marketSentiment = Math.max(-0.03, Math.min(0.03, State.data.marketSentiment));
-    }
+  _applyMetalEffect(code, pct) {
+    const m = DATA.metals.find(x => x.code === code);
+    if (!m) return;
+    const old = State.data.metalPrices[code] || m.basePrice;
+    State.data.metalPrices[code] = Math.round(old * (1 + pct) * 100) / 100;
+  },
+
+  _applyMaterialEffect(code, pct) {
+    const mat = DATA.rawMaterials.find(m => m.code === code);
+    if (!mat) return;
+    if (!State.data.materialPrices) State.data.materialPrices = {};
+    const oldMat = State.data.materialPrices[code] || mat.price;
+    State.data.materialPrices[code] = Math.round(oldMat * (1 + pct) * 100) / 100;
   },
 
   /* 获取新闻影响标签 */
@@ -342,8 +422,20 @@ const Engine = {
         if (m) tags.push({ label: `${m.name} ${State.formatPct(pct)}`, type: pct >= 0 ? 'up' : 'down' });
       });
     }
+    if (news.effects.materials) {
+      Object.entries(news.effects.materials).forEach(([code, pct]) => {
+        const mat = DATA.rawMaterials.find(m => m.code === code);
+        if (mat) tags.push({ label: `${mat.name} ${State.formatPct(pct)}`, type: pct >= 0 ? 'up' : 'down' });
+      });
+    }
+    if (news.effects.interestRate) {
+      tags.push({ label: `利率 ${State.formatPct(news.effects.interestRate)}`, type: news.effects.interestRate >= 0 ? 'up' : 'down' });
+    }
     if (news.effects.marketSentiment) {
       tags.push({ label: `大盘 ${State.formatPct(news.effects.marketSentiment)}`, type: news.effects.marketSentiment >= 0 ? 'up' : 'down' });
+    }
+    if (news.duration) {
+      tags.push({ label: `持续 ${news.duration} 天`, type: 'info' });
     }
     return tags;
   },

@@ -38,27 +38,27 @@ Pages.staff = {
           </div>
         ` : ''}
 
-        <div class="section-title">招聘（每次招 ${DATA.recruit.batchCount} 人）</div>
+        <div class="section-title">招聘（可选数量）</div>
         <div class="card-grid">
-          <button class="card" onclick="Employees.recruit('free')" ${count + DATA.recruit.batchCount > cap ? 'disabled style="opacity:0.4;"' : ''}>
+          <button class="card" onclick="Staff.recruitWithPicker('free')" ${count >= cap ? 'disabled style="opacity:0.4;"' : ''}>
             <div class="card-title">免费招聘</div>
-            <div class="card-sub">无需花费</div>
+            <div class="card-sub">人均免费</div>
             <div class="card-value" style="font-size:11px;color:var(--text-secondary);">
               初级 72% · 中级 20%<br>高级 6% · 专家 2%
             </div>
           </button>
-          <button class="card" onclick="Employees.recruit('paid')" ${count + DATA.recruit.batchCount > cap || s.cash < DATA.recruit.paid.cost ? 'disabled style="opacity:0.4;"' : ''}>
+          <button class="card" onclick="Staff.recruitWithPicker('paid')" ${count >= cap || s.cash < Math.ceil(DATA.recruit.paid.cost/DATA.recruit.batchCount) ? 'disabled style="opacity:0.4;"' : ''}>
             <div class="card-title">付费招聘</div>
-            <div class="card-sub">¥${DATA.recruit.paid.cost.toLocaleString('zh-CN')}</div>
+            <div class="card-sub">人均 ¥600</div>
             <div class="card-value" style="font-size:11px;color:var(--text-secondary);">
               初级 25% · 中级 45%<br>高级 22% · 专家 8%
             </div>
           </button>
-          <button class="card" onclick="Employees.recruit('expert')" ${count + DATA.recruit.batchCount > cap || s.cash < DATA.recruit.expert.cost ? 'disabled style="opacity:0.4;"' : ''}>
+          <button class="card" onclick="Staff.recruitWithPicker('expert')" ${count >= cap || s.cash < Math.ceil(DATA.recruit.expert.cost/DATA.recruit.batchCount) ? 'disabled style="opacity:0.4;"' : ''}>
             <div class="card-title" style="color:var(--up);">猎头招聘</div>
-            <div class="card-sub">¥${DATA.recruit.expert.cost.toLocaleString('zh-CN')}</div>
+            <div class="card-sub">¥${Math.ceil(DATA.recruit.expert.cost/DATA.recruit.batchCount).toLocaleString('zh-CN') + '/人'}</div>
             <div class="card-value" style="font-size:11px;color:var(--up);">
-              必出 ${DATA.recruit.batchCount} 名专家
+              必出专家
             </div>
           </button>
         </div>
@@ -199,6 +199,30 @@ const Staff = {
   },
 
   /* 选数量并分配 */
+
+  /* 招聘：弹出数量选择器 */
+  recruitWithPicker(mode) {
+    const cap = Employees.capacity();
+    const cnt = Employees.count();
+    const maxAvailable = cap - cnt;
+    if (maxAvailable <= 0) { UI.toast('宿舍已满，无法招聘'); return; }
+    const perPerson = DATA.recruit.costPerPerson(mode);
+    const modeLabel = mode === 'free' ? '免费招聘' : (mode === 'paid' ? '付费招聘' : '猎头招聘');
+    UI.numberPicker({
+      title: modeLabel,
+      unit: perPerson,
+      unitName: '人',
+      unitLabel: '人均 ¥' + perPerson.toLocaleString('zh-CN') + ' · 最多 ' + maxAvailable + ' 人',
+      max: maxAvailable,
+      quickAdds: maxAvailable >= 20 ? [1, 5, 10, 20] : [1, 3, 5, maxAvailable],
+      onConfirm: (qty) => {
+        if (qty <= 0) { UI.toast('请选择数量'); return; }
+        Employees.recruit(mode, qty);
+      }
+    });
+  },
+
+  /* 分配数量选择（已有，保持兼容） */
   showQtyPicker(groupId, type, category, max) {
     UI.closeModal();
     setTimeout(() => {
@@ -351,6 +375,9 @@ const Staff = {
   }
 };
 
+
+
+Staff.recruitWithPicker = Staff.recruitWithPicker;
 window.Pages = window.Pages || {};
 window.Pages.staff = Pages.staff;
 window.Staff = Staff;

@@ -2,8 +2,8 @@
 
 const TimeManager = {
   intervalId: null,
-  totalSec: 600,       // 一天 = 10 分钟 = 600 秒
-  remaining: 600,      // 当前天剩余秒数
+  totalSec: 180,       // 一天 = 3 分钟 = 180 秒
+  remaining: 180,      // 当前天剩余秒数
   userPaused: false,   // 玩家手动暂停
   autoPaused: false,   // 自动暂停（弹窗/加速中）
   enabled: false,      // 是否启用（仅 home 页生效）

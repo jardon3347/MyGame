@@ -262,10 +262,61 @@ input { font-family: inherit; }
   max-width: 400px;
   width: 100%;
   max-height: 80vh;
-  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
-.modal h2 { font-size: 16px; margin-bottom: 12px; }
-.modal .actions { display: flex; gap: 8px; margin-top: 16px; }
+.modal h2 { font-size: 16px; margin-bottom: 12px; flex-shrink: 0; }
+.modal-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.modal .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 16px;
+  flex-shrink: 0;
+  padding-top: 12px;
+  border-top: 0.5px solid var(--border);
+}
+
+/* ===== 结算弹窗摘要 ===== */
+.settle-summary {
+  background: var(--bg-soft);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.settle-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 3px 0;
+  color: var(--text-secondary);
+}
+.settle-summary-row span:last-child { font-weight: 600; }
+.settle-summary-row.settle-net {
+  margin-top: 6px;
+  padding-top: 8px;
+  border-top: 0.5px solid var(--border);
+  font-size: 15px;
+  color: var(--text-primary);
+}
+.settle-summary-row.settle-net span:last-child { font-size: 17px; }
+.settle-details-toggle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 8px;
+  cursor: pointer;
+  border-radius: var(--radius-sm);
+  user-select: none;
+}
+.settle-details-toggle:active { background: var(--bg-soft); }
+.settle-details { padding-top: 4px; }
 
 /* ===== 新闻条目 ===== */
 .news-item {

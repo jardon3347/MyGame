@@ -7,7 +7,7 @@ const Employees = {
     let cap = 0;
     State.data.industries.forEach(ind => {
       if (ind.type === 'estate' && ind.category === 'residential') {
-        cap += (ind.quantity || 1) * 10;
+        cap += (ind.quantity || 1) * 10 * Engine.levelMultiplier(ind.level || 1);
       }
     });
     return cap;
@@ -44,27 +44,28 @@ const Employees = {
   },
 
   /* 招聘：一次招 batchCount 个 */
-  recruit(mode) {
+  recruit(mode, qty) {
     const cfg = DATA.recruit[mode];
     if (!cfg) return;
-    const batch = cfg.batchCount !== undefined ? cfg.batchCount : DATA.recruit.batchCount;
+    const count = qty || cfg.batchCount || DATA.recruit.batchCount;
 
-    if (!this.canRecruit(batch)) {
+    if (!this.canRecruit(count)) {
       const room = this.capacity() - this.count();
-      UI.toast(`宿舍仅剩 ${room} 个名额，无法一次招 ${batch} 人`);
+      UI.toast(`宿舍仅剩 ${room} 个名额，无法一次招 ${count} 人`);
       return;
     }
-    if (cfg.cost > 0 && State.data.cash < cfg.cost) {
-      UI.toast('现金不足，需要 ¥' + cfg.cost.toLocaleString('zh-CN'));
+    const totalCost = cfg.cost > 0 ? DATA.recruit.costPerPerson(mode) * count : 0;
+    if (totalCost > 0 && State.data.cash < totalCost) {
+      UI.toast('现金不足，需要 ¥' + totalCost.toLocaleString('zh-CN'));
       return;
     }
 
     // 扣钱
-    if (cfg.cost > 0) State.data.cash -= cfg.cost;
+    if (totalCost > 0) State.data.cash -= totalCost;
 
-    // 按概率抽取 batch 个员工的等级
+    // 按概率抽取 count 个员工的等级
     const results = [0, 0, 0, 0]; // L1~L4 数量
-    for (let i = 0; i < batch; i++) {
+    for (let i = 0; i < count; i++) {
       const r = Math.random();
       let acc = 0, level = 0;
       for (let j = 0; j < cfg.prob.length; j++) {
@@ -104,8 +105,9 @@ const Employees = {
       </div>`;
     }).join('');
 
-    const modeLabel = mode === 'free' ? '免费招聘' : (mode === 'paid' ? '付费招聘 ¥' + cfg.cost.toLocaleString('zh-CN') : '猎头招聘 ¥' + cfg.cost.toLocaleString('zh-CN'));
-    UI.modal('🎉 招聘成功（' + batch + '人）', `
+    const perCost = DATA.recruit.costPerPerson(mode);
+    const modeLabel = mode === 'free' ? '免费招聘' : (mode === 'paid' ? '付费招聘 ¥' + perCost.toLocaleString('zh-CN') + '/人' : '猎头招聘 ¥' + perCost.toLocaleString('zh-CN') + '/人');
+    UI.modal('🎉 招聘成功（' + count + '人）', `
       <p style="font-size:13px; color:var(--text-secondary); margin-bottom:10px;">${modeLabel}</p>
       ${summary || '<div class="empty">未招到任何员工</div>'}
     `, [
@@ -313,18 +315,29 @@ const Employees = {
     if (empMult <= 0) return;  // 无员工不产出
     const qty = ind.quantity || 1;
     const free = this.warehouseFree();
-    const produce = cat.produces.qty * qty * empMult * (ind.level || 1);
-    const actual = Math.min(produce, free);  // 仓库满了不产出
-    if (actual <= 0) {
-      if (log) log.details.push({ label: `${cat.name}产出→仓库已满`, amount: 0, type: 'warn' });
-      return;
-    }
+    const produce = cat.produces.qty * qty * empMult * Engine.levelMultiplier(ind.level || 1);
+    const stored = Math.min(produce, free);
+    const overflow = produce - stored;
     if (!State.data.inventory) State.data.inventory = {};
-    State.data.inventory[cat.produces.code] = (State.data.inventory[cat.produces.code] || 0) + actual;
+    if (stored > 0) {
+      State.data.inventory[cat.produces.code] = (State.data.inventory[cat.produces.code] || 0) + stored;
+    }
+    if (overflow > 0.01) {
+      const mat = DATA.rawMaterials.find(m => m.code === cat.produces.code);
+      const price = mat ? mat.price : 0;
+      State.data.cash += Math.floor(price * 0.98 * overflow);
+    }
     if (log) {
       const mat = DATA.rawMaterials.find(m => m.code === cat.produces.code);
       const matName = mat ? mat.name : cat.produces.code;
-      log.details.push({ label: `${cat.name}产出 ${matName} +${actual.toFixed(1)}`, amount: 0, type: 'info' });
+      if (stored > 0) log.details.push({ label: `${cat.name}产出 ${matName} +${stored.toFixed(1)}`, amount: 0, type: 'info' });
+      if (overflow > 0.01) {
+        const price = mat ? mat.price : 0;
+        const cashIn = Math.floor(price * 0.98 * overflow);
+        log.details.push({ label: `${cat.name}溢出 ${matName} ${overflow.toFixed(1)} 自动卖出 +¥${cashIn.toLocaleString('zh-CN')}`, amount: cashIn, type: 'income' });
+        log.income += cashIn;
+      }
+      if (stored <= 0 && overflow <= 0.01) log.details.push({ label: `${cat.name}产出→无法产出`, amount: 0, type: 'warn' });
     }
   },
 
@@ -349,7 +362,7 @@ const Employees = {
     let cap = 0;
     State.data.industries.forEach(ind => {
       if (ind.type === 'estate' && ind.category === 'warehouse') {
-        cap += (ind.quantity || 1) * DATA.warehouseCapacityPerUnit;
+        cap += (ind.quantity || 1) * DATA.warehouseCapacityPerUnit * Engine.levelMultiplier(ind.level || 1);
       }
     });
     return cap;

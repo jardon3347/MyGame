@@ -59,7 +59,7 @@ Pages.home = {
 
         <div class="section-title">金融</div>
         <div class="card-grid">
-          ${this.financeCard('deposit', '存款', s.deposit, DATA.deposit.annualRate, '年化利率')}
+          ${this.financeCard('deposit', '银行', s.deposit, s.interestRate || DATA.bank.baseRate, '年化利率')}
           ${this.stockCard()}
           ${this.fundCard()}
           ${this.metalCard()}
@@ -222,18 +222,35 @@ const Home = {
     let content = '';
     if (result.summaries.length === 1) {
       const log = result.summaries[0];
+      // 净收入摘要置顶，一眼看到关键数字
+      const totalIncome = log.details.filter(d => d.type === 'income').reduce((s, d) => s + d.amount, 0);
+      const totalExpense = log.details.filter(d => d.type === 'expense').reduce((s, d) => s + d.amount, 0);
       content = `
-        <p style="font-size:13px; color:var(--text-secondary); margin-bottom:10px;">${log.date}</p>
-        ${log.details.length ? log.details.map(d => `
-          <div class="list-row">
-            <span class="list-label">${d.label}</span>
-            ${d.type === 'info' ? `<span class="list-value" style="color:var(--text-secondary);">—</span>` :
-              `<span class="list-value ${d.type === 'income' ? 'up' : 'down'}">${d.type === 'income' ? '+' : '-'}${State.formatMoney(Math.abs(d.amount))}</span>`}
+        <div class="settle-summary">
+          <div class="settle-summary-row">
+            <span>总收入</span>
+            <span class="up">+${State.formatMoney(totalIncome)}</span>
           </div>
-        `).join('') : '<div class="empty">今日无收支</div>'}
-        <div class="list-row" style="margin-top:10px; padding-top:10px; border-top:0.5px solid var(--border);">
-          <span class="font-medium">净收入</span>
-          <span class="list-value ${log.net >= 0 ? 'up' : 'down'}">${log.net >= 0 ? '+' : ''}${State.formatMoney(log.net)}</span>
+          <div class="settle-summary-row">
+            <span>总支出</span>
+            <span class="down">-${State.formatMoney(totalExpense)}</span>
+          </div>
+          <div class="settle-summary-row settle-net">
+            <span>净收入</span>
+            <span class="${log.net >= 0 ? 'up' : 'down'}">${log.net >= 0 ? '+' : ''}${State.formatMoney(log.net)}</span>
+          </div>
+        </div>
+        <div class="settle-details-toggle" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'; this.textContent = this.textContent.includes('展开') ? '▼ 收起明细' : '▲ 展开明细';">
+          ▲ 展开明细
+        </div>
+        <div class="settle-details" style="display:none;">
+          ${log.details.length ? log.details.map(d => `
+            <div class="list-row">
+              <span class="list-label">${d.label}</span>
+              ${d.type === 'info' ? `<span class="list-value" style="color:var(--text-secondary);">—</span>` :
+                `<span class="list-value ${d.type === 'income' ? 'up' : 'down'}">${d.type === 'income' ? '+' : '-'}${State.formatMoney(Math.abs(d.amount))}</span>`}
+            </div>
+          `).join('') : '<div class="empty">今日无收支</div>'}
         </div>
       `;
     } else {

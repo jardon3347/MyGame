@@ -1,6 +1,7 @@
 /* data.js — 静态数据：产业、股票、贵金属、新闻事件库 */
 
 const DATA = {
+  maxIndustryLevel: 5,
   /* ===== 难度配置 ===== */
   difficulties: {
     easy:   { name: '简单', cash: 500000,  desc: '资金充裕，适合熟悉玩法' },
@@ -9,8 +10,13 @@ const DATA = {
   },
 
   /* ===== 金融板块 ===== */
-  deposit: {
-    annualRate: 0.03   // 年化 3%，按天计息
+  bank: {
+    baseRate: 0.03,          // 基准年利率 3%
+    rateMin: 0.005,          // 最低利率 0.5%
+    rateMax: 0.10,           // 最高利率 10%
+    loanRateMultiplier: 2.5, // 贷款利率 = 存款利率 × 2.5
+    maxLoanRatio: 0.5,       // 最高贷款 = 现金 × 0.5
+    rateDriftPerDay: 0.0003  // 每日利率自然漂移幅度（±0.03%/天）
   },
 
   stocks: [
@@ -97,6 +103,7 @@ const DATA = {
         { code: 'iron',   name: '铁矿',   cost: 6800,  dailyIncome: 100,  reserve: 2920, produces: { code: 'iron',     qty: 2.5 } },
         { code: 'copper', name: '铜矿',   cost: 7500,  dailyIncome: 115,  reserve: 2555, produces: { code: 'copper',   qty: 2.0 } },
         { code: 'gold',   name: '金矿',   cost: 12000, dailyIncome: 180,  reserve: 1825, produces: { code: 'gold_ore', qty: 0.3 } },
+        { code: 'silver', name: '银矿',   cost: 6800,  dailyIncome: 105,  reserve: 2190, produces: { code: 'silver_ore', qty: 1.8 } },
         { code: 'rare',   name: '稀土',   cost: 20000, dailyIncome: 300,  reserve: 1095, produces: { code: 'rare_earth', qty: 0.2 } },
         { code: 'baux',   name: '铝土矿', cost: 6200,  dailyIncome: 95,   reserve: 2920, produces: { code: 'baux',     qty: 2.5 } },
         { code: 'tung',   name: '钨矿',   cost: 15000, dailyIncome: 220,  reserve: 1460, produces: { code: 'tung',     qty: 1.0 } },
@@ -166,7 +173,7 @@ const DATA = {
     fruit: ['farm', 'fruit'], rubber: ['farm', 'rubber'], tobacco: ['farm', 'tobacco'],
     // 矿业
     coal: ['mining', 'coal'], iron: ['mining', 'iron'], copper: ['mining', 'copper'],
-    gold: ['mining', 'gold', 'metal'], rare: ['mining', 'rare'], baux: ['mining', 'baux'],
+    gold: ['mining', 'gold', 'metal'], silver: ['mining', 'silver'], rare: ['mining', 'rare'], baux: ['mining', 'baux'],
     tung: ['mining', 'tung'], tin: ['mining', 'tin'], phos: ['mining', 'phos'],
     quartz: ['mining', 'quartz'],
     // 冶金
@@ -205,15 +212,16 @@ const DATA = {
 
   /* ===== 员工等级配置（按类分组，工资扁平化） ===== */
   employeeLevels: {
-    L1: { name: '初级员工', color: '#9a9a9f', multiplier: 1.0, salary: 168 },
-    L2: { name: '中级员工', color: '#185fa5', multiplier: 1.3, salary: 256 },
-    L3: { name: '高级员工', color: '#ba7517', multiplier: 1.7, salary: 384 },
-    L4: { name: '专家级员工', color: '#e24b4a', multiplier: 2.4, salary: 600 }
+    L1: { name: '初级员工', color: '#9a9a9f', multiplier: 1.6, salary: 168 },
+    L2: { name: '中级员工', color: '#185fa5', multiplier: 2.4, salary: 256 },
+    L3: { name: '高级员工', color: '#ba7517', multiplier: 3.6, salary: 384 },
+    L4: { name: '专家级员工', color: '#e24b4a', multiplier: 4.8, salary: 600 }
   },
 
   /* ===== 招聘配置（一次招 5 个） ===== */
   recruit: {
-    batchCount: 5,   // 每次招聘人数
+    batchCount: 5,   // 基准批量人数
+    costPerPerson: function(mode) { return Math.ceil((DATA.recruit[mode] ? DATA.recruit[mode].cost : 0) / this.batchCount); },
     // 免费招聘：以初级为主
     free:  { cost: 0,     prob: [0.72, 0.20, 0.06, 0.02] },
     // 付费招聘 ¥3000：中级为主
@@ -302,7 +310,170 @@ const DATA = {
   }
 };
 
-/* ===== 新闻事件库（覆盖 2018 上半年典型场景） ===== */
+
+/* ===== 随机事件模板（非历史事件，用于新闻系统动态生成） ===== */
+const RANDOM_EVENT_TEMPLATES = [
+  // ---- 利率事件 ----
+  { id: 'r001', type: 'rate', title: '央行加息', desc: '央行上调基准利率，存款收益上升但贷款成本增加。',
+    effects: { interestRate: 0.015 }, minDay: 0 },
+  { id: 'r002', type: 'rate', title: '央行降息', desc: '央行下调基准利率，存款收益下降但贷款成本减少。',
+    effects: { interestRate: -0.01 }, minDay: 0 },
+  { id: 'r003', type: 'rate', title: '市场利率走高', desc: '市场资金面收紧，利率自然上行。',
+    effects: { interestRate: 0.008 }, minDay: 10 },
+  { id: 'r004', type: 'rate', title: '流动性宽松', desc: '央行逆回购操作，市场利率下行。',
+    effects: { interestRate: -0.007 }, minDay: 10 },
+
+  // ---- 大盘情绪 ----
+  { id: 'm001', type: 'market', title: '外资大举流入', desc: '北向资金单日净流入创纪录，市场情绪高涨。',
+    effects: { marketSentiment: 0.03 }, minDay: 0 },
+  { id: 'm002', type: 'market', title: '全球股市震荡', desc: '美股暴跌引发全球避险情绪，A股承压。',
+    effects: { marketSentiment: -0.025 }, minDay: 15 },
+  { id: 'm003', type: 'market', title: '政策利好密集出台', desc: '多项经济刺激政策集中发布，市场全面走强。',
+    effects: { marketSentiment: 0.025, sectors: { 'steel': 0.05, 'copperR': 0.04, 'machine': 0.06 } }, minDay: 30 },
+  { id: 'm004', type: 'market', title: '消费者信心指数大跌', desc: '消费数据不及预期，消费类股票承压。',
+    effects: { marketSentiment: -0.02, sectors: { 'food': -0.05, 'textile': -0.04 } }, minDay: 20 },
+
+  // ---- 行业事件 ----
+  { id: 's001', type: 'sector', title: '新能源补贴加码', desc: '新能源汽车补贴标准提高，产业链受益。',
+    effects: { sectors: { 'electr': 0.08, 'alum': 0.06, 'copperR': 0.05 } }, minDay: 25 },
+  { id: 's002', type: 'sector', title: '粮食丰收预期', desc: '主产区气候适宜，粮食丰收在望，粮价承压。',
+    effects: { sectors: { 'wheat': -0.06, 'corn': -0.05, 'rice': -0.04 } }, minDay: 40 },
+  { id: 's003', type: 'sector', title: '芯片短缺加剧', desc: '全球半导体产能不足，芯片价格持续上涨。',
+    effects: { sectors: { 'electr': 0.10, 'rare': 0.08 } }, minDay: 50 },
+  { id: 's004', type: 'sector', title: '国际金价飙升', desc: '地缘冲突升级，避险资金涌入黄金市场。',
+    effects: { metals: { 'gold': 0.10, 'silver': 0.08 } }, minDay: 35 },
+  { id: 's005', type: 'sector', title: '纺织业出口遇冷', desc: '海外订单大幅下滑，纺织厂开工不足。',
+    effects: { sectors: { 'textile': -0.08, 'cotton': -0.06 } }, minDay: 45 },
+  { id: 's006', type: 'sector', title: '建材需求旺季', desc: '基建项目集中开工，水泥钢材需求激增。',
+    effects: { sectors: { 'cement': 0.08, 'steel': 0.06, 'iron': 0.04 } }, minDay: 15 },
+  { id: 's007', type: 'sector', title: '白酒消费旺季', desc: '节日临近，高端白酒销量大增。',
+    effects: { sectors: { 'food': 0.06, 'soy': 0.03 } }, minDay: 60 },
+  { id: 's008', type: 'sector', title: '房地产市场回暖', desc: '多地放宽限购，房地产交易量回升。',
+    effects: { sectors: { 'residential': 0.07, 'steel': 0.04, 'cement': 0.05 } }, minDay: 70 },
+  { id: 's009', type: 'sector', title: '煤炭需求旺季', desc: '冬季供暖需求增加，煤炭价格上行。',
+    effects: { sectors: { 'coal': 0.08 } }, minDay: 80 },
+  { id: 's010', type: 'sector', title: '化肥出口受限', desc: '化肥出口关税上调，国内价格承压。',
+    effects: { sectors: { 'fert': -0.06, 'phos': -0.04 } }, minDay: 55 },
+
+  // ---- 原料事件 ----
+  { id: 'p001', type: 'material', title: '铁矿石涨价潮', desc: '澳大利亚铁矿石供应减少，价格跳涨。',
+    effects: { materials: { 'iron': 0.15, 'steel': 0.08 } }, minDay: 20 },
+  { id: 'p002', type: 'material', title: '铜进口关税下调', desc: '铜进口关税下调，国内铜价回落。',
+    effects: { materials: { 'copper': -0.08, 'copperR': -0.05 } }, minDay: 30 },
+  { id: 'p003', type: 'material', title: '稀土出口管制升级', desc: '稀土出口配额进一步收紧，价格预期大涨。',
+    effects: { materials: { 'rare_earth': 0.20 } }, minDay: 50 },
+  { id: 'p004', type: 'material', title: '棉花产区暴雨', desc: '主产区遭遇暴雨，棉花产量受损。',
+    effects: { materials: { 'cotton': 0.12, 'textile': -0.04 } }, minDay: 40 },
+  { id: 'p005', type: 'material', title: '原油价格暴跌', desc: 'OPEC增产超预期，油价大幅回落。',
+    effects: { materials: { 'coal': -0.06, 'rubber': -0.04 }, sectors: { 'coal': -0.05 } }, minDay: 60 },
+  { id: 'p006', type: 'material', title: '粮食进口增加', desc: '进口粮食到港量增加，国内粮价稳中有降。',
+    effects: { materials: { 'wheat': -0.06, 'corn': -0.05, 'soy': -0.04 } }, minDay: 35 },
+  { id: 'p007', type: 'material', title: '黄金避险需求爆发', desc: '国际局势紧张，黄金避险需求爆发式增长。',
+    effects: { materials: { 'gold_ore': 0.18, 'precious_m': 0.15 }, metals: { 'gold': 0.12 } }, minDay: 80 },
+
+  // ---- 综合事件 ----
+  { id: 'c001', type: 'combo', title: '经济刺激一揽子计划', desc: '政府推出大规模经济刺激计划，股市全面走强，利率上行。',
+    effects: { marketSentiment: 0.03, interestRate: 0.01, sectors: { 'steel': 0.06, 'machine': 0.05, 'cement': 0.05, 'electr': 0.04 } }, minDay: 90 },
+  { id: 'c002', type: 'combo', title: '通货膨胀预期升温', desc: 'CPI数据超预期，通胀预期升温，贵金属受益，消费承压。',
+    effects: { interestRate: 0.012, metals: { 'gold': 0.08, 'silver': 0.06 }, sectors: { 'food': -0.04, 'textile': -0.03 }, marketSentiment: -0.01 }, minDay: 45 },
+  { id: 'c003', type: 'combo', title: '全球经济衰退担忧', desc: '主要经济体数据疲软，衰退担忧蔓延，避险资产受追捧。',
+    effects: { marketSentiment: -0.03, interestRate: -0.01, metals: { 'gold': 0.06 } }, minDay: 65 }
+];
+
+/* ===== 真实历史事件（2018—2025，按游戏天数触发） ===== */
+// 游戏起始日 2018-01-01 = day 0；下方 minDay 为距今的大致天数
+const NEWS_HISTORY = [
+  { id: 'h001', type: 'international', title: '中美贸易摩擦升级',
+    desc: '美国宣布对500亿美元中国商品加征25%关税，大豆等农产品出口受阻。', minDay: 80,
+    effects: { sectors: { 'soy': 0.12, 'machine': -0.06, 'electr': -0.05 }, marketSentiment: -0.02 } },
+  { id: 'h002', type: 'policy', title: '央行降准释放流动性',
+    desc: '中国人民银行宣布下调存款准备金率1个百分点，释放约1.2万亿资金。', minDay: 100,
+    effects: { marketSentiment: 0.02, interestRate: -0.01 } },
+  { id: 'h003', type: 'international', title: '中兴通讯遭禁运',
+    desc: '美国商务部禁止向中兴出口芯片，半导体国产替代预期升温。', minDay: 105,
+    effects: { sectors: { 'electr': 0.08, 'rare': 0.06 }, marketSentiment: -0.015 } },
+  { id: 'h004', type: 'policy', title: '资管新规正式落地',
+    desc: '央行发布资管新规细则，银行理财打破刚兑，市场资金面短期偏紧。', minDay: 120,
+    effects: { interestRate: 0.01, marketSentiment: -0.01 } },
+  { id: 'h005', type: 'international', title: '中美互征关税生效',
+    desc: '美国对340亿中国商品加征关税正式生效，中方同步反制。', minDay: 186,
+    effects: { sectors: { 'soy': 0.08, 'machine': -0.05, 'electr': -0.04 }, marketSentiment: -0.02 } },
+  { id: 'h006', type: 'disaster', title: '非洲猪瘟疫情扩散',
+    desc: '全国多地爆发非洲猪瘟，生猪存栏大幅下降，饲料需求锐减。', minDay: 210,
+    effects: { sectors: { 'corn': -0.10, 'soy': -0.08, 'food': -0.06 } } },
+  { id: 'h007', type: 'policy', title: '科创板正式开板',
+    desc: '科创板在上交所正式开板，注册制改革启动，科技股估值重塑。', minDay: 250,
+    effects: { sectors: { 'electr': 0.10 }, marketSentiment: 0.03 } },
+  { id: 'h008', type: 'market', title: '华为事件升级 全球供应链紧张',
+    desc: '华为CFO在加拿大被扣留，中美科技战升级，半导体板块波动加剧。', minDay: 334,
+    effects: { sectors: { 'electr': 0.12, 'rare': 0.10 }, marketSentiment: -0.025 } },
+  { id: 'h009', type: 'policy', title: '中美达成第一阶段协议',
+    desc: '中美签署第一阶段经贸协议，中方承诺增加自美进口，市场情绪回暖。', minDay: 380,
+    effects: { marketSentiment: 0.025, sectors: { 'soy': -0.06 } } },
+  { id: 'h010', type: 'international', title: '新冠全球大流行',
+    desc: 'WHO宣布新冠疫情构成全球大流行，全球股市暴跌，避险情绪飙升。', minDay: 450,
+    effects: { marketSentiment: -0.04, metals: { 'gold': 0.15 }, sectors: { 'food': 0.08, 'textile': -0.10 } } },
+  { id: 'h011', type: 'disaster', title: '武汉封城 全国经济停摆',
+    desc: '武汉因新冠疫情封城，全国经济活动骤减，多行业停工停产。', minDay: 752,
+    effects: { marketSentiment: -0.05, sectors: { 'machine': -0.15, 'steel': -0.12, 'residential': -0.10 }, interestRate: -0.015 } },
+  { id: 'h012', type: 'market', title: '全球股市熔断潮',
+    desc: '沙特发动石油价格战叠加疫情恐慌，美股一周三次熔断，A股跟跌。', minDay: 790,
+    effects: { marketSentiment: -0.04, metals: { 'gold': 0.10, 'silver': 0.05 } } },
+  { id: 'h013', type: 'market', title: 'WTI原油期货跌至负值',
+    desc: '纽约原油期货史上首次跌至负值，全球大宗商品市场剧烈震荡。', minDay: 840,
+    effects: { sectors: { 'coal': -0.12, 'machine': -0.06 }, materials: { 'coal': -0.15, 'rubber': -0.10 } } },
+  { id: 'h014', type: 'policy', title: '中国经济率先复苏',
+    desc: '中国疫情控制得力，二季度GDP增速转正，全球资金加速流入A股。', minDay: 900,
+    effects: { marketSentiment: 0.03, sectors: { 'machine': 0.08, 'steel': 0.06, 'electr': 0.05 } } },
+  { id: 'h015', type: 'policy', title: '双碳目标正式提出',
+    desc: '中国宣布2030碳达峰、2060碳中和目标，新能源产业链长期利好。', minDay: 1000,
+    effects: { sectors: { 'alum': 0.06, 'copperR': 0.05, 'electr': 0.08 }, marketSentiment: 0.02 } },
+  { id: 'h016', type: 'policy', title: '教培行业双减政策',
+    desc: '中央出台"双减"政策，教培行业遭受毁灭性打击，消费板块受拖累。', minDay: 1300,
+    effects: { marketSentiment: -0.025 } },
+  { id: 'h017', type: 'market', title: '恒大债务危机爆发',
+    desc: '恒大集团出现债务违约，地产板块全面承压，水泥钢材需求预期下滑。', minDay: 1362,
+    effects: { sectors: { 'residential': -0.12, 'steel': -0.08, 'cement': -0.10, 'commercial': -0.08 }, marketSentiment: -0.02 } },
+  { id: 'h018', type: 'international', title: '俄乌冲突爆发',
+    desc: '俄罗斯对乌克兰发动特别军事行动，全球能源和粮食价格飙升。', minDay: 1515,
+    effects: { sectors: { 'wheat': 0.15, 'corn': 0.12, 'coal': 0.10 }, metals: { 'gold': 0.12 }, marketSentiment: -0.03 } },
+  { id: 'h019', type: 'policy', title: '金融委会议稳定市场',
+    desc: '国务院金融委会议释放积极信号，平台经济政策趋于明朗，中概股/港股反弹。', minDay: 1535,
+    effects: { marketSentiment: 0.03 } },
+  { id: 'h020', type: 'policy', title: '中国宣布放开疫情管控',
+    desc: '"新十条"发布，长达三年的动态清零政策终结，消费板块强势反弹。', minDay: 1796,
+    effects: { marketSentiment: 0.04, sectors: { 'food': 0.10, 'brew': 0.08, 'textile': 0.06 } } },
+  { id: 'h021', type: 'international', title: '硅谷银行倒闭 全球金融震荡',
+    desc: '美国硅谷银行突然倒闭，引发全球银行股抛售潮，避险资产受追捧。', minDay: 1889,
+    effects: { marketSentiment: -0.03, metals: { 'gold': 0.08 }, interestRate: -0.005 } },
+  { id: 'h022', type: 'policy', title: '史诗级经济刺激计划出台',
+    desc: '央行降准降息+降低存量房贷利率+设立股市平准基金，A股放量大涨。', minDay: 2446,
+    effects: { marketSentiment: 0.04, sectors: { 'residential': 0.10, 'steel': 0.08, 'machine': 0.06 }, interestRate: -0.02 } },
+  { id: 'h023', type: 'international', title: '特朗普重返白宫 关税预期升温',
+    desc: '特朗普赢得美国大选，市场担忧新一轮全面关税，出口导向行业承压。', minDay: 2564,
+    effects: { sectors: { 'electr': -0.06, 'textile': -0.05, 'machine': -0.04 }, metals: { 'gold': 0.05 }, marketSentiment: -0.01 } }
+];
+
+/* ===== 整合全部事件到统一池（历史事件 + 预置模板） ===== */
+// 此函数由 engine.js 的 rollNews 调用，传入当前 gameDay 返回可用事件池
+function getNewsPool(gameDay) {
+  let pool = [];
+  // 历史事件：只在对应日期附近（±10天窗口内）且未超过时加入
+  NEWS_HISTORY.forEach(n => {
+    if (gameDay >= n.minDay && gameDay <= n.minDay + 10) {
+      pool.push(n);
+    }
+  });
+  // 预设新闻库（始终可用，受 minDay 限制）
+  NEWS_LIBRARY.forEach(n => {
+    if (gameDay >= n.minDay) pool.push(n);
+  });
+  // 随机事件模板（始终可用，受 minDay 限制）
+  RANDOM_EVENT_TEMPLATES.forEach(n => {
+    if (gameDay >= n.minDay) pool.push(n);
+  });
+  return pool;
+}
 const NEWS_LIBRARY = [
   // 政策类
   { id: 'n001', type: 'policy', title: '央行定向降准 释放流动性',
@@ -375,3 +546,6 @@ const NEWS_LIBRARY = [
 
 window.DATA = DATA;
 window.NEWS_LIBRARY = NEWS_LIBRARY;
+window.NEWS_HISTORY = NEWS_HISTORY;
+window.RANDOM_EVENT_TEMPLATES = RANDOM_EVENT_TEMPLATES;
+window.getNewsPool = getNewsPool;

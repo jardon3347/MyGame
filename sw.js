@@ -1,6 +1,6 @@
-/* sw.js — Service Worker：离线缓存 */
+/* sw.js �?Service Worker：离线缓�?*/
 
-const CACHE_NAME = 'shengshi-v10';
+const CACHE_NAME = 'shengshi-v13';
 const ASSETS = [
   './',
   './index.html',
@@ -42,8 +42,7 @@ self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(cached => {
       return cached || fetch(e.request).then(resp => {
-        // 缓存新资源
-        if (resp && resp.status === 200 && e.request.method === 'GET') {
+        // 缓存新资�?        if (resp && resp.status === 200 && e.request.method === 'GET') {
           const clone = resp.clone();
           caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
         }

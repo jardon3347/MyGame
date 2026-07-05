@@ -32,7 +32,7 @@ Pages.industry = {
         <div class="topbar">
           <div class="topbar-stats">
             <div class="stat-item">
-              <div class="label">持有（${ind.unit}）</div>
+              <div class="label">拥有（${ind.unit}）</div>
               <div class="value">${countTotal.toLocaleString('zh-CN')}</div>
             </div>
             <div class="stat-item">
@@ -49,7 +49,7 @@ Pages.industry = {
         ${unstaffedCount > 0 ? `
           <div class="list-item" style="border-left:3px solid var(--warning);margin-bottom:12px;">
             <p class="text-sm" style="line-height:1.6;color:var(--warning);">
-              ⚠ 有 ${unstaffedCount} ${ind.unit}产业未派员工，无产出。<br>
+              ⚠️ 有 ${unstaffedCount} ${ind.unit}产业未派员工，无产出。<br>
               <a onclick="Router.go('staff')" style="color:var(--info);text-decoration:underline;">前往员工管理 →</a>
             </p>
           </div>
@@ -58,7 +58,7 @@ Pages.industry = {
         ${type === 'farm' ? `
           <div class="list-item" style="margin-bottom:12px;background:var(--bg-soft);">
             <p class="text-sm text-muted" style="line-height:1.6;">
-              🌾 <strong>农业产出</strong>：农业每日产出农产品存入仓库，供工厂消耗。<br>
+              🌾 <strong>农业产出</strong>：农业每日产出农产品存入仓库，供工厂消费。<br>
               如小麦→食品厂/酿酒厂，棉花→纺织厂，玉米→饲料厂。<br>
               需要有<a onclick="Router.go('warehouse')" style="color:var(--info);text-decoration:underline;">仓库</a>才能存放产出。
             </p>
@@ -68,8 +68,8 @@ Pages.industry = {
         ${type === 'mining' ? `
           <div class="list-item" style="margin-bottom:12px;background:var(--bg-soft);">
             <p class="text-sm text-muted" style="line-height:1.6;">
-              ⛏️ <strong>矿业产出</strong>：矿业每日产出矿石存入仓库，供冶金消耗。<br>
-              如铁矿石→炼钢/炼铁，铜矿石→炼铜，煤炭→炼钢/水泥厂。<br>
+              ⛏️ <strong>矿业产出</strong>：矿业每日产出矿石存入仓库，供冶金消费。<br>
+              如铁矿石→炼钢（炼铁），铜矿石→炼铜，煤矿→炼钢/水泥厂。<br>
               需要有<a onclick="Router.go('warehouse')" style="color:var(--info);text-decoration:underline;">仓库</a>才能存放产出。
             </p>
           </div>
@@ -78,9 +78,9 @@ Pages.industry = {
         ${type === 'factory' ? `
           <div class="list-item" style="margin-bottom:12px;background:var(--bg-soft);">
             <p class="text-sm text-muted" style="line-height:1.6;">
-              🏭 <strong>工厂消耗</strong>：工厂从仓库消耗原料，原料不足时产出按比例下降。<br>
+              🏭 <strong>工厂消费</strong>：工厂从仓库消费原料，原料不足时产出按比例下降。<br>
               如食品厂需小麦+大豆+玉米，机械厂需钢材+生铁。<br>
-              没原料？去<a onclick="Router.go('warehouse')" style="color:var(--info);text-decoration:underline;">仓库</a>买或自己种/挖。
+              没原料？去<a onclick="Router.go('warehouse')" style="color:var(--info);text-decoration:underline;">仓库</a>买或自己挖。
             </p>
           </div>
         ` : ''}
@@ -88,8 +88,8 @@ Pages.industry = {
         ${type === 'metall' ? `
           <div class="list-item" style="margin-bottom:12px;background:var(--bg-soft);">
             <p class="text-sm text-muted" style="line-height:1.6;">
-              🔥 <strong>冶金联动</strong>：冶金从仓库消耗矿石，产出金属存入仓库供工厂用。<br>
-              如炼钢需铁矿石+煤炭→产出钢材，炼铜需铜矿石→产出铜锭。<br>
+              🔥 <strong>冶金联动</strong>：冶金从仓库消费矿石，产出金属存入仓库供工厂用。<br>
+              如炼钢需铁矿石+煤矿→产出钢材，炼铜需铜矿石→产出铜锭。<br>
               没矿场？去<a onclick="Router.go('warehouse')" style="color:var(--info);text-decoration:underline;">仓库</a>直接买原料。
             </p>
           </div>
@@ -126,7 +126,7 @@ Pages.industry = {
       const matName = mat ? mat.name : cat.produces.code;
       const dailyProduce = hasStaff ? cat.produces.qty * qty * empMult * (o.level || 1) : 0;
       const have = inv[cat.produces.code] || 0;
-      recipeInfo = `<div class="text-sm text-muted">⬆ 产出 ${matName} +${dailyProduce.toFixed(1)}/日 · 仓库存 ${have.toFixed(1)}</div>`;
+      recipeInfo = `<div class="text-sm text-muted">📥 产出 ${matName} +${dailyProduce.toFixed(1)}/日 · 仓库存 ${have.toFixed(1)}</div>`;
     }
 
     // 冶金：消耗矿石 + 产出金属
@@ -134,11 +134,11 @@ Pages.industry = {
       if (DATA.smelterRecipes[o.category]) {
         recipeSat = Employees.smelterSatisfaction(o.category, qty);
         const recipe = DATA.smelterRecipes[o.category];
-        recipeInfo = '<div class="text-sm text-muted">⬇ 消耗：' + recipe.map(r => {
+        recipeInfo = '<div class="text-sm text-muted">📥 消费：' + recipe.map(r => {
           const mat = DATA.rawMaterials.find(m => m.code === r.code);
           const have = inv[r.code] || 0;
           const need = r.qty * qty;
-          const sat = have >= need ? '✓' : (have > 0 ? '△' : '✗');
+          const sat = have >= need ? '✅' : (have > 0 ? '▲' : '❌');
           return `${mat ? mat.name : r.code} ${have.toFixed(0)}/${need.toFixed(0)}${sat}`;
         }).join(' · ') + '</div>';
       }
@@ -146,7 +146,7 @@ Pages.industry = {
         const mat = DATA.rawMaterials.find(m => m.code === cat.produces.code);
         const matName = mat ? mat.name : cat.produces.code;
         const dailyProduce = hasStaff ? cat.produces.qty * qty * empMult * (o.level || 1) : 0;
-        recipeInfo += `<div class="text-sm text-muted">⬆ 产出 ${matName} +${dailyProduce.toFixed(1)}/日</div>`;
+        recipeInfo += `<div class="text-sm text-muted">📤 产出 ${matName} +${dailyProduce.toFixed(1)}/日</div>`;
       }
       if (recipeSat < 1) {
         recipeInfo += `<div class="text-sm" style="color:var(--warning);">原料不足，产出仅 ${Math.round(recipeSat*100)}% · <a onclick="Router.go('warehouse')" style="color:var(--info);text-decoration:underline;">去仓库 →</a></div>`;
@@ -157,11 +157,11 @@ Pages.industry = {
     if (type === 'factory' && DATA.factoryRecipes[o.category]) {
       recipeSat = Employees.recipeSatisfaction(o.category, qty);
       const recipe = DATA.factoryRecipes[o.category];
-      recipeInfo = '<div class="text-sm text-muted">⬇ 消耗：' + recipe.map(r => {
+      recipeInfo = '<div class="text-sm text-muted">📥 消费：' + recipe.map(r => {
         const mat = DATA.rawMaterials.find(m => m.code === r.code);
         const have = inv[r.code] || 0;
         const need = r.qty * qty;
-        const sat = have >= need ? '✓' : (have > 0 ? '△' : '✗');
+        const sat = have >= need ? '✅' : (have > 0 ? '▲' : '❌');
         return `${mat ? mat.name : r.code} ${have.toFixed(0)}/${need.toFixed(0)}${sat}`;
       }).join(' · ') + '</div>';
       if (recipeSat < 1) {
@@ -178,7 +178,7 @@ Pages.industry = {
             <div class="text-sm ${hasStaff ? 'text-muted' : ''}" style="${hasStaff ? '' : 'color:var(--down);'}">
               ${hasStaff
                 ? `员工 ${empCnt}人 · 加成 ×${empMult.toFixed(1)} · 日入 ${State.formatMoney(daily)}`
-                : '⚠ 无员工 · 无产出'}
+                : '⚠️ 无员工 · 无产出'}
             </div>
             ${recipeInfo}
           </div>
@@ -187,7 +187,7 @@ Pages.industry = {
           </div>
         </div>
         <div class="flex gap-8 mt-8">
-          <button class="btn sm" style="flex:1;" onclick="Industry.upgrade('${type}','${o.category}')">升级</button>
+          <button class="btn sm" style="flex:1;" ${(o.level||1) >= (DATA.maxIndustryLevel||5) ? 'disabled style="opacity:0.4;flex:1;"' : ''} onclick="Industry.upgrade('${type}','${o.category}')">${(o.level||1) >= (DATA.maxIndustryLevel||5) ? '已满级' : '升级'}</button>
           <button class="btn sm danger" style="flex:1;" onclick="Industry.sell('${type}','${o.category}')">出售</button>
         </div>
       </div>
@@ -204,7 +204,7 @@ Pages.industry = {
         <div class="list-row">
           <div>
             <div class="font-medium">${cat.name}</div>
-            <div class="text-sm text-muted">日入 ${State.formatMoney(cat.dailyIncome)}/${ind.unit} · 回本 ${payback} 天${cat.cycle ? ' · ' + cat.cycle : ''}${cat.reserve ? ' · 储量 ' + cat.reserve + ' 天' : ''}</div>
+            <div class="text-sm text-muted">日入 ${State.formatMoney(cat.dailyIncome)}/${ind.unit} · 回本 ${payback} 天${cat.cycle ? ' · ' + cat.cycle : ''}${cat.reserve ? ' · 储量 ' + cat.reserve + ' 天' : ''}${type === 'factory' && DATA.factoryRecipes[cat.code] ? ' · 需: ' + DATA.factoryRecipes[cat.code].map(r => { const m = DATA.rawMaterials.find(m2 => m2.code === r.code); return (m ? m.name : r.code) + '×' + r.qty; }).join('+') : ''}${type === 'metall' && DATA.smelterRecipes[cat.code] ? ' · 需: ' + DATA.smelterRecipes[cat.code].map(r => { const m = DATA.rawMaterials.find(m2 => m2.code === r.code); return (m ? m.name : r.code) + '×' + r.qty; }).join('+') : ''}</div>
           </div>
           <div style="text-align:right;">
             <div class="font-medium">${State.formatMoney(cat.cost)}</div>
@@ -235,7 +235,7 @@ const Industry = {
       unitName: ind.unit,
       unitLabel: `${State.formatMoney(cat.cost)}/${ind.unit} · 日入 ${State.formatMoney(cat.dailyIncome)}/${ind.unit}`,
       max: maxQty,
-      quickAdds: maxQty >= 1000 ? [10, 100, 500, 1000] : [1, 5, 10, 50],
+      quickAdds: maxQty >= 1000 ? [10, 100, 500, 1000] : [5, 10, 50, 100],
       onConfirm: (qty) => {
         if (qty <= 0) { UI.toast('请选择数量'); return; }
         const totalCost = cat.cost * qty;
@@ -265,9 +265,13 @@ const Industry = {
     const cat = State.findIndustryCategory(type, categoryCode);
     const ind = DATA.industries[type];
     const qty = owned.quantity || 1;
-    const upgradeCost = cat.cost * 0.5 * (owned.level || 1) * qty;
+    if ((owned.level || 1) >= (DATA.maxIndustryLevel || 5)) {
+      UI.toast('已达最高等级 Lv' + (DATA.maxIndustryLevel || 5) + '，不可再升级');
+      return;
+    }
+    const upgradeCost = cat.cost * 0.8 * (owned.level || 1) * qty;
     if (State.data.cash < upgradeCost) { UI.toast('现金不足，需要 ' + State.formatMoney(upgradeCost)); return; }
-    UI.confirm('升级 ' + cat.name, `Lv${owned.level} → Lv${owned.level+1}（全部 ${qty.toLocaleString('zh-CN')} ${ind.unit}）<br>花费 ${State.formatMoney(upgradeCost)}<br>日收入提升 50%`, () => {
+    UI.confirm('升级 ' + cat.name, `Lv${owned.level} → Lv${owned.level+1}（全部 ${qty.toLocaleString('zh-CN')} ${ind.unit}）<br>花费 ${State.formatMoney(upgradeCost)}<br>日收入提升 20%（每级×1.2，上限Lv5）`, () => {
       State.data.cash -= upgradeCost;
       owned.level = (owned.level || 1) + 1;
       State.save();
@@ -290,7 +294,7 @@ const Industry = {
       unitName: ind.unit,
       unitLabel: `${State.formatMoney(refundPer)}/${ind.unit} · 持有 ${qty.toLocaleString('zh-CN')} ${ind.unit} · 按购入价80%回收`,
       max: qty,
-      quickAdds: qty >= 1000 ? [10, 100, 500, 1000] : [1, 5, 10, 50],
+      quickAdds: qty >= 1000 ? [10, 100, 500, 1000] : [5, 10, 50, 100],
       onConfirm: (sellQty) => {
         if (sellQty <= 0) { UI.toast('请选择数量'); return; }
         const refund = refundPer * sellQty;

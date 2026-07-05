@@ -35,6 +35,8 @@ const State = {
     if (!d.employees) d.employees = [];
     if (!d.inventory) d.inventory = {};   // 仓库原料库存：{ code: 数量 }
     if (!d.news) d.news = [];             // 新闻历史（旧存档补全）
+    if (d.nextNewsDay == null) d.nextNewsDay = (d.date.totalDays || 0) + 3 + Math.floor(Math.random() * 3);
+    if (!d.activeEffects) d.activeEffects = [];
 
     // 兼容旧版单员工结构 → 按类分组结构
     // 旧：{ id, level, assign, hireDay }  新：{ id, level, count, assign }
@@ -147,6 +149,9 @@ const State = {
       realDate: '2018-01-01',
       cash: cfg.cash,
       deposit: 0,
+      loan: 0,
+      interestRate: DATA.bank.baseRate,
+      activeEffects: [],
       stocks: [],
       stockPrices: {},
       stockHistory: {},
@@ -161,6 +166,7 @@ const State = {
       materialPrices: {},   // 原料市场价格（每日波动）
       marketSentiment: 0,   // 大盘情绪 -0.02 ~ 0.02
       lastNewsDay: -10,
+      nextNewsDay: 4,        // 首次新闻在第 4 天
       news: [],             // 新闻历史
       logs: []
     };
@@ -253,7 +259,7 @@ const State = {
 
   /* 计算总资产 */
   totalAssets() {
-    let total = this.data.cash + this.data.deposit;
+    let total = this.data.cash + this.data.deposit - (this.data.loan || 0);
     // 股票市值
     this.data.stocks.forEach(s => {
       total += s.shares * (this.data.stockPrices[s.code] || 0);
@@ -297,7 +303,7 @@ const State = {
       }
     });
     // 存款利息（按天）
-    income += this.data.deposit * DATA.deposit.annualRate / 365;
+    income += this.data.deposit * (this.data.interestRate || DATA.bank.baseRate) / 365;
     // 扣员工薪水
     if (window.Employees) income -= Employees.totalSalary();
     return income;
