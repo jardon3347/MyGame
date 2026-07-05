@@ -155,7 +155,7 @@ const Engine = {
     let maintenance = 0;
     State.data.industries.forEach(ind => {
       const cat = State.findIndustryCategory(ind.type, ind.category);
-      if (cat) maintenance += cat.cost * 0.0001 * Engine.levelMultiplier(ind.level || 1) * (ind.quantity || 1);
+      if (cat && cat.cost) maintenance += cat.cost * 0.0001 * Engine.levelMultiplier(ind.level || 1) * (ind.quantity || 1);
     });
     State.data.cash -= maintenance;
     log.expense += maintenance;

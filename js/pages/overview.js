@@ -86,9 +86,9 @@ Pages.overview = {
 
         <div class="section-title">操作</div>
         <div class="card-grid">
-          <button class="card" onclick="Router.go('news')">
-            <div class="card-title">市场新闻</div>
-            <div class="card-sub">查看历史动态</div>
+          <button class="card" onclick="Overview.toggleTheme()" id="theme-toggle-btn">
+            <div class="card-title">${document.documentElement.getAttribute('data-theme') === 'dark' ? '浅色主题' : '深色主题'}</div>
+            <div class="card-sub">点击切换外观</div>
           </button>
           <button class="card" onclick="UI.confirm('重置游戏','将清空当前进度，确认重置？',()=>{State.reset();})">
             <div class="card-title" style="color:var(--down);">重置游戏</div>
@@ -228,3 +228,34 @@ Pages.overview = {
 
 window.Pages = window.Pages || {};
 window.Pages.overview = Pages.overview;
+
+const Overview = {
+  toggleTheme() {
+    const html = document.documentElement;
+    const isDark = html.getAttribute('data-theme') === 'dark';
+    if (isDark) {
+      html.removeAttribute('data-theme');
+      localStorage.setItem('shengshi_theme', 'light');
+    } else {
+      html.setAttribute('data-theme', 'dark');
+      localStorage.setItem('shengshi_theme', 'dark');
+    }
+    // 刷新按钮文字
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) {
+      const title = btn.querySelector('.card-title');
+      if (title) title.textContent = isDark ? '深色主题' : '浅色主题';
+    }
+    UI.toast(isDark ? '已切换为浅色主题' : '已切换为深色主题');
+  },
+
+  initTheme() {
+    const saved = localStorage.getItem('shengshi_theme');
+    if (saved === 'dark') {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+  }
+};
+
+window.Overview = Overview;
+

@@ -142,7 +142,7 @@ Pages.home = {
         const qty = o.quantity || 1;
         count += qty;
         const empMult = Employees.multiplier(type, o.category);
-        if (empMult <= 0) {
+        if (empMult <= 0 && !['farmland', 'mine_land', 'factory_land'].includes(o.category)) {
           unstaffed += qty;
         } else {
           let recipeSat = 1.0;

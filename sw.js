@@ -1,6 +1,6 @@
 /* sw.js �?Service Worker：离线缓�?*/
 
-const CACHE_NAME = 'shengshi-v13';
+const CACHE_NAME = 'shengshi-v14';
 const ASSETS = [
   './',
   './index.html',

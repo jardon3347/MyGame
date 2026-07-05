@@ -80,18 +80,18 @@ const DATA = {
       icon: '🌾',
       unit: '亩',
       categories: [
-        { code: 'wheat',   name: '小麦',  cost: 800,   dailyIncome: 12,  cycle: '秋种夏收',  produces: { code: 'wheat',   qty: 2.0 } },
-        { code: 'rice',    name: '水稻',  cost: 950,   dailyIncome: 15,  cycle: '一年两熟',  produces: { code: 'rice',    qty: 2.5 } },
-        { code: 'soy',     name: '大豆',  cost: 700,   dailyIncome: 10,  cycle: '周期短',    produces: { code: 'soy',     qty: 1.8 } },
-        { code: 'corn',    name: '玉米',  cost: 750,   dailyIncome: 11,  cycle: '饲料刚需',  produces: { code: 'corn',    qty: 2.0 } },
-        { code: 'cotton',  name: '棉花',  cost: 1100,  dailyIncome: 18,  cycle: '工业原料',  produces: { code: 'cotton',  qty: 1.5 } },
-        { code: 'rape',    name: '油菜',  cost: 850,   dailyIncome: 13,  cycle: '油料作物',  produces: { code: 'rape',    qty: 1.8 } },
-        { code: 'sugarc',  name: '甘蔗',  cost: 1200,  dailyIncome: 20,  cycle: '糖料来源',  produces: { code: 'sugarc',  qty: 3.0 } },
-        { code: 'tea',     name: '茶园',  cost: 1800,  dailyIncome: 28,  cycle: '经济作物',  produces: { code: 'tea',     qty: 0.8 } },
-        { code: 'veg',     name: '蔬菜',  cost: 600,   dailyIncome: 9,   cycle: '周期最短',  produces: { code: 'veg',     qty: 2.5 } },
-        { code: 'fruit',   name: '果树',  cost: 1500,  dailyIncome: 24,  cycle: '多年生',    produces: { code: 'fruit',   qty: 1.2 } },
-        { code: 'rubber',  name: '橡胶',  cost: 2200,  dailyIncome: 35,  cycle: '热带作物',  produces: { code: 'rubber',  qty: 0.8 } },
-        { code: 'tobacco', name: '烟叶',  cost: 2000,  dailyIncome: 32,  cycle: '专卖作物',  produces: { code: 'tobacco', qty: 0.8 } }
+        { code: 'wheat',   name: '小麦',  dailyIncome: 24,  cycle: '秋播夏收',  produces: { code: 'wheat',   qty: 2.0 } },
+        { code: 'rice',    name: '水稻',  dailyIncome: 30,  cycle: '一年两熟',  produces: { code: 'rice',    qty: 2.5 } },
+        { code: 'soy',     name: '大豆',  dailyIncome: 20,  cycle: '周期短',    produces: { code: 'soy',     qty: 1.8 } },
+        { code: 'corn',    name: '玉米',  dailyIncome: 22,  cycle: '饲料刚需',  produces: { code: 'corn',    qty: 2.0 } },
+        { code: 'cotton',  name: '棉花',  dailyIncome: 36,  cycle: '工业原料',  produces: { code: 'cotton',  qty: 1.5 } },
+        { code: 'rape',    name: '油菜',  dailyIncome: 26,  cycle: '油料作物',  produces: { code: 'rape',    qty: 1.8 } },
+        { code: 'sugarc',  name: '甘蔗',  dailyIncome: 40,  cycle: '糖料来源',  produces: { code: 'sugarc',  qty: 3.0 } },
+        { code: 'tea',     name: '茶园',  dailyIncome: 56,  cycle: '经济作物',  produces: { code: 'tea',     qty: 0.8 } },
+        { code: 'veg',     name: '蓔菜',  dailyIncome: 18,  cycle: '周期最短',  produces: { code: 'veg',     qty: 2.5 } },
+        { code: 'fruit',   name: '果树',  dailyIncome: 48,  cycle: '多年生',    produces: { code: 'fruit',   qty: 1.2 } },
+        { code: 'rubber',  name: '橡胶',  dailyIncome: 70,  cycle: '热带作物',  produces: { code: 'rubber',  qty: 0.8 } },
+        { code: 'tobacco', name: '烟叶',  dailyIncome: 64,  cycle: '专卖作物',  produces: { code: 'tobacco', qty: 0.8 } }
       ]
     },
     mining: {
@@ -117,16 +117,16 @@ const DATA = {
       icon: '🔥',
       unit: '单位产能',
       categories: [
-        { code: 'steel',    name: '炼钢',       cost: 4500, dailyIncome: 70,  produces: { code: 'steel',    qty: 1.5 } },
-        { code: 'copperR',  name: '炼铜',       cost: 5200, dailyIncome: 80,  produces: { code: 'copperR',  qty: 1.2 } },
-        { code: 'alum',     name: '炼铝',       cost: 4800, dailyIncome: 75,  produces: { code: 'alum',     qty: 1.3 } },
-        { code: 'precious', name: '贵金属冶炼', cost: 8000, dailyIncome: 130, produces: { code: 'precious_m', qty: 0.3 } },
-        { code: 'ironR',    name: '炼铁',       cost: 3800, dailyIncome: 58,  produces: { code: 'ironR',    qty: 1.8 } },
-        { code: 'zincR',    name: '炼锌',       cost: 4600, dailyIncome: 72,  produces: { code: 'zincR',    qty: 1.2 } },
-        { code: 'leadR',    name: '炼铅',       cost: 4200, dailyIncome: 68,  produces: { code: 'leadR',    qty: 1.2 } },
-        { code: 'tinR',     name: '炼锡',       cost: 6500, dailyIncome: 100, produces: { code: 'tinR',     qty: 1.0 } },
-        { code: 'tungR',    name: '炼钨',       cost: 9000, dailyIncome: 140, produces: { code: 'tungR',    qty: 0.8 } },
-        { code: 'alloy',    name: '铝合金',     cost: 7200, dailyIncome: 115, produces: { code: 'alloy',    qty: 1.0 } }
+        { code: 'steel',    name: '炼钢',       dailyIncome: 140,  produces: { code: 'steel',    qty: 1.5 } },
+        { code: 'copperR',  name: '炼铜',       dailyIncome: 160,  produces: { code: 'copperR',  qty: 1.2 } },
+        { code: 'alum',     name: '炼铝',       dailyIncome: 150,  produces: { code: 'alum',     qty: 1.3 } },
+        { code: 'precious', name: '贵金属冶炼', dailyIncome: 260, produces: { code: 'precious_m', qty: 0.3 } },
+        { code: 'ironR',    name: '炼铁',       dailyIncome: 116,  produces: { code: 'ironR',    qty: 1.8 } },
+        { code: 'zincR',    name: '炼锌',       dailyIncome: 144,  produces: { code: 'zincR',    qty: 1.2 } },
+        { code: 'leadR',    name: '炼铅',       dailyIncome: 136,  produces: { code: 'leadR',    qty: 1.2 } },
+        { code: 'tinR',     name: '炼锡',       dailyIncome: 200,  produces: { code: 'tinR',     qty: 1.0 } },
+        { code: 'tungR',    name: '炼钨',       dailyIncome: 280,  produces: { code: 'tungR',    qty: 0.8 } },
+        { code: 'alloy',    name: '铝合金',     dailyIncome: 230,  produces: { code: 'alloy',    qty: 1.0 } }
       ]
     },
     factory: {
@@ -134,17 +134,16 @@ const DATA = {
       icon: '🏭',
       unit: '条生产线',
       categories: [
-        { code: 'food',    name: '食品厂',   cost: 3200,  dailyIncome: 52 },
-        { code: 'textile', name: '纺织厂',   cost: 2800,  dailyIncome: 45 },
-        { code: 'machine', name: '机械厂',   cost: 5800,  dailyIncome: 95 },
-        { code: 'electr',  name: '电子厂',   cost: 7200,  dailyIncome: 120 },
-        { code: 'fert',    name: '化肥厂',   cost: 4500,  dailyIncome: 72 },
-        { code: 'paper',   name: '造纸厂',   cost: 3600,  dailyIncome: 58 },
-        { code: 'cement',  name: '水泥厂',   cost: 6200,  dailyIncome: 100 },
-        { code: 'furn',    name: '家具厂',   cost: 4000,  dailyIncome: 65 },
-        { code: 'brew',    name: '酿酒厂',   cost: 5500,  dailyIncome: 90 },
-        { code: 'feed',    name: '饲料厂',   cost: 3400,  dailyIncome: 55 }
-      ]
+        { code: 'food',    name: '食品厂',   dailyIncome: 104 },
+        { code: 'textile', name: '纺织厂',   dailyIncome: 90 },
+        { code: 'machine', name: '机械厂',   dailyIncome: 190 },
+        { code: 'electr',  name: '电子厂',   dailyIncome: 240 },
+        { code: 'fert',    name: '化肥厂',   dailyIncome: 144 },
+        { code: 'paper',   name: '造纸厂',   dailyIncome: 116 },
+        { code: 'cement',  name: '水泥厂',   dailyIncome: 200 },
+        { code: 'furn',    name: '家具厂',   dailyIncome: 130 },
+        { code: 'brew',    name: '酿酒厂',   dailyIncome: 180 },
+        { code: 'feed',    name: '饲料厂',   dailyIncome: 110 }      ]
     },
     estate: {
       name: '地产',
@@ -152,13 +151,10 @@ const DATA = {
       unit: '套',
       categories: [
         { code: 'residential', name: '住宅',       cost: 15000, dailyIncome: 40 },
-        { code: 'commercial',  name: '商业地产',   cost: 22000, dailyIncome: 65 },
-        { code: 'industrial',  name: '工业地产',   cost: 9000,  dailyIncome: 28 },
-        { code: 'office',      name: '写字楼',     cost: 28000, dailyIncome: 85 },
-        { code: 'hotel',       name: '酒店',       cost: 35000, dailyIncome: 110 },
         { code: 'warehouse',   name: '仓库',       cost: 7000,  dailyIncome: 22 },
-        { code: 'mall',        name: '购物中心',   cost: 45000, dailyIncome: 140 },
-        { code: 'park',        name: '产业园',     cost: 60000, dailyIncome: 180 }
+        { code: 'farmland',    name: '农用地',     cost: 3000,  dailyIncome: 8 },
+        { code: 'mine_land',   name: '采矿权',     cost: 8000,  dailyIncome: 20 },
+        { code: 'factory_land',name: '工业用地', cost: 6000,  dailyIncome: 15 }
       ]
     }
   },
@@ -189,25 +185,24 @@ const DATA = {
     cement: ['factory', 'cement', 'limestone'], furn: ['factory', 'furn', 'wood'],
     brew: ['factory', 'brew', 'wheat'], feed: ['factory', 'feed', 'corn'],
     // 地产
-    residential: ['estate', 'residential'], commercial: ['estate', 'commercial'],
-    industrial: ['estate', 'industrial'], office: ['estate', 'office'],
-    hotel: ['estate', 'hotel'], warehouse: ['estate', 'warehouse'],
-    mall: ['estate', 'mall'], park: ['estate', 'park']
+    residential: ['estate', 'residential'], warehouse: ['estate', 'warehouse'],
+    farmland: ['estate', 'farmland'], mine_land: ['estate', 'mine_land'],
+    factory_land: ['estate', 'factory_land']
   },
 
   /* ===== 工厂配方：消耗仓库原料（农产品+金属） ===== */
   // 所有原料都从仓库出，和冶金一样
   factoryRecipes: {
-    food:   [ { code: 'wheat', qty: 0.5 }, { code: 'soy', qty: 0.3 }, { code: 'corn', qty: 0.2 } ],
-    brew:   [ { code: 'wheat', qty: 1.2 }, { code: 'fruit', qty: 0.2 } ],
-    feed:   [ { code: 'corn', qty: 1.0 }, { code: 'soy', qty: 0.5 } ],
-    textile:[ { code: 'cotton', qty: 0.8 } ],
-    fert:   [ { code: 'phos_ore', qty: 0.4 }, { code: 'coal', qty: 0.2 } ],
-    paper:  [ { code: 'veg', qty: 0.6 }, { code: 'corn', qty: 0.3 } ],
-    cement: [ { code: 'coal', qty: 0.5 }, { code: 'iron', qty: 0.1 } ],
-    furn:   [ { code: 'rubber', qty: 0.3 }, { code: 'cotton', qty: 0.2 } ],
-    machine:[ { code: 'steel', qty: 0.4 }, { code: 'ironR', qty: 0.2 } ],
-    electr: [ { code: 'copperR', qty: 0.3 }, { code: 'alum', qty: 0.2 }, { code: 'rare_earth', qty: 0.05 } ]
+    food:   [ { code: 'wheat', qty: 1.0 }, { code: 'soy', qty: 0.6 }, { code: 'corn', qty: 0.4 } ],
+    brew:   [ { code: 'wheat', qty: 2.4 }, { code: 'fruit', qty: 0.4 } ],
+    feed:   [ { code: 'corn', qty: 2.0 }, { code: 'soy', qty: 1.0 } ],
+    textile:[ { code: 'cotton', qty: 1.6 } ],
+    fert:   [ { code: 'phos_ore', qty: 0.8 }, { code: 'coal', qty: 0.4 } ],
+    paper:  [ { code: 'veg', qty: 1.2 }, { code: 'corn', qty: 0.6 } ],
+    cement: [ { code: 'coal', qty: 1.0 }, { code: 'iron', qty: 0.2 } ],
+    furn:   [ { code: 'rubber', qty: 0.6 }, { code: 'cotton', qty: 0.4 } ],
+    machine:[ { code: 'steel', qty: 0.8 }, { code: 'ironR', qty: 0.4 } ],
+    electr: [ { code: 'copperR', qty: 0.6 }, { code: 'alum', qty: 0.4 }, { code: 'rare_earth', qty: 0.10 } ]
   },
 
   /* ===== 员工等级配置（按类分组，工资扁平化） ===== */
@@ -232,17 +227,28 @@ const DATA = {
 
   /* ===== 冶金配方：消耗仓库矿石原料 ===== */
   smelterRecipes: {
-    steel:    [ { code: 'iron', qty: 2.0 }, { code: 'coal', qty: 1.0 } ],
-    ironR:    [ { code: 'iron', qty: 2.5 } ],
-    copperR:  [ { code: 'copper', qty: 2.0 } ],
-    alum:     [ { code: 'baux', qty: 2.5 } ],
-    zincR:    [ { code: 'zinc_ore', qty: 2.0 } ],
-    leadR:    [ { code: 'lead_ore', qty: 2.0 } ],
-    tinR:     [ { code: 'tin', qty: 2.0 } ],
-    tungR:    [ { code: 'tung', qty: 1.5 } ],
-    precious: [ { code: 'gold_ore', qty: 0.5 }, { code: 'silver_ore', qty: 1.0 } ],
-    alloy:    [ { code: 'baux', qty: 1.5 }, { code: 'copper', qty: 0.5 } ]
+    steel:    [ { code: 'iron', qty: 4.0 }, { code: 'coal', qty: 2.0 } ],
+    ironR:    [ { code: 'iron', qty: 5.0 } ],
+    copperR:  [ { code: 'copper', qty: 4.0 } ],
+    alum:     [ { code: 'baux', qty: 5.0 } ],
+    zincR:    [ { code: 'zinc_ore', qty: 4.0 } ],
+    leadR:    [ { code: 'lead_ore', qty: 4.0 } ],
+    tinR:     [ { code: 'tin', qty: 4.0 } ],
+    tungR:    [ { code: 'tung', qty: 3.0 } ],
+    precious: [ { code: 'gold_ore', qty: 1.0 }, { code: 'silver_ore', qty: 2.0 } ],
+    alloy:    [ { code: 'baux', qty: 3.0 }, { code: 'copper', qty: 1.0 } ]
   },
+
+  /* ===== 土地前置需求：产业→所需土地类型 ===== */
+  landPrereqs: {
+    farm:    { code: 'farmland',     name: '农用地' },
+    mining:  { code: 'mine_land',    name: '采矿权' },
+    factory: { code: 'factory_land', name: '工业用地' },
+    metall:  { code: 'factory_land', name: '工业用地' }
+  },
+
+  /* ===== 产能配置 ===== */
+  capacityPerLand: { farm: 10, metall: 10, factory: 10 },
 
   /* ===== 全部原料列表（矿石+农产品+金属，可买卖） ===== */
   rawMaterials: [
@@ -433,7 +439,7 @@ const NEWS_HISTORY = [
     effects: { marketSentiment: -0.025 } },
   { id: 'h017', type: 'market', title: '恒大债务危机爆发',
     desc: '恒大集团出现债务违约，地产板块全面承压，水泥钢材需求预期下滑。', minDay: 1362,
-    effects: { sectors: { 'residential': -0.12, 'steel': -0.08, 'cement': -0.10, 'commercial': -0.08 }, marketSentiment: -0.02 } },
+    effects: { sectors: { 'residential': -0.12, 'steel': -0.08, 'cement': -0.10, 'warehouse': -0.08 }, marketSentiment: -0.02 } },
   { id: 'h018', type: 'international', title: '俄乌冲突爆发',
     desc: '俄罗斯对乌克兰发动特别军事行动，全球能源和粮食价格飙升。', minDay: 1515,
     effects: { sectors: { 'wheat': 0.15, 'corn': 0.12, 'coal': 0.10 }, metals: { 'gold': 0.12 }, marketSentiment: -0.03 } },

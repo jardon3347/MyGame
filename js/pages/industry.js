@@ -95,19 +95,165 @@ Pages.industry = {
           </div>
         ` : ''}
 
+        ${this._isCapacity(type) ? this._capacitySection(type, ind, owned) : `
         <div class="section-title">我的产业</div>
         ${owned.length === 0 ? '<div class="empty">暂无产业，下方可购入</div>' :
           owned.map(o => this.ownedItem(type, o)).join('')}
 
         <div class="section-title">可购入（单位：${ind.unit}）</div>
-        ${ind.categories.map(cat => this.purchaseItem(type, cat)).join('')}
+        ${ind.categories.map(cat => this.purchaseItem(type, cat)).join('')}`}
 
         ${UI.bottombar()}
       </div>
     `;
   },
 
+
+  _isCapacity(type) {
+    return type === 'farm' || type === 'metall' || type === 'factory';
+  },
+
+  _totalCapacity(type) {
+    const lp = (DATA.landPrereqs || {})[type];
+    if (!lp) return 0;
+    const cpl = (DATA.capacityPerLand || {})[type] || 10;
+    let t = 0;
+    (State.data.industries || []).forEach(i => {
+      if (i.type === 'estate' && i.category === lp.code) t += (i.quantity || 1) * cpl * Engine.levelMultiplier(i.level || 1);
+    });
+    return t;
+  },
+
+  _usedCapacity(type) {
+    let u = 0;
+    (State.data.industries || []).forEach(i => {
+      if (i.type === type) u += (i.quantity || 0);
+    });
+    return u;
+  },
+
+
+  _refreshCapacity(type) {
+    const el = document.getElementById('cap-section');
+    if (!el) { Router.refresh(); return; }
+    const ind = DATA.industries[type];
+    const owned = State.data.industries.filter(i => i.type === type);
+    const scrollY = window.scrollY;
+    el.outerHTML = this._capacitySection(type, ind, owned);
+    window.scrollTo(0, scrollY);
+  },
+
+  _capacitySection(type, ind, owned) {
+    const total = this._totalCapacity(type);
+    const used = this._usedCapacity(type);
+    const free = total - used;
+    const landName = (DATA.landPrereqs[type] || {}).name || '\u571f\u5730';
+    const unit = ind.unit;
+    let h = '';
+    h += '<div id="cap-section">';
+    h += '<div class="list-item" style="margin-bottom:12px;background:var(--bg-soft);">';
+    h += '<div class="font-medium">' + ind.icon + ' \u4ea7\u80fd\u6982\u89c8</div>';
+    h += '<div class="text-sm text-muted" style="margin-top:4px;">';
+    h += '\u603b\u4ea7\u80fd ' + total + ' ' + unit + ' \u00b7 \u5df2\u5206\u914d ' + used + ' \u00b7 ';
+    h += free > 0 ? '<span style="color:var(--info);">\u5269\u4f59 ' + free + '</span>' : '<span style="color:var(--down);">\u5df2\u6ee1</span>';
+    h += '</div>';
+    if (total === 0) {
+      h += '<div class="text-sm" style="color:var(--warning);margin-top:6px;">\u26a0 \u8bf7\u5148\u5728\u5730\u4ea7\u8d2d\u4e70\u3010' + landName + '\u3011</div>';
+    }
+    h += '</div>';
+    if (owned.length > 0) {
+      h += '<div class="section-title">\u5df2\u5206\u914d</div>';
+      owned.forEach(o => {
+        const cat = State.findIndustryCategory(type, o.category);
+        if (!cat) return;
+        const qty = o.quantity || 0;
+        const empCnt = Employees.assignedCount(type, o.category);
+        const empMult = Employees.multiplier(type, o.category);
+        const hasStaff = empCnt > 0;
+        let recipeSat = 1.0;
+        if (type === 'factory' && DATA.factoryRecipes[o.category]) recipeSat = Employees.recipeSatisfaction(o.category, qty);
+        if (type === 'metall' && DATA.smelterRecipes[o.category]) recipeSat = Employees.smelterSatisfaction(o.category, qty);
+        const daily = hasStaff ? cat.dailyIncome * qty * empMult * recipeSat : 0;
+        h += '<div class="list-item">';
+        h += '<div class="list-row"><div>';
+        h += '<div class="font-medium">' + cat.name + ' \u00d7 ' + qty + ' ' + unit + '</div>';
+        h += '<div class="text-sm ' + (hasStaff ? 'text-muted' : '') + '" style="' + (hasStaff ? '' : 'color:var(--down);') + '">';
+        h += hasStaff ? '\u5458\u5de5 ' + empCnt + '\u4eba \u00b7 \u52a0\u6210 \u00d7' + empMult.toFixed(1) + ' \u00b7 \u65e5\u5165 ' + State.formatMoney(daily) : '\u26a0 \u65e0\u5458\u5de5 \u00b7 \u65e0\u4ea7\u51fa';
+        h += '</div></div></div>';
+        // Production/consumption info
+        if (hasStaff && qty > 0) {
+          const inv = State.data.inventory || {};
+          if (type === 'farm' && cat.produces) {
+            const mat = (DATA.rawMaterials || []).find(m => m.code === cat.produces.code);
+            const matName = mat ? mat.name : cat.produces.code;
+            const produce = cat.produces.qty * qty * empMult;
+            const have = inv[cat.produces.code] || 0;
+            h += '<div class="text-sm text-muted" style="margin:4px 0 0;">\ud83d\udce5 \u4ea7\u51fa ' + matName + ' +' + produce.toFixed(1) + '/\u65e5 \u00b7 \u4ed3\u5e93\u5b58 ' + have.toFixed(1) + '</div>';
+          }
+          if (type === 'metall') {
+            if (DATA.smelterRecipes[o.category]) {
+              const recipe = DATA.smelterRecipes[o.category];
+              const sat = Employees.smelterSatisfaction(o.category, qty);
+              h += '<div class="text-sm text-muted" style="margin:4px 0 0;">\ud83d\udce5 \u6d88\u8017' + recipe.map(r => {
+                const m = (DATA.rawMaterials || []).find(x => x.code === r.code);
+                const have = inv[r.code] || 0;
+                const need = r.qty * qty;
+                const s = have >= need ? '\u2705' : (have > 0 ? '\u25a0' : '\u274c');
+                return ' ' + (m ? m.name : r.code) + ' ' + have.toFixed(0) + '/' + need.toFixed(0) + s;
+              }).join(' \u00b7') + '</div>';
+            }
+            if (cat.produces) {
+              const mat = (DATA.rawMaterials || []).find(m => m.code === cat.produces.code);
+              const matName = mat ? mat.name : cat.produces.code;
+              const produce = cat.produces.qty * qty * empMult;
+              h += '<div class="text-sm text-muted" style="margin:2px 0 0;">\ud83d\udce4 \u4ea7\u51fa ' + matName + ' +' + produce.toFixed(1) + '/\u65e5</div>';
+            }
+            if (recipeSat < 1) {
+              h += '<div class="text-sm" style="color:var(--warning);margin:2px 0 0;">\u539f\u6599\u4e0d\u8db3\uff0c\u4ea7\u51fa\u4ec5 ' + Math.round(recipeSat*100) + '%</div>';
+            }
+          }
+          if (type === 'factory' && DATA.factoryRecipes[o.category]) {
+            const recipe = DATA.factoryRecipes[o.category];
+            h += '<div class="text-sm text-muted" style="margin:4px 0 0;">\ud83d\udce5 \u6d88\u8017' + recipe.map(r => {
+              const m = (DATA.rawMaterials || []).find(x => x.code === r.code);
+              const have = inv[r.code] || 0;
+              const need = r.qty * qty;
+              const s = have >= need ? '\u2705' : (have > 0 ? '\u25a0' : '\u274c');
+              return ' ' + (m ? m.name : r.code) + ' ' + have.toFixed(0) + '/' + need.toFixed(0) + s;
+            }).join(' \u00b7') + '</div>';
+            if (recipeSat < 1) {
+              h += '<div class="text-sm" style="color:var(--warning);margin:2px 0 0;">\u539f\u6599\u4e0d\u8db3\uff0c\u4ea7\u51fa\u4ec5 ' + Math.round(recipeSat*100) + '%</div>';
+            }
+          }
+        }
+        h += '<div class="flex gap-8 mt-8">';
+        h += '<button class="btn sm" style="flex:1;" onclick="Industry.allocMinus(\'' + type + '\',\'' + o.category + '\')">\u2212 \u51cf\u5c11</button>';
+        h += '<button class="btn sm primary" style="flex:1;" onclick="Staff.showAssignPickerByIndustry(\'' + type + '\',\'' + o.category + '\')">' + (hasStaff ? '\u8c03\u6574\u5458\u5de5' : '\u6d3e\u4eba') + '</button>';
+        h += '<button class="btn sm" style="flex:1;" onclick="Industry.allocPlus(\'' + type + '\',\'' + o.category + '\')">+ \u589e\u52a0</button>';
+        h += '</div></div>';
+      });
+    }
+    if (free > 0 && total > 0) {
+      h += '<div class="section-title">\u5206\u914d\u4ea7\u80fd\uff08\u5269\u4f59 ' + free + ' ' + unit + '\uff09</div>';
+      ind.categories.forEach(cat => {
+        const existing = owned.find(o => o.category === cat.code);
+        const cur = existing ? (existing.quantity || 0) : 0;
+        h += '<div class="list-item">';
+        h += '<div class="list-row"><div>';
+        h += '<div class="font-medium">' + cat.name + (cur > 0 ? ' \u00d7 ' + cur : '') + '</div>';
+        h += '<div class="text-sm text-muted">\u57fa\u7840\u65e5\u5165 ' + State.formatMoney(cat.dailyIncome) + '/' + unit;
+        if (cat.cycle) h += ' \u00b7 ' + cat.cycle;
+        h += '</div></div>';
+        h += '<button class="btn sm primary" onclick="Industry.allocPlus(\'' + type + '\',\'' + cat.code + '\')">+ \u5206\u914d</button>';
+        h += '</div></div>';
+      });
+    }
+    h += '</div>';
+    return h;
+  },
+
   ownedItem(type, o) {
+    if (this._isCapacity(type)) return '';
     const cat = State.findIndustryCategory(type, o.category);
     if (!cat) return '';
     const ind = DATA.industries[type];
@@ -195,10 +341,20 @@ Pages.industry = {
   },
 
   purchaseItem(type, cat) {
+    if (this._isCapacity(type)) return '';
     const ind = DATA.industries[type];
     const maxQty = Math.floor(State.data.cash / cat.cost);
     const canAfford = maxQty > 0;
     const payback = cat.dailyIncome > 0 ? (cat.cost / cat.dailyIncome).toFixed(0) : '—';
+    // check land prereq
+    const _prereq = DATA.landPrereqs ? DATA.landPrereqs[type] : null;
+    let _hasPrereq = true;
+    let _reqLabel = '';
+    if (_prereq) {
+      _hasPrereq = (State.data.industries || []).some(i => i.type === 'estate' && i.category === _prereq.code && (i.quantity || 1) > 0);
+      _reqLabel = _hasPrereq ? '' : '需先在地产购买 ' + _prereq.name;
+    }
+    const _buyDisabled = !_hasPrereq || !canAfford;
     return `
       <div class="list-item">
         <div class="list-row">
@@ -211,9 +367,10 @@ Pages.industry = {
             <div class="text-sm text-muted">/${ind.unit}</div>
           </div>
         </div>
+        ${!_hasPrereq ? '<div class="text-sm" style="color:var(--warning);margin-top:6px;">' + _reqLabel + '</div>' : ''}
         <div class="mt-8">
-          <button class="btn sm full ${canAfford ? 'primary' : ''}" ${canAfford ? '' : 'disabled style="opacity:0.4;"'} onclick="Industry.buy('${type}','${cat.code}')">
-            ${canAfford ? `购入（可买 ${maxQty.toLocaleString('zh-CN')} ${ind.unit}）` : '现金不足'}
+          <button class="btn sm full ${!_buyDisabled ? 'primary' : ''}" ${_buyDisabled ? 'disabled style="opacity:0.4;"' : ''} onclick="Industry.buy('${type}','${cat.code}')">
+            ${!_hasPrereq ? '⌂ 需购' + _prereq.name : (canAfford ? '购入（可买 ' + maxQty.toLocaleString('zh-CN') + ' ' + ind.unit + '）' : '现金不足')}
           </button>
         </div>
       </div>
@@ -222,9 +379,57 @@ Pages.industry = {
 };
 
 const Industry = {
+  allocPlus(type, categoryCode) {
+    const total = Pages.industry._totalCapacity(type);
+    const used = Pages.industry._usedCapacity(type);
+    if (used >= total) {
+      UI.toast('产能已满，请先在地产购买更多' + ((DATA.landPrereqs || {})[type] || {}).name);
+      return;
+    }
+    const existing = State.data.industries.find(i => i.type === type && i.category === categoryCode);
+    if (existing) {
+      existing.quantity = (existing.quantity || 0) + 1;
+    } else {
+      State.data.industries.push({
+        type: type, category: categoryCode, level: 1, quantity: 1,
+        purchaseDay: State.data.date.totalDays
+      });
+    }
+    State.save();
+    UI.toast('已分配 1 单位');
+    Pages.industry._refreshCapacity(type);
+  },
+
+  allocMinus(type, categoryCode) {
+    const existing = State.data.industries.find(i => i.type === type && i.category === categoryCode);
+    if (!existing || (existing.quantity || 0) <= 0) {
+      UI.toast('无可减少的产能');
+      return;
+    }
+    existing.quantity -= 1;
+    if (existing.quantity <= 0) {
+      State.data.industries = State.data.industries.filter(i => !(i.type === type && i.category === categoryCode));
+      (State.data.employees || []).forEach(g => {
+        if (g.assign && g.assign.type === type && g.assign.category === categoryCode) g.assign = null;
+      });
+    }
+    State.save();
+    UI.toast('已减少 1 单位');
+    Pages.industry._refreshCapacity(type);
+  },
+
   buy(type, categoryCode) {
+    if (Pages.industry._isCapacity(type)) { UI.toast('该产业使用产能分配模式'); return; }
     const cat = State.findIndustryCategory(type, categoryCode);
     if (!cat) return;
+    const _prereq = DATA.landPrereqs ? DATA.landPrereqs[type] : null;
+    if (_prereq) {
+      const _has = (State.data.industries || []).some(i => i.type === 'estate' && i.category === _prereq.code && (i.quantity || 1) > 0);
+      if (!_has) {
+        UI.toast('需先在地产购买【' + _prereq.name + '】');
+        return;
+      }
+    }
     const ind = DATA.industries[type];
     const maxQty = Math.floor(State.data.cash / cat.cost);
     if (maxQty <= 0) { UI.toast('现金不足'); return; }

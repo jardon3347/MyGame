@@ -27,6 +27,12 @@ const Router = {
   },
 
   back() {
+    // 如果有弹窗打开，先关闭弹窗，不执行返回导航
+    const modal = document.querySelector('.modal-mask');
+    if (modal) {
+      UI.closeModal();
+      return;
+    }
     if (this.history.length > 0) {
       if (this.current) {
         this.scrollPositions[this.current] = window.scrollY;
@@ -46,6 +52,17 @@ const Router = {
   /* 刷新当前页（不压栈，用于交易后更新数据） */
   refresh() {
     this.render();
+    // 记住当前滚动位置
+    if (this.current) {
+      this.scrollPositions[this.current] = window.scrollY;
+    }
+    this.render();
+    // 恢复滚动位置
+    if (this.current) {
+      const saved = this.scrollPositions[this.current] || 0;
+      // 使用setTimeout确保DOM已经渲染完成
+      setTimeout(() => window.scrollTo(0, saved), 50);
+    }
   },
 
   render() {
@@ -167,7 +184,7 @@ const UI = {
       </div>
       <div class="np-total">
         <span>合计</span>
-        <span id="${id}_total">¥0</span>
+        <span id="${id}_total">¥${State.formatNum(unit)}</span>
       </div>
     `;
 

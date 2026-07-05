@@ -10,6 +10,8 @@ const State = {
   init() {
     // 先探测 localStorage 是否可用（file:// 协议下可能被禁用）
     this.storageOK = this.testStorage();
+    // 恢复主题
+    if (window.Overview && Overview.initTheme) Overview.initTheme();
     const saved = this.load();
     if (saved) {
       this.data = saved;
@@ -271,7 +273,7 @@ const State = {
     // 实业估值（按购入价折旧 80%，乘以数量）
     this.data.industries.forEach(ind => {
       const cat = this.findIndustryCategory(ind.type, ind.category);
-      if (cat) total += cat.cost * 0.8 * (ind.quantity || 1);
+      if (cat && cat.cost) total += cat.cost * 0.8 * (ind.quantity || 1);
     });
     // 仓库库存市值
     if (window.Employees) total += Employees.warehouseValue();
