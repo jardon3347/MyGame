@@ -1,4 +1,4 @@
-/* home.js — 主界面 */
+﻿/* home.js — 主界面 */
 
 const Pages = window.Pages || {};
 
@@ -194,7 +194,10 @@ Pages.home = {
 };
 
 const Home = {
+  _advancing: false,
   advance(days) {
+    if (this._advancing) return;
+    this._advancing = true;
     // 加速期间暂停自然流逝，避免叠加
     TimeManager.autoPause();
     const result = Engine.advance(days);
@@ -252,8 +255,17 @@ const Home = {
     }
 
     UI.modal(days === 1 ? '当日结算' : `推进 ${result.summaries.length} 天`, content, [
-      { label: '关闭', class: 'primary', onclick: 'UI.closeModal(); Router.go(\'home\');' }
+      { label: '关闭', class: 'primary', onclick: 'Home._dismissAdvanceModal()' }
     ]);
+  },
+
+  _dismissAdvanceModal() {
+    try { UI.closeModal(); Router.refresh(); }
+    finally {
+      this._advancing = false;
+      TimeManager.autoResume();
+      TimeManager.updateUI();
+    }
   }
 };
 

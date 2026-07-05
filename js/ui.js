@@ -3,9 +3,13 @@
 const Router = {
   current: null,
   history: [],
+  scrollPositions: {},
 
   /* 普通跳转：压栈，支持返回 */
   go(page, params = {}) {
+    if (this.current) {
+      this.scrollPositions[this.current] = window.scrollY;
+    }
     this.history.push({ page: this.current, params: this.params || {} });
     this.current = page;
     this.params = params;
@@ -24,11 +28,15 @@ const Router = {
 
   back() {
     if (this.history.length > 0) {
+      if (this.current) {
+        this.scrollPositions[this.current] = window.scrollY;
+      }
       const prev = this.history.pop();
       this.current = prev.page;
       this.params = prev.params || {};
       this.render();
-      window.scrollTo(0, 0);
+      const saved = this.scrollPositions[this.current];
+      window.scrollTo(0, saved || 0);
     } else {
       // 栈空了，回主页
       this.goRoot('home');
@@ -106,9 +114,20 @@ const UI = {
       <div class="modal" onclick="event.stopPropagation()">
         <h2>${title}</h2>
         <div class="modal-body">${content}</div>
-        ${actions.length ? `<div class="actions">${actions.map(a => `<button class="btn ${a.class||''}" onclick="${a.onclick}">${a.label}</button>`).join('')}</div>` : ''}
+        ${actions.length ? `<div class="actions">${actions.map((a, i) => `<button class="btn ${a.class||''}" data-action-idx="${i}">${a.label}</button>`).join('')}</div>` : ''}
       </div>
     `;
+    // JS event listeners replace inline onclick (more reliable on mobile)
+    if (actions.length) {
+      const btns = mask.querySelectorAll('.actions button');
+      btns.forEach((btn, i) => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const fn = new Function(actions[i].onclick);
+          fn();
+        });
+      });
+    }
     mask.addEventListener('click', () => {
       if (mask.querySelector('.modal').dataset.dismissable !== 'false') {
         mask.remove();
