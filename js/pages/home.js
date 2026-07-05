@@ -200,7 +200,20 @@ const Home = {
     this._advancing = true;
     // 加速期间暂停自然流逝，避免叠加
     TimeManager.autoPause();
-    const result = Engine.advance(days);
+    
+    let result;
+    try {
+      result = Engine.advance(days);
+    } catch (e) {
+      console.error('推进失败:', e);
+      this._advancing = false;
+      TimeManager.remaining = TimeManager.totalSec;
+      TimeManager.autoResume();
+      TimeManager.updateUI();
+      UI.toast('推进出错: ' + e.message);
+      if (Router.current === 'home') Router.refresh();
+      return;
+    }
     // 加速完成：重置倒计时，恢复自然流逝
     TimeManager.remaining = TimeManager.totalSec;
     TimeManager.autoResume();
@@ -254,9 +267,14 @@ const Home = {
       `;
     }
 
-    UI.modal(days === 1 ? '当日结算' : `推进 ${result.summaries.length} 天`, content, [
+    const mask = UI.modal(days === 1 ? '当日结算' : `推进 ${result.summaries.length} 天`, content, [
       { label: '关闭', class: 'primary', onclick: 'Home._dismissAdvanceModal()' }
     ]);
+    // 结算弹窗不可通过点击外面关闭，确保 _advancing 被正确重置
+    if (mask) {
+      const modalEl = mask.querySelector('.modal');
+      if (modalEl) modalEl.dataset.dismissable = 'false';
+    }
   },
 
   _dismissAdvanceModal() {

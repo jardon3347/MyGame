@@ -66,6 +66,7 @@ const TimeManager = {
     const news = Engine.rollNews();
     if (news) {
       Engine.applyNewsEffects(news);
+      if (!State.data.news) State.data.news = [];
       State.data.news.unshift({
         id: news.id,
         title: news.title,

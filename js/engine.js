@@ -15,6 +15,7 @@ const Engine = {
       const news = this.rollNews();
       if (news) {
         this.applyNewsEffects(news);
+        if (!State.data.news) State.data.news = [];
         State.data.news.unshift({
           id: news.id,
           title: news.title,
@@ -328,6 +329,7 @@ const Engine = {
   /* 获取新闻影响标签 */
   getNewsTags(news) {
     const tags = [];
+    if (!news || !news.effects) return tags;
     if (news.effects.sectors) {
       Object.entries(news.effects.sectors).forEach(([code, pct]) => {
         const cat = this.findCategoryByCode(code);

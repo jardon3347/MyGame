@@ -34,6 +34,7 @@ const State = {
     if (!d.marketSentiment) d.marketSentiment = 0;
     if (!d.employees) d.employees = [];
     if (!d.inventory) d.inventory = {};   // 仓库原料库存：{ code: 数量 }
+    if (!d.news) d.news = [];             // 新闻历史（旧存档补全）
 
     // 兼容旧版单员工结构 → 按类分组结构
     // 旧：{ id, level, assign, hireDay }  新：{ id, level, count, assign }
@@ -160,6 +161,7 @@ const State = {
       materialPrices: {},   // 原料市场价格（每日波动）
       marketSentiment: 0,   // 大盘情绪 -0.02 ~ 0.02
       lastNewsDay: -10,
+      news: [],             // 新闻历史
       logs: []
     };
     // 初始化股票价格
