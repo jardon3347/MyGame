@@ -96,12 +96,12 @@ const TimeManager = {
       `, [
         { label: '继续', class: 'primary', onclick: 'UI.closeModal(); TimeManager.autoPaused = false; TimeManager.updateUI();' }
       ]);
-      // 弹窗后刷新主页（如果当前在主页）
-      if (Router.current === 'home') Router.refresh();
+      // 弹窗后刷新主页（如果当前在概览页/主页）
+      if (Router.current === 'overview' || Router.current === 'home') Router.refresh();
     } else {
       // 无新闻：仅刷新主页数据
       State.save();
-      if (Router.current === 'home') Router.refresh();
+      if (Router.current === 'overview' || Router.current === 'home') Router.refresh();
     }
   },
 

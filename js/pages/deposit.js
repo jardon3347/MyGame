@@ -18,7 +18,7 @@ Pages.deposit = {
 
     app.innerHTML = `
       <div class="page">
-        ${UI.navbar('银行')}
+        ${UI.navbar('银行', false)}
         <div class="topbar">
           <div class="topbar-stats">
             <div class="stat-item">

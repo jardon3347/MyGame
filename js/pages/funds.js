@@ -58,6 +58,22 @@ Pages.funds = {
     `;
   },
 
+  /* 渲染列表部分（供金融页嵌入），不含 NavBar 和底部栏 */
+  renderList() {
+    const s = State.data;
+    return `
+      <div class="tab-container" style="margin-bottom:12px;">
+        <div class="tab-bar">
+          <div class="tab${this._currentTab === 'holdings' ? ' active' : ''}" data-fundstab="holdings" onclick="Pages.funds.switchTab('holdings')">✅ 我的持仓 (${(s.fundHoldings||[]).length})</div>
+          <div class="tab${this._currentTab === 'market' ? ' active' : ''}" data-fundstab="market" onclick="Pages.funds.switchTab('market')">📊 基金市场 (${DATA.funds.length})</div>
+        </div>
+      </div>
+      <div id="funds-tab-content">
+        ${this._currentTab === 'market' ? this._renderMarketTab() : this._renderHoldingsTab()}
+      </div>
+    `;
+  },
+
   switchTab(tab) {
     this._currentTab = tab;
     document.querySelectorAll('[data-fundstab]').forEach(t => {

@@ -65,6 +65,29 @@ Pages.stocks = {
     `;
   },
 
+  /* 渲染列表部分（供金融页嵌入），不含 NavBar 和底部栏 */
+  renderList() {
+    const s = State.data;
+    return `
+      <div class="tab-container" style="margin-bottom:12px;">
+        <div class="tab-bar">
+          <div class="tab${this._currentTab === 'holdings' ? ' active' : ''}" data-stockstab="holdings" onclick="Pages.stocks.switchTab('holdings')">✅ 我的持仓 (${s.stocks.length})</div>
+          <div class="tab${this._currentTab === 'market' ? ' active' : ''}" data-stockstab="market" onclick="Pages.stocks.switchTab('market')">📈 股票市场 (${DATA.stocks.length})</div>
+        </div>
+      </div>
+      <div id="stocks-tab-content">
+        ${this._currentTab === 'market' ? this._renderMarketTab() : this._renderHoldingsTab()}
+      </div>
+      <div class="section-title">现金</div>
+      <div class="list-item">
+        <div class="list-row">
+          <span class="list-label">可用现金</span>
+          <span class="list-value">${State.formatMoney(s.cash)}</span>
+        </div>
+      </div>
+    `;
+  },
+
   switchTab(tab) {
     this._currentTab = tab;
     document.querySelectorAll('[data-stockstab]').forEach(t => {

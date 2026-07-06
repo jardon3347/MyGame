@@ -62,6 +62,37 @@ Pages.metals = {
     `;
   },
 
+  /* 渲染列表部分（供金融页嵌入），不含 NavBar 和底部栏 */
+  renderList() {
+    const s = State.data;
+    const totalValue = s.metals.reduce((sum, m) => sum + m.grams * (s.metalPrices[m.code] || 0), 0);
+    const totalCost = s.metals.reduce((sum, m) => sum + m.grams * m.avgCost, 0);
+    const totalPnl = totalValue - totalCost;
+    return `
+      <div class="topbar">
+        <div class="topbar-stats">
+          <div class="stat-item">
+            <div class="label">持仓市值</div>
+            <div class="value">${State.formatMoney(totalValue)}</div>
+          </div>
+          <div class="stat-item">
+            <div class="label">总盈亏</div>
+            <div class="value ${totalPnl >= 0 ? 'up' : 'down'}">${totalPnl >= 0 ? '+' : ''}${State.formatMoney(totalPnl)}</div>
+          </div>
+          <div class="stat-item">
+            <div class="label">收益率</div>
+            <div class="value ${totalPnl >= 0 ? 'up' : 'down'}">${totalCost > 0 ? State.formatPct(totalPnl/totalCost) : '—'}</div>
+          </div>
+        </div>
+      </div>
+      <div class="section-title">行情（¥/克）</div>
+      ${DATA.metals.map(m => this.metalRow(m)).join('')}
+      <div class="section-title">我的持仓</div>
+      ${s.metals.length === 0 ? '<div class="empty">暂无持仓</div>' :
+        s.metals.map(m => this.holdingRow(m)).join('')}
+    `;
+  },
+
   metalRow(m) {
     const price = State.data.metalPrices[m.code] || 0;
     const holding = State.data.metals.find(x => x.code === m.code);

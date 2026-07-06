@@ -16,7 +16,7 @@ const State = {
     if (saved) {
       this.data = saved;
       this.migrate();   // 兼容旧存档
-      Router.go('home');
+      Router.goRoot('overview');
     } else {
       this.showDifficulty();
     }
@@ -197,7 +197,7 @@ const State = {
     // 重置时间
     if (window.TimeManager) TimeManager.reset();
     this.save();
-    Router.go('home');
+    Router.goRoot('overview');
   },
 
   /* 重置游戏 */

@@ -44,8 +44,8 @@ const Router = {
       const saved = this.scrollPositions[this.current];
       window.scrollTo(0, saved || 0);
     } else {
-      // 栈空了，回主页
-      this.goRoot('home');
+      // 栈空了，回概览页
+      this.goRoot('overview');
     }
   },
 
@@ -69,35 +69,53 @@ const Router = {
     const app = document.getElementById('app');
     const page = this.current;
 
-    // 时间管理：仅主页启用自然流逝；详情页/交易页暂停
-    const pausePages = ['stockDetail', 'fundDetail'];
-    if (page === 'home') {
+    // 时间管理
+    const pausePages = ['stockDetail', 'fundDetail', 'metalDetail'];
+    if (page === 'home' || page === 'overview') {
       TimeManager.enabled = true;
       TimeManager.autoPaused = false;
     } else if (pausePages.includes(page)) {
       TimeManager.enabled = false;
     } else {
-      // 列表页：时间继续，但弹窗会自动暂停
       TimeManager.enabled = true;
       TimeManager.autoPaused = false;
     }
 
-    if (page === 'home') Pages.home.render(app);
+    if (page === 'home' || page === 'overview') Pages.overview.render(app);
+    else if (page === 'finance') Pages.finance.render(app);
+    else if (page === 'industry') Pages.industry.render(app);
     else if (page === 'deposit') Pages.deposit.render(app);
     else if (page === 'stocks') Pages.stocks.render(app);
     else if (page === 'stockDetail') Pages.stockDetail.render(app, this.params);
     else if (page === 'funds') Pages.funds.render(app);
     else if (page === 'fundDetail') Pages.fundDetail.render(app, this.params);
     else if (page === 'metals') Pages.metals.render(app);
-    else if (page === 'industry') Pages.industry.render(app, this.params);
+    else if (page === 'industryDetail') Pages.industryDetail.render(app, this.params);
     else if (page === 'staff') Pages.staff.render(app);
     else if (page === 'warehouse') Pages.warehouse.render(app);
-    else if (page === 'overview') Pages.overview.render(app);
-    else if (page === 'news') Pages.overview.renderNews(app);
+    else if (page === 'news') Router.goRoot('overview');
+
+    // 更新底部栏选中态
+    this._updateActiveTab();
 
     // 渲染后刷新一次时间 UI
     TimeManager.updateUI();
-  }
+  },
+
+  /* 更新底部栏按钮选中态 */
+  _updateActiveTab() {
+    const rootPages = ['overview', 'deposit', 'finance', 'industry'];
+    const bar = document.querySelector('.bottombar');
+    if (!bar) return;
+    bar.querySelectorAll('button').forEach(btn => {
+      btn.classList.remove('active');
+    });
+    if (rootPages.includes(this.current)) {
+      const idx = rootPages.indexOf(this.current);
+      const btns = bar.querySelectorAll('button');
+      if (btns[idx]) btns[idx].classList.add('active');
+    }
+  },
 };
 
 const UI = {
@@ -353,10 +371,91 @@ const UI = {
   bottombar() {
     return `
       <div class="bottombar">
-        <button onclick="Router.goRoot('overview')">集团概览</button>
-        <button onclick="Router.goRoot('deposit')">银行</button>
-        <button onclick="Router.goRoot('news')">新闻</button>
+        <button onclick="Router.goRoot('overview')">
+          <span class="bb-icon">📊</span>
+          <span>概览</span>
+        </button>
+        <button onclick="Router.goRoot('deposit')">
+          <span class="bb-icon">🏦</span>
+          <span>银行</span>
+        </button>
+        <button onclick="Router.goRoot('finance')">
+          <span class="bb-icon">📈</span>
+          <span>金融</span>
+        </button>
+        <button onclick="Router.goRoot('industry')">
+          <span class="bb-icon">🏭</span>
+          <span>实业</span>
+        </button>
       </div>
+    `;
+  },
+
+  /* ===== 实业卡片（从 home.js 提取，供 industry.js / home.js 共用） ===== */
+  industryCard(type) {
+    const ind = DATA.industries[type];
+    if (!ind) return `<div class="card" style="text-align:center;color:var(--text-muted);">未知产业: ${type}</div>`;
+    const owned = (State.data && State.data.industries) ? State.data.industries.filter(i => i.type === type) : [];
+    let count = 0;
+    let daily = 0;
+    let unstaffed = 0;
+    owned.forEach(o => {
+      const cat = State.findIndustryCategory(type, o.category);
+      if (cat) {
+        const qty = o.quantity || 1;
+        count += qty;
+        const empMult = Employees.multiplier(type, o.category);
+        if (empMult <= 0 && !['farmland', 'mine_land', 'factory_land'].includes(o.category)) {
+          unstaffed += qty;
+        } else {
+          let recipeSat = 1.0;
+          if (type === 'factory' && window.FactoryProducts && o.products && Object.keys(o.products).length > 0) {
+            daily += FactoryProducts.factoryDailyIncome(o.category);
+          } else if (type === 'factory' && DATA.factoryRecipes[o.category]) {
+            recipeSat = Employees.recipeSatisfaction(o.category, qty);
+            daily += (cat.dailyIncome || 0) * (o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+          } else {
+            daily += (cat.dailyIncome || 0) * (o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+          }
+        }
+      }
+    });
+    const sub = unstaffed > 0 ? `${unstaffed} 待派人` : `${count.toLocaleString('zh-CN')} ${ind.unit}`;
+    return `
+      <button class="card" onclick="Router.go('industryDetail', {type:'${type}'})">
+        <div class="card-title">${ind.icon} ${ind.name}</div>
+        <div class="card-sub ${unstaffed > 0 ? 'text-muted' : ''}" style="${unstaffed > 0 ? 'color:var(--warning);' : ''}">${sub}</div>
+        <div class="card-value ${daily > 0 ? 'up' : ''}">${daily > 0 ? '+' : ''}${State.formatMoney(daily)}/日</div>
+      </button>
+    `;
+  },
+
+  staffCard() {
+    const count = Employees.count();
+    const cap = Employees.capacity();
+    const unassigned = Employees.unassignedCount();
+    const salary = Employees.totalSalary();
+    const sub = cap === 0 ? '需购住宅' : (unassigned > 0 ? `${unassigned} 待分配` : `${count}/${cap}`);
+    return `
+      <button class="card" onclick="Router.go('staff')">
+        <div class="card-title">👥 员工</div>
+        <div class="card-sub" style="${unassigned > 0 ? 'color:var(--warning);' : ''}">${sub}</div>
+        <div class="card-value ${salary > 0 ? 'down' : ''}">${salary > 0 ? '-' : ''}${State.formatMoney(salary)}/日</div>
+      </button>
+    `;
+  },
+
+  warehouseCard() {
+    const cap = Employees.warehouseCapacity();
+    const used = Employees.warehouseUsed();
+    const free = cap - used;
+    const sub = cap === 0 ? '需购仓库' : `${used.toFixed(0)}/${cap}`;
+    return `
+      <button class="card" onclick="Router.go('warehouse')">
+        <div class="card-title">📦 仓库</div>
+        <div class="card-sub" style="${cap > 0 && free < cap * 0.1 ? 'color:var(--warning);' : ''}">${sub}</div>
+        <div class="card-value ${cap === 0 ? '' : 'text-muted'}" style="${cap === 0 ? 'font-size:13px;' : ''}">${cap === 0 ? '点击前往' : '剩余 ' + free.toLocaleString('zh-CN')}</div>
+      </button>
     `;
   }
 };

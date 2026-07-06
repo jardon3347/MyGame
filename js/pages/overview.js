@@ -1,4 +1,4 @@
-/* overview.js — 集团概览 + 产业总览 + 新闻页 */
+/* overview.js — 集团概览（合并新闻 + 时间推进，单页常驻） */
 
 Pages.overview = {
   render(app) {
@@ -37,7 +37,36 @@ Pages.overview = {
 
     app.innerHTML = `
       <div class="page">
-        ${UI.navbar('集团概览')}
+        ${UI.navbar('盛世集团 · 概览', false)}
+
+        <!-- 时间条 + 推进按钮（从 home.js 迁移） -->
+        <div class="time-bar">
+          <div class="time-bar-track">
+            <div class="time-bar-fill" id="time-progress-bar"></div>
+          </div>
+          <div class="time-bar-info">
+            <span id="time-remaining">10:00</span>
+            <button id="time-pause-btn" class="time-pause-btn" onclick="TimeManager.togglePause()">⏸</button>
+          </div>
+        </div>
+
+        <div class="section-title">时间推进</div>
+        <div class="speed-bar">
+          <button class="speed-btn" onclick="Home.advance(1)">
+            过完今天
+            <span class="speed-label">×1 看明细</span>
+          </button>
+          <button class="speed-btn" onclick="Home.advance(7)">
+            跳过一周
+            <span class="speed-label">×7 遇事件暂停</span>
+          </button>
+          <button class="speed-btn" onclick="Home.advance(30)">
+            跳过一月
+            <span class="speed-label">×30 快进</span>
+          </button>
+        </div>
+
+        <!-- 顶部统计条 -->
         <div class="topbar">
           <div class="topbar-stats">
             <div class="stat-item">
@@ -46,44 +75,54 @@ Pages.overview = {
             </div>
             <div class="stat-item">
               <div class="label">日收入</div>
-              <div class="value up">${State.formatMoney(income)}</div>
+              <div class="value ${income >= 0 ? 'up' : 'down'}">${income >= 0 ? '+' : ''}${State.formatMoney(income)}</div>
             </div>
             <div class="stat-item">
               <div class="label">日期</div>
-              <div class="value" style="font-size:12px;">${s.date.year}/${s.date.month}/${s.date.day}</div>
+              <div class="value" style="font-size:12px;">${Engine.dateString()}</div>
             </div>
           </div>
         </div>
 
-        <div class="section-title">资产分布</div>
-        <div class="list-item">
-          ${this.assetRow('现金', s.cash, total)}
-          ${this.assetRow('银行存款', s.deposit, total)}
-          ${(s.loan || 0) > 0 ? this.assetRow('贷款', -s.loan, total) : ''}
-          ${this.assetRow('股票', stockValue, total)}
-          ${this.assetRow('基金', fundValue, total)}
-          ${this.assetRow('贵金属', metalValue, total)}
-          ${this.assetRow('仓库库存', warehouseValue, total)}
-          ${this.assetRow('实业', industryValue, total)}
+        <!-- 资产分布 + 产业收入 双栏并排 -->
+        <div class="overview-duo">
+          <div class="overview-duo-col">
+            <div class="section-title">资产分布</div>
+            <div class="list-item">
+              ${this.assetRow('现金', s.cash, total)}
+              ${this.assetRow('银行存款', s.deposit, total)}
+              ${(s.loan || 0) > 0 ? this.assetRow('贷款', -s.loan, total) : ''}
+              ${this.assetRow('股票', stockValue, total)}
+              ${this.assetRow('基金', fundValue, total)}
+              ${this.assetRow('贵金属', metalValue, total)}
+              ${this.assetRow('仓库库存', warehouseValue, total)}
+              ${this.assetRow('实业', industryValue, total)}
+            </div>
+          </div>
+          <div class="overview-duo-col">
+            <div class="section-title">产业收入</div>
+            <div class="list-item">
+              ${this.industryIncomeRow('🌾 农业', 'farm')}
+              ${this.industryIncomeRow('⛏️ 矿业', 'mining')}
+              ${this.industryIncomeRow('🔥 冶金', 'metall')}
+              ${this.industryIncomeRow('🏭 工厂', 'factory')}
+              ${this.industryIncomeRow('🏢 地产', 'estate')}
+              <div class="list-row">
+                <span class="list-label">👥 员工薪水（${Employees.count()}/${Employees.capacity()}人）</span>
+                <span class="list-value down">-${State.formatMoney(empSalary)}</span>
+              </div>
+              <div class="list-row" style="margin-top:8px; padding-top:8px; border-top:0.5px solid var(--border);">
+                <span class="font-medium">合计净收入</span>
+                <span class="list-value ${industryDaily - empSalary >= 0 ? 'up' : 'down'}">${State.formatMoney(industryDaily - empSalary)}/日</span>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <div class="section-title">产业收入</div>
-        <div class="list-item">
-          ${this.industryIncomeRow('🌾 农业', 'farm')}
-          ${this.industryIncomeRow('⛏️ 矿业', 'mining')}
-          ${this.industryIncomeRow('🔥 冶金', 'metall')}
-          ${this.industryIncomeRow('🏭 工厂', 'factory')}
-          ${this.industryIncomeRow('🏢 地产', 'estate')}
-          <div class="list-row">
-            <span class="list-label">👥 员工薪水（${Employees.count()}/${Employees.capacity()}人）</span>
-            <span class="list-value down">-${State.formatMoney(empSalary)}</span>
-          </div>
-          <div class="list-row" style="margin-top:8px; padding-top:8px; border-top:0.5px solid var(--border);">
-            <span class="font-medium">合计净收入</span>
-            <span class="list-value ${industryDaily - empSalary >= 0 ? 'up' : 'down'}">${State.formatMoney(industryDaily - empSalary)}/日</span>
-          </div>
-        </div>
+        <!-- 新闻区（原 renderNews 内联） -->
+        ${this._renderNewsSection()}
 
+        <!-- 操作 -->
         <div class="section-title">操作</div>
         <div class="card-grid">
           <button class="card" onclick="Overview.toggleTheme()" id="theme-toggle-btn">
@@ -143,19 +182,22 @@ Pages.overview = {
     `;
   },
 
-  /* 新闻页 */
-  renderNews(app) {
+  /* ===== 新闻区（内联到概览页，不再单独成页） ===== */
+  _renderNewsSection() {
     const s = State.data;
     const news = s.news || [];
     const activeEffects = s.activeEffects || [];
 
-    let activeHTML = '';
+    let html = '';
+
+    // 1) 当前生效事件
     if (activeEffects.length > 0) {
-      activeHTML = `
+      html += `
         <div class="section-title">⚡ 当前生效事件（${activeEffects.length} 个）</div>
         ${activeEffects.map(eff => {
           const tags = Engine.getNewsTags(eff);
-          const remainingPercent = Math.max(0, eff.remainingDays / (eff.effects._origDuration || 5));
+          const origDur = eff.effects._origDuration || eff.remainingDays || 5;
+          const remainingPercent = Math.max(0, Math.min(1, eff.remainingDays / origDur));
           return `
             <div class="news-item active" style="border-left: 3px solid var(--warning); margin-bottom: 8px;">
               <div class="flex between" style="margin-bottom: 4px;">
@@ -172,11 +214,10 @@ Pages.overview = {
       `;
     }
 
-    // 利率变化历史
+    // 2) 利率变动记录
     const rateEvents = news.filter(n => n.effects && n.effects.interestRate != null);
-    let rateHTML = '';
     if (rateEvents.length > 0) {
-      rateHTML = `
+      html += `
         <div class="section-title">📊 利率变动记录</div>
         <div class="list-item">
           ${rateEvents.slice(0, 8).map(n => {
@@ -193,19 +234,15 @@ Pages.overview = {
       `;
     }
 
-    app.innerHTML = `
-      <div class="page">
-        ${UI.navbar('市场新闻')}
-        
-        ${activeHTML}
-        ${rateHTML}
-
-        <div class="section-title">📰 新闻历史（${news.length} 条）</div>
-        ${news.length === 0 ? '<div class="empty">暂无新闻，多推进几天试试</div>' :
-          news.map(n => this.newsItem(n)).join('')}
-        ${UI.bottombar()}
-      </div>
+    // 3) 新闻历史
+    html += `
+      <div class="section-title">📰 新闻历史（${news.length} 条）</div>
+      ${news.length === 0 ? '<div class="empty">暂无新闻，多推进几天试试</div>' :
+        news.slice(0, 20).map(n => this.newsItem(n)).join('')}
+      ${news.length > 20 ? `<div class="text-sm text-muted" style="text-align:center; padding:8px;">仅显示最近 20 条，共 ${news.length} 条</div>` : ''}
     `;
+
+    return html;
   },
 
   newsItem(n) {
@@ -262,4 +299,3 @@ const Overview = {
 };
 
 window.Overview = Overview;
-
