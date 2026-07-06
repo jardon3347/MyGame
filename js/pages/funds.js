@@ -1,6 +1,7 @@
 /* funds.js — 基金列表 + 详情 */
 
 Pages.funds = {
+  _currentTab: 'holdings',
   render(app) {
     const s = State.data;
     let totalValue = 0;
@@ -27,31 +28,62 @@ Pages.funds = {
             </div>
             <div class="stat-item">
               <div class="label">收益率</div>
-              <div class="value ${totalPnl >= 0 ? 'up' : 'down'}">${totalCost > 0 ? State.formatPct(totalPnl/totalCost) : '—'}</div>
+              <div class="value ${totalPnl >= 0 ? 'up' : 'down'}">${totalCost > 0 ? State.formatPct(totalPnl/totalCost) : '\u2014'}</div>
             </div>
           </div>
         </div>
 
-        <div class="section-title">我的持仓（${(s.fundHoldings||[]).length}）</div>
-        ${(s.fundHoldings||[]).length === 0 ? '<div class="empty">暂无持仓，下方基金市场可点击查看</div>' :
-          (s.fundHoldings||[]).map(h => this.holdingRow(h)).join('')}
+        <div class="tab-container" style="margin-bottom:12px;">
+          <div class="tab-bar">
+            <div class="tab${this._currentTab === 'holdings' ? ' active' : ''}" data-fundstab="holdings" onclick="Pages.funds.switchTab('holdings')">&#x2705 \u6211\u7684\u6301\u4ED3 (${(s.fundHoldings||[]).length})</div>
+            <div class="tab${this._currentTab === 'market' ? ' active' : ''}" data-fundstab="market" onclick="Pages.funds.switchTab('market')">&#x1F4CA \u57FA\u91D1\u5E02\u573A (${DATA.funds.length})</div>
+          </div>
+        </div>
+        <div id="funds-tab-content">
+          ${this._currentTab === 'market' ? this._renderMarketTab() : this._renderHoldingsTab()}
+        </div>
 
-        <div class="section-title">基金市场（${DATA.funds.length} 只）</div>
-        ${DATA.funds.map(f => this.fundRow(f)).join('')}
-
-        <div class="section-title">说明</div>
+        <div class="section-title">\u8BF4\u660E</div>
         <div class="list-item">
           <p class="text-sm text-muted" style="line-height:1.6;">
-            · 基金按"份"申购/赎回，1 份 = 当前净值<br>
-            · 申购费 0.15% · 赎回费 0.25%（持有 &lt;7 天）<br>
-            · T+1 制度：今天申购明天确认<br>
-            · 风险分散，适合长期配置
+            \u00b7 \u57FA\u91D1\u6309\u201C\u4EFD\u201D\u7533\u8D2D/\u8D4E\u56DE\uFF0C1 \u4EFD = \u5F53\u524D\u51C0\u503C<br>
+            \u00b7 \u7533\u8D2D\u8D39 0.15% \u00b7 \u8D4E\u56DE\u8D39 0.25%\uFF08\u6301\u6709 &lt;7 \u5929\uFF09<br>
+            \u00b7 T+1 \u5236\u5EA6\uFF1A\u4ECA\u5929\u7533\u8D2D\u660E\u5929\u786E\u8BA4<br>
+            \u00b7 \u98CE\u9669\u5206\u6563\uFF0C\u9002\u5408\u957F\u671F\u914D\u7F6E
           </p>
         </div>
 
         ${UI.bottombar()}
       </div>
     `;
+  },
+
+  switchTab(tab) {
+    this._currentTab = tab;
+    document.querySelectorAll('[data-fundstab]').forEach(t => {
+      t.classList.toggle('active', t.getAttribute('data-fundstab') === tab);
+    });
+    const container = document.getElementById('funds-tab-content');
+    if (tab === 'holdings') {
+      container.innerHTML = this._renderHoldingsTab();
+    } else {
+      container.innerHTML = this._renderMarketTab();
+    }
+  },
+
+  _renderHoldingsTab() {
+    const s = State.data;
+    const holdings = s.fundHoldings || [];
+    if (holdings.length === 0) {
+      return '<div class="empty">\u6682\u65E0\u6301\u4ED3\uFF0C\u70B9\u51FB\u300C\u57FA\u91D1\u5E02\u573A\u300D\u53EF\u7533\u8D2D\u57FA\u91D1</div>';
+    }
+    return '<div class="section-title">\u6211\u7684\u6301\u4ED3 (' + holdings.length + ')</div>' +
+      holdings.map(h => this.holdingRow(h)).join('');
+  },
+
+  _renderMarketTab() {
+    return '<div class="section-title">\u57FA\u91D1\u5E02\u573A\uFF08' + DATA.funds.length + ' \u53EA\uFF09</div>' +
+      DATA.funds.map(f => this.fundRow(f)).join('');
   },
 
   holdingRow(h) {
@@ -66,7 +98,7 @@ Pages.funds = {
         <div class="list-row">
           <div>
             <div class="font-medium">${f.name}</div>
-            <div class="text-sm text-muted">${h.shares.toLocaleString('zh-CN')} 份 @ ¥${h.avgCost.toFixed(4)}</div>
+            <div class="text-sm text-muted">${h.shares.toLocaleString('zh-CN')} \u4EFD @ \u00A5${h.avgCost.toFixed(4)}</div>
           </div>
           <div style="text-align:right;">
             <div class="font-medium">${State.formatMoney(value)}</div>
@@ -89,10 +121,10 @@ Pages.funds = {
         <div class="list-row">
           <div>
             <div class="font-medium">${f.name}</div>
-            <div class="text-sm text-muted">${f.code} · ${f.type} · 风险${f.risk}${holding ? ' · 持仓 '+holding.shares.toLocaleString('zh-CN')+' 份' : ''}</div>
+            <div class="text-sm text-muted">${f.code} \u00b7 ${f.type} \u00b7 \u98CE\u9669${f.risk}${holding ? ' \u00b7 \u6301\u4ED3 '+holding.shares.toLocaleString('zh-CN')+' \u4EFD' : ''}</div>
           </div>
           <div style="text-align:right;">
-            <div class="font-medium">¥${price.toFixed(4)}</div>
+            <div class="font-medium">\u00A5${price.toFixed(4)}</div>
             <div class="text-sm ${change >= 0 ? 'text-up' : 'text-down'}">${change >= 0 ? '+' : ''}${State.formatPct(changePct)}</div>
           </div>
         </div>
@@ -127,53 +159,53 @@ Pages.fundDetail = {
       <div class="page">
         ${UI.navbar(f.name)}
         <div class="topbar">
-          <div style="font-size:11px;color:var(--text-secondary);">${f.code} · ${f.type} · 风险等级：${f.risk}</div>
-          <div style="font-size:28px;font-weight:600;margin-top:4px;" class="${change >= 0 ? 'text-up' : 'text-down'}">¥${price.toFixed(4)}</div>
+          <div style="font-size:11px;color:var(--text-secondary);">${f.code} \u00b7 ${f.type} \u00b7 \u98CE\u9669\u7B49\u7EA7\uFF1A${f.risk}</div>
+          <div style="font-size:28px;font-weight:600;margin-top:4px;" class="${change >= 0 ? 'text-up' : 'text-down'}">\u00A5${price.toFixed(4)}</div>
           <div class="text-sm ${change >= 0 ? 'text-up' : 'text-down'}">${change >= 0 ? '+' : ''}${price - prev >= 0 ? '+' : ''}${(price-prev).toFixed(4)} (${State.formatPct(changePct)})</div>
         </div>
 
-        <div class="section-title">净值走势（近 ${Math.min(hist.length, 30)} 日）</div>
+        <div class="section-title">\u51C0\u503C\u8D70\u52BF\uFF08\u8FD1 ${Math.min(hist.length, 30)} \u65E5\uFF09</div>
         <div class="list-item" style="padding:8px;">
           ${this.lineChart(hist.slice(-30), price)}
         </div>
 
-        <div class="section-title">基金数据</div>
+        <div class="section-title">\u57FA\u91D1\u6570\u636E</div>
         <div class="list-item">
-          <div class="list-row"><span class="list-label">昨日净值</span><span class="list-value">¥${prev.toFixed(4)}</span></div>
-          <div class="list-row"><span class="list-label">日涨幅</span><span class="list-value ${change >= 0 ? 'up' : 'down'}">${State.formatPct(changePct)}</span></div>
-          <div class="list-row"><span class="list-label">历史最高</span><span class="list-value text-up">¥${hHigh.toFixed(4)}</span></div>
-          <div class="list-row"><span class="list-label">历史最低</span><span class="list-value text-down">¥${hLow.toFixed(4)}</span></div>
-          <div class="list-row"><span class="list-label">基金类型</span><span class="list-value">${f.type}</span></div>
-          <div class="list-row"><span class="list-label">风险等级</span><span class="list-value">${f.risk}</span></div>
+          <div class="list-row"><span class="list-label">\u6628\u65E5\u51C0\u503C</span><span class="list-value">\u00A5${prev.toFixed(4)}</span></div>
+          <div class="list-row"><span class="list-label">\u65E5\u6DA8\u5E45</span><span class="list-value ${change >= 0 ? 'up' : 'down'}">${State.formatPct(changePct)}</span></div>
+          <div class="list-row"><span class="list-label">\u5386\u53F2\u6700\u9AD8</span><span class="list-value text-up">\u00A5${hHigh.toFixed(4)}</span></div>
+          <div class="list-row"><span class="list-label">\u5386\u53F2\u6700\u4F4E</span><span class="list-value text-down">\u00A5${hLow.toFixed(4)}</span></div>
+          <div class="list-row"><span class="list-label">\u57FA\u91D1\u7C7B\u578B</span><span class="list-value">${f.type}</span></div>
+          <div class="list-row"><span class="list-label">\u98CE\u9669\u7B49\u7EA7</span><span class="list-value">${f.risk}</span></div>
         </div>
 
-        <div class="section-title">基金简介</div>
+        <div class="section-title">\u57FA\u91D1\u7B80\u4ECB</div>
         <div class="list-item">
           <p class="text-sm" style="line-height:1.7;">${f.desc}</p>
           <div class="list-row mt-12">
-            <span class="list-label">成立规模</span>
-            <span class="list-value">${(Math.random()*50+5).toFixed(2)} 亿份</span>
+            <span class="list-label">\u6210\u7ACB\u89C4\u6A21</span>
+            <span class="list-value">${(Math.random()*50+5).toFixed(2)} \u4EBF\u4EFD</span>
           </div>
           <div class="list-row">
-            <span class="list-label">基金经理</span>
-            <span class="list-value">${['张明','李华','王志强','陈静','刘伟'][Math.floor(Math.random()*5)]}</span>
+            <span class="list-label">\u57FA\u91D1\u7ECF\u7406</span>
+            <span class="list-value">${['\u5F20\u660E','\u674E\u534E','\u738B\u5FD7\u5F3A','\u9648\u9759','\u5218\u4F1F'][Math.floor(Math.random()*5)]}</span>
           </div>
         </div>
 
         ${shares > 0 ? `
-          <div class="section-title">我的持仓</div>
+          <div class="section-title">\u6211\u7684\u6301\u4ED3</div>
           <div class="list-item">
-            <div class="list-row"><span class="list-label">持仓</span><span class="list-value">${shares.toLocaleString('zh-CN')} 份</span></div>
-            <div class="list-row"><span class="list-label">成本</span><span class="list-value">¥${holding.avgCost.toFixed(4)}</span></div>
-            <div class="list-row"><span class="list-label">市值</span><span class="list-value">${State.formatMoney(shares*price)}</span></div>
-            <div class="list-row"><span class="list-label">浮盈</span><span class="list-value ${pnl >= 0 ? 'up' : 'down'}">${pnl >= 0 ? '+' : ''}${State.formatMoney(pnl)} (${State.formatPct(pnlPct)})</span></div>
+            <div class="list-row"><span class="list-label">\u6301\u4ED3</span><span class="list-value">${shares.toLocaleString('zh-CN')} \u4EFD</span></div>
+            <div class="list-row"><span class="list-label">\u6210\u672C</span><span class="list-value">\u00A5${holding.avgCost.toFixed(4)}</span></div>
+            <div class="list-row"><span class="list-label">\u5E02\u503C</span><span class="list-value">${State.formatMoney(shares*price)}</span></div>
+            <div class="list-row"><span class="list-label">\u6D6E\u76C8</span><span class="list-value ${pnl >= 0 ? 'up' : 'down'}">${pnl >= 0 ? '+' : ''}${State.formatMoney(pnl)} (${State.formatPct(pnlPct)})</span></div>
           </div>
         ` : ''}
 
-        <div class="section-title">操作</div>
+        <div class="section-title">\u64CD\u4F5C</div>
         <div class="flex gap-8">
-          <button class="btn primary" style="flex:1;" onclick="Funds.showBuy('${code}')">申购</button>
-          <button class="btn ${holding ? 'danger' : ''}" style="flex:1;" ${holding ? '' : 'disabled style="opacity:0.4;flex:1;"'} onclick="Funds.showSell('${code}')">赎回</button>
+          <button class="btn primary" style="flex:1;" onclick="Funds.showBuy('${code}')">\u7533\u8D2D</button>
+          <button class="btn ${holding ? 'danger' : ''}" style="flex:1;" ${holding ? '' : 'disabled style="opacity:0.4;flex:1;"'} onclick="Funds.showSell('${code}')">\u8D4E\u56DE</button>
         </div>
 
         <div style="height:20px;"></div>
@@ -182,9 +214,8 @@ Pages.fundDetail = {
     `;
   },
 
-  /* 折线图（基金净值走势） */
   lineChart(history, currentPrice) {
-    if (history.length === 0) return '<div class="empty">暂无历史数据</div>';
+    if (history.length === 0) return '<div class="empty">\u6682\u65E0\u5386\u53F2\u6570\u636E</div>';
     const W = 320, H = 140;
     const padL = 4, padR = 35, padT = 8, padB = 8;
     const chartW = W - padL - padR;
@@ -238,17 +269,17 @@ const Funds = {
     const price = State.data.fundPrices[code] || f.basePrice;
     const unitCost = price * 1.0015;
     const maxShares = Math.floor(State.data.cash / unitCost);
-    if (maxShares <= 0) { UI.toast('现金不足'); return; }
+    if (maxShares <= 0) { UI.toast('\u73B0\u91D1\u4E0D\u8DB3'); return; }
 
     UI.numberPicker({
-      title: '申购 ' + f.name,
+      title: '\u7533\u8D2D ' + f.name,
       unit: unitCost,
-      unitName: '份',
-      unitLabel: `¥${price.toFixed(4)}/份 · 申购费 0.15%`,
+      unitName: '\u4EFD',
+      unitLabel: `\u00A5${price.toFixed(4)}/\u4EFD \u00b7 \u7533\u8D2D\u8D39 0.15%`,
       max: maxShares,
       quickAdds: maxShares >= 10000 ? [100, 1000, 5000, 10000] : [10, 100, 500, 1000],
       onConfirm: (shares) => {
-        if (shares <= 0) { UI.toast('请选择数量'); return; }
+        if (shares <= 0) { UI.toast('\u8BF7\u9009\u62E9\u6570\u91CF'); return; }
         const cost = shares * price;
         const fee = cost * 0.0015;
         const total = cost + fee;
@@ -263,7 +294,7 @@ const Funds = {
           State.data.fundHoldings.push({ code, shares, avgCost: price, buyDay: State.data.date.totalDays });
         }
         State.save();
-        UI.toast(`申购 ${shares.toLocaleString('zh-CN')} 份 ${f.name}`);
+        UI.toast(`\u7533\u8D2D ${shares.toLocaleString('zh-CN')} \u4EFD ${f.name}`);
         Router.refresh();
       }
     });
@@ -271,11 +302,11 @@ const Funds = {
 
   showSell(code) {
     const f = DATA.funds.find(x => x.code === code);
-    if (!State.data.fundHoldings) { UI.toast('无持仓'); return; }
+    if (!State.data.fundHoldings) { UI.toast('\u65E0\u6301\u4ED3'); return; }
     const holding = State.data.fundHoldings.find(h => h.code === code);
-    if (!holding) { UI.toast('无持仓'); return; }
+    if (!holding) { UI.toast('\u65E0\u6301\u4ED3'); return; }
     if (State.data.date.totalDays <= (holding.buyDay||0)) {
-      UI.toast('T+1 限制：今日申购明日方可赎回');
+      UI.toast('T+1 \u9650\u5236\uFF1A\u4ECA\u65E5\u7533\u8D2D\u660E\u65E5\u65B9\u53EF\u8D4E\u56DE');
       return;
     }
     const maxShares = holding.shares;
@@ -285,15 +316,15 @@ const Funds = {
     const unitNet = price * (1 - feeRate);
 
     UI.numberPicker({
-      title: '赎回 ' + f.name,
+      title: '\u8D4E\u56DE ' + f.name,
       unit: unitNet,
-      unitName: '份',
-      unitLabel: `¥${price.toFixed(4)}/份 · 赎回费 ${feeRate*100}% · 持有 ${maxShares.toLocaleString('zh-CN')} 份`,
+      unitName: '\u4EFD',
+      unitLabel: `\u00A5${price.toFixed(4)}/\u4EFD \u00b7 \u8D4E\u56DE\u8D39 ${feeRate*100}% \u00b7 \u6301\u6709 ${maxShares.toLocaleString('zh-CN')} \u4EFD`,
       max: maxShares,
       quickAdds: maxShares >= 10000 ? [100, 1000, 5000, 10000] : [10, 100, 500, 1000],
       onConfirm: (shares) => {
-        if (shares <= 0) { UI.toast('请选择数量'); return; }
-        if (shares > holding.shares) { UI.toast('持仓不足'); return; }
+        if (shares <= 0) { UI.toast('\u8BF7\u9009\u62E9\u6570\u91CF'); return; }
+        if (shares > holding.shares) { UI.toast('\u6301\u4ED3\u4E0D\u8DB3'); return; }
         const revenue = shares * price;
         const fee = revenue * feeRate;
         const net = revenue - fee;
@@ -303,7 +334,7 @@ const Funds = {
           State.data.fundHoldings = State.data.fundHoldings.filter(h => h.code !== code);
         }
         State.save();
-        UI.toast(`赎回 ${shares.toLocaleString('zh-CN')} 份，到账 ${State.formatMoney(net)}`);
+        UI.toast(`\u8D4E\u56DE ${shares.toLocaleString('zh-CN')} \u4EFD\uFF0C\u5230\u8D26 ${State.formatMoney(net)}`);
         Router.refresh();
       }
     });

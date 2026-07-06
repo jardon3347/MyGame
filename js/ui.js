@@ -164,19 +164,34 @@ const UI = {
   },
 
   /* 数量选择器：滑块 + 快捷按钮 */
+  /* 根据 max 计算滑块步进：小额+1，逐步增大为整数步 */
+  _calcStep(max) {
+    if (max <= 10) return 1;
+    if (max <= 50) return 2;
+    if (max <= 100) return 5;
+    if (max <= 500) return 10;
+    if (max <= 1000) return 50;
+    if (max <= 5000) return 100;
+    if (max <= 10000) return 500;
+    if (max <= 50000) return 1000;
+    if (max <= 100000) return 5000;
+    return 10000;
+  },
+
   numberPicker({ title, unit, unitName, unitLabel, max, quickAdds, onConfirm }) {
     const id = 'np_' + Date.now();
-    window._npState = { id, unit, unitName, max, value: 1, onConfirm };
+    const step = this._calcStep(max);
+    window._npState = { id, unit, unitName, max, value: 0, onConfirm };
 
     const content = `
       <div class="np-info">
         <div class="np-unit">${unitLabel}</div>
         <div class="np-max">最多 ${max.toLocaleString('zh-CN')}</div>
       </div>
-      <div class="np-display" id="${id}_val">1</div>
+      <div class="np-display" id="${id}_val">0</div>
       <div class="np-unit-text" id="${id}_unit">${unitName || ''}</div>
       <input type="range" class="np-slider" id="${id}_slider"
-             min="1" max="${max}" value="1" step="1"
+             min="0" max="${max}" value="0" step="${step}"
              oninput="UI._npUpdate('${id}', this.value)">
       <div class="np-quick">
         ${quickAdds.map(n => `<button class="np-quick-btn" onclick="UI._npAdd('${id}', ${n})" ${n > max ? 'disabled' : ''}>+${n.toLocaleString('zh-CN')}</button>`).join('')}
@@ -184,7 +199,7 @@ const UI = {
       </div>
       <div class="np-total">
         <span>合计</span>
-        <span id="${id}_total">¥${State.formatNum(unit)}</span>
+        <span id="${id}_total">¥0</span>
       </div>
     `;
 

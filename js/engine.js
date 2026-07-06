@@ -6,6 +6,74 @@ const Engine = {
     return (level || 1) * 1.2;
   },
 
+  /* 破产检测：返回 true 表示破产 */
+  checkBankruptcy() {
+    const s = State.data;
+    // 计算总资产
+    let totalAssets = (s.cash || 0) + (s.deposit || 0);
+    // 股票市值
+    (s.stocks || []).forEach(st => {
+      totalAssets += (st.shares || 0) * (s.stockPrices[st.code] || 0);
+    });
+    // 基金市值
+    (s.fundHoldings || []).forEach(h => {
+      totalAssets += (h.shares || 0) * (s.fundPrices[h.code] || 0);
+    });
+    // 贵金属市值
+    (s.metals || []).forEach(m => {
+      totalAssets += (m.grams || 0) * (s.metalPrices[m.code] || 0);
+    });
+    // 总负债
+    const totalDebt = Math.abs(s.loan || 0);
+    // 净资产 = 总资产 - 总负债
+    const netWorth = totalAssets - totalDebt;
+    // 破产阈值：净资产低于 -50000
+    if (netWorth < -50000) {
+      this.showGameOver(netWorth);
+      return true;
+    }
+    return false;
+  },
+
+  /* 游戏结束画面 */
+  showGameOver(netWorth) {
+    const s = State.data;
+    const days = s.date.totalDays || 0;
+    const years = (days / 365).toFixed(1);
+    const app = document.getElementById('app');
+    if (!app) return;
+    app.innerHTML = `
+      <div class="page" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:80vh;padding:20px;">
+        <div style="font-size:48px;margin-bottom:16px;">\u2620\uFE0F</div>
+        <div style="font-size:24px;font-weight:700;color:var(--down);margin-bottom:8px;">\u7834\u4EA7\u6E38\u620F\u7ED3\u675F</div>
+        <div style="font-size:14px;color:var(--text-secondary);margin-bottom:24px;text-align:center;line-height:1.8;">
+          \u5728\u7ECF\u8425 ${years} \u5E74\uFF08${days} \u5929\uFF09\u540E\uFF0C<br>
+          \u516C\u53F8\u51C0\u8D44\u4EA7\u8D1F\u503C ${State.formatMoney(netWorth)}<br>
+          \u5DF2\u65E0\u6CD5\u7EE7\u7EED\u8FD0\u8425\u3002
+        </div>
+        <div style="background:var(--bg-soft);border-radius:8px;padding:16px;width:100%;max-width:300px;margin-bottom:24px;">
+          <div class="list-row" style="margin-bottom:4px;">
+            <span class="list-label">\u73B0\u91D1</span>
+            <span class="list-value ${s.cash >= 0 ? '' : 'down'}">${State.formatMoney(s.cash)}</span>
+          </div>
+          <div class="list-row" style="margin-bottom:4px;">
+            <span class="list-label">\u8D37\u6B3E</span>
+            <span class="list-value down">${State.formatMoney(s.loan || 0)}</span>
+          </div>
+          <div class="list-row" style="margin-bottom:4px;">
+            <span class="list-label">\u5B58\u6B3E</span>
+            <span class="list-value">${State.formatMoney(s.deposit || 0)}</span>
+          </div>
+          <div class="list-row">
+            <span class="list-label">\u51C0\u8D44\u4EA7</span>
+            <span class="list-value ${netWorth >= 0 ? 'up' : 'down'}">${State.formatMoney(netWorth)}</span>
+          </div>
+        </div>
+        <button class="btn primary" style="width:100%;max-width:300px;" onclick="State.reset()">\u91CD\u65B0\u5F00\u59CB</button>
+      </div>
+    `;
+  },
+
 
   /* 推进 N 天 */
   advance(days) {
@@ -36,6 +104,11 @@ const Engine = {
       }
     }
 
+    // 破产则停止推进
+    if (State.data && State.data.cash < -100000) {
+      this.checkBankruptcy();
+      return { summaries, events, completedDays: summaries.length };
+    }
     State.save();
     return { summaries, events, completedDays: summaries.length };
   },
@@ -69,7 +142,7 @@ const Engine = {
         Employees.consumeSmelterMaterials(ind.category, qty, recipeSat);
       }
       // 现金收入
-      let daily = cat.dailyIncome * Engine.levelMultiplier(ind.level || 1) * qty * empMult * recipeSat;
+      let daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
       if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
       State.data.cash += daily;
       log.income += daily;
@@ -80,7 +153,7 @@ const Engine = {
       Employees.produceMaterials(ind, empMult, log);
     });
 
-    // 阶段3：工厂消耗农产品+金属→现金收入
+    // 阶段3：工厂产品系统（消耗原料 → 生产成品到仓库 + 现金收入）
     State.data.industries.forEach(ind => {
       if (ind.type !== 'factory') return;
       const cat = State.findIndustryCategory(ind.type, ind.category);
@@ -88,19 +161,43 @@ const Engine = {
       const qty = ind.quantity || 1;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
-      // 检查仓库原料满足率
-      let recipeSat = 1.0;
-      if (DATA.factoryRecipes[ind.category]) {
-        recipeSat = Employees.recipeSatisfaction(ind.category, qty);
-        Employees.consumeFactoryMaterials(ind.category, qty, recipeSat);
-      }
-      let daily = cat.dailyIncome * Engine.levelMultiplier(ind.level || 1) * qty * empMult * recipeSat;
-      if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
-      State.data.cash += daily;
-      log.income += daily;
+      const levelMult = Engine.levelMultiplier(ind.level || 1);
       const empCnt = Employees.assignedCount(ind.type, ind.category);
-      const satTag = recipeSat < 1 ? ` (原料${Math.round(recipeSat*100)}%)` : '';
-      log.details.push({ label: `${cat.name}×${qty} 员工×${empCnt}${satTag}`, amount: daily, type: 'income' });
+      
+      // 新产品系统
+      if (window.FactoryProducts && ind.products && Object.keys(ind.products).length > 0) {
+        let daily = 0;
+        Object.entries(ind.products).forEach(([prodCode, lineCount]) => {
+          if (lineCount <= 0) return;
+          const product = FactoryProducts.getProduct(ind.category, prodCode);
+          if (!product) return;
+          const sat = FactoryProducts.productSatisfaction(ind.category, prodCode, lineCount);
+          // 消耗原料
+          FactoryProducts.consumeProductMaterials(ind.category, prodCode, lineCount, sat);
+          // 生产成品到仓库
+          FactoryProducts.produceProductOutput(ind.category, prodCode, lineCount, sat);
+          // 计算现金收入
+          const prodIncome = product.sellPrice * lineCount * empMult * levelMult * sat;
+          daily += prodIncome;
+        });
+        if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
+        State.data.cash += daily;
+        log.income += daily;
+        log.details.push({ label: cat.name + '×' + qty + ' 员工×' + empCnt, amount: daily, type: 'income' });
+      } else {
+        // 兼容旧系统（无产品分配）
+        let recipeSat = 1.0;
+        if (DATA.factoryRecipes[ind.category]) {
+          recipeSat = Employees.recipeSatisfaction(ind.category, qty);
+          Employees.consumeFactoryMaterials(ind.category, qty, recipeSat);
+        }
+        let daily = (cat.dailyIncome || 0) * levelMult * qty * (empMult || 0) * (recipeSat || 1);
+        if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
+        State.data.cash += daily;
+        log.income += daily;
+        const satTag = recipeSat < 1 ? ' (原料' + Math.round(recipeSat*100) + '%)' : '';
+        log.details.push({ label: cat.name + '×' + qty + ' 员工×' + empCnt + satTag, amount: daily, type: 'income' });
+      }
     });
 
     // 阶段4：无配方产业（纯现金收入，冶金/工厂已在阶段2/3结算过）
@@ -111,7 +208,7 @@ const Engine = {
       const qty = ind.quantity || 1;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
-      let daily = cat.dailyIncome * Engine.levelMultiplier(ind.level || 1) * qty * empMult;
+      let daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * (empMult || 0);
       if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
       State.data.cash += daily;
       log.income += daily;
@@ -120,6 +217,10 @@ const Engine = {
     });
 
     // 1b. 员工薪水（每日支出）
+    // 阶段5：物流结算（自动卖出/自动买入）
+    if (window.LogisticsSystem) {
+      LogisticsSystem.settle(log);
+    }
     const salary = Employees.totalSalary();
     if (salary > 0) {
       State.data.cash -= salary;
@@ -176,6 +277,11 @@ const Engine = {
 
     // 7. 大盘情绪衰减
     State.data.marketSentiment *= 0.9;
+
+    // 8. 破产检测
+    if (this.checkBankruptcy()) {
+      return log;
+    }
 
     return log;
   },

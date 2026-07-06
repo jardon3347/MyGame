@@ -156,6 +156,16 @@ const DATA = {
         { code: 'mine_land',   name: '采矿权',     cost: 8000,  dailyIncome: 20 },
         { code: 'factory_land',name: '工业用地', cost: 6000,  dailyIncome: 15 }
       ]
+    },
+    logistics: {
+      name: '物流',
+      icon: '🚛',
+      unit: '站',
+      categories: [
+        { code: 'basic_logistics', name: '基础物流站', cost: 5000, dailyIncome: 15, slots: 5, feeRate: 0.02 },
+        { code: 'auto_logistics', name: '自动物流站', cost: 12000, dailyIncome: 30, slots: 10, feeRate: 0.015, canBuy: true },
+        { code: 'smart_logistics', name: '智能物流中心', cost: 25000, dailyIncome: 50, slots: 20, feeRate: 0.01, canBuy: true, finishedOnly: true }
+      ]
     }
   },
 

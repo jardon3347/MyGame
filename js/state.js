@@ -107,6 +107,17 @@ const State = {
     if (d.fundHoldings) {
       d.fundHoldings = d.fundHoldings.filter(h => h.avgCost > 0 && h.shares > 0);
     }
+
+    // 工厂产品系统迁移：旧工厂添加 products 字段
+    if (d.industries) {
+      d.industries.forEach(ind => {
+        if (ind.type === 'factory' && !ind.products) {
+          ind.products = {};
+        }
+      });
+    }
+    // 物流规则系统迁移
+    if (!d.logisticsRules) d.logisticsRules = {};
   },
 
   /* 探测 localStorage 是否可用 */
@@ -171,6 +182,7 @@ const State = {
       nextNewsDay: 4,        // 首次新闻在第 4 天
       news: [],             // 新闻历史
       logs: []
+      ,logisticsRules: {}     // 物流自动买卖规则 { logisticsId: { rules: [...] } }
     };
     // 初始化股票价格
     DATA.stocks.forEach(s => { this.data.stockPrices[s.code] = s.basePrice; });
@@ -261,7 +273,7 @@ const State = {
 
   /* 计算总资产 */
   totalAssets() {
-    let total = this.data.cash + this.data.deposit - (this.data.loan || 0);
+    let total = (this.data.cash || 0) + (this.data.deposit || 0) - (this.data.loan || 0);
     // 股票市值
     this.data.stocks.forEach(s => {
       total += s.shares * (this.data.stockPrices[s.code] || 0);
@@ -276,7 +288,7 @@ const State = {
       if (cat && cat.cost) total += cat.cost * 0.8 * (ind.quantity || 1);
     });
     // 仓库库存市值
-    if (window.Employees) total += Employees.warehouseValue();
+    if (window.Employees) { const wv = Employees.warehouseValue(); if (!isNaN(wv)) total += wv; }
     return total;
   },
 
@@ -296,12 +308,12 @@ const State = {
         if (ind.type === 'metall' && window.DATA && DATA.smelterRecipes[ind.category]) {
           recipeSat = Employees.smelterSatisfaction(ind.category, qty);
         }
-        let daily = cat.dailyIncome * (ind.level || 1) * qty * empMult * recipeSat;
+        let daily = (cat.dailyIncome || 0) * (ind.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
         // 周末减半
         if (this.data.date.dayOfWeek === 0 || this.data.date.dayOfWeek === 6) {
           daily *= 0.5;
         }
-        income += daily;
+        if (!isNaN(daily)) income += daily;
       }
     });
     // 存款利息（按天）

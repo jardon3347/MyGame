@@ -1,4 +1,4 @@
-﻿/* home.js — 主界面 */
+/* home.js — 主界面 */
 
 const Pages = window.Pages || {};
 
@@ -72,6 +72,7 @@ Pages.home = {
           ${this.industryCard('metall')}
           ${this.industryCard('factory')}
           ${this.industryCard('estate')}
+          ${this.industryCard('logistics')}
           ${this.staffCard()}
           ${this.warehouseCard()}
         </div>
@@ -146,10 +147,14 @@ Pages.home = {
           unstaffed += qty;
         } else {
           let recipeSat = 1.0;
-          if (type === 'factory' && DATA.factoryRecipes[o.category]) {
+          if (type === 'factory' && window.FactoryProducts && o.products && Object.keys(o.products).length > 0) {
+            daily += FactoryProducts.factoryDailyIncome(o.category);
+          } else if (type === 'factory' && DATA.factoryRecipes[o.category]) {
             recipeSat = Employees.recipeSatisfaction(o.category, qty);
+            daily += (cat.dailyIncome || 0) * (o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+          } else {
+            daily += (cat.dailyIncome || 0) * (o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
           }
-          daily += cat.dailyIncome * (o.level || 1) * qty * empMult * recipeSat;
         }
       }
     });

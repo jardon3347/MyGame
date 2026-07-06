@@ -2,7 +2,16 @@
 
 Pages.warehouse = {
   currentTab: 'inventory', // 默认选中库存选项卡
+  currentSubTab: 'all',    // 库存内子tab：all/farm/ore/metal
   
+  /* 材料分类定义 */
+  _categories: {
+    farm:     { label: '🌾 农产品', codes: ['wheat','rice','soy','corn','cotton','rape','sugarc','tea','veg','fruit','rubber','tobacco'] },
+    ore:      { label: '⛏️ 矿石',  codes: ['iron','copper','baux','coal','zinc_ore','lead_ore','tin','tung','gold_ore','silver_ore','rare_earth','phos_ore','quartz_ore'] },
+    metal:    { label: '🔥 金属',  codes: ['steel','ironR','copperR','alum','zincR','leadR','tinR','tungR','alloy','precious_m'] },
+    finished: { label: '🏭 成品',  codes: [] }  // 动态填充
+  },
+
   render(app) {
     const s = State.data;
     const cap = Employees.warehouseCapacity();
@@ -54,61 +63,41 @@ Pages.warehouse = {
             <div class="tab ${this.currentTab === 'metal' ? 'active' : ''}" data-tab="metal" onclick="Pages.warehouse.switchTab('metal')">
               🔥 金属市场
             </div>
+            <div class="tab ${this.currentTab === 'finished' ? 'active' : ''}" data-tab="finished" onclick="Pages.warehouse.switchTab('finished')">
+              🏭 成品
+            </div>
             <div class="tab ${this.currentTab === 'help' ? 'active' : ''}" data-tab="help" onclick="Pages.warehouse.switchTab('help')">
               ❓ 说明
             </div>
           </div>
         </div>
 
-        <!-- 库存选项卡 -->
+        <!-- 库存选项卡（含子分类） -->
         <div class="tab-content ${this.currentTab === 'inventory' ? 'active' : ''}" id="inventory-tab">
-          <div class="section-title">我的库存</div>
-          ${Object.keys(inv).length === 0 ? '<div class="empty">仓库空空如也</div>' :
-            Object.entries(inv).map(([code, qty]) => {
-              const mat = DATA.rawMaterials.find(m => m.code === code);
-              if (!mat) return '';
-              const mkt = Employees.materialPrice(code);
-              const sellP = Employees.materialSellPrice(code);
-              const chgPct = (mkt - mat.price) / mat.price;
-              const chgColor = chgPct > 0.001 ? 'var(--up)' : (chgPct < -0.001 ? 'var(--down)' : 'var(--text-secondary)');
-              const chgArrow = chgPct > 0.001 ? '↑' : (chgPct < -0.001 ? '↓' : '—');
-              return `
-                <div class="list-item">
-                  <div class="list-row">
-                    <div>
-                      <div class="font-medium">${mat.name}</div>
-                      <div class="text-sm text-muted">${qty.toFixed(1)} ${mat.unit} · 市值 ¥${(qty * mkt).toLocaleString('zh-CN', {maximumFractionDigits:0})}</div>
-                    </div>
-                    <div style="text-align:right;">
-                      <div class="text-sm" style="color:${chgColor};">市场价 ¥${mkt}/${mat.unit} ${chgArrow}${Math.abs(chgPct*100).toFixed(1)}%</div>
-                      <div class="text-sm text-muted">卖出 ¥${(qty * sellP).toLocaleString('zh-CN', {maximumFractionDigits:0})}</div>
-                    </div>
-                  </div>
-                  <div class="flex gap-8 mt-8">
-                    <button class="btn sm" style="flex:1;" onclick="Warehouse.showSell('${code}', ${qty})">卖出</button>
-                  </div>
-                </div>
-              `;
-            }).join('')
-          }
+          ${this._renderInventoryTab(inv, s, cap, free)}
         </div>
 
         <!-- 矿石市场选项卡 -->
         <div class="tab-content ${this.currentTab === 'ore' ? 'active' : ''}" id="ore-tab">
           <div class="section-title">原料市场 · 矿石（冶金消耗）</div>
-          ${this.materialList(inv, s, free, ['iron','copper','baux','coal','zinc_ore','lead_ore','tin','tung','gold_ore','silver_ore','rare_earth','phos_ore','quartz_ore'])}
+          ${this.materialList(inv, s, free, this._categories.ore.codes)}
         </div>
 
         <!-- 农产品市场选项卡 -->
         <div class="tab-content ${this.currentTab === 'farm' ? 'active' : ''}" id="farm-tab">
           <div class="section-title">原料市场 · 农产品（工厂消耗）</div>
-          ${this.materialList(inv, s, free, ['wheat','rice','soy','corn','cotton','rape','sugarc','tea','veg','fruit','rubber','tobacco'])}
+          ${this.materialList(inv, s, free, this._categories.farm.codes)}
         </div>
 
         <!-- 金属市场选项卡 -->
         <div class="tab-content ${this.currentTab === 'metal' ? 'active' : ''}" id="metal-tab">
           <div class="section-title">原料市场 · 金属（工厂消耗）</div>
-          ${this.materialList(inv, s, free, ['steel','ironR','copperR','alum','zincR','leadR','tinR','tungR','alloy','precious_m'])}
+          ${this.materialList(inv, s, free, this._categories.metal.codes)}
+        </div>
+
+        <!-- 成品选项卡 -->
+        <div class="tab-content ${this.currentTab === 'finished' ? 'active' : ''}" id="finished-tab">
+          ${this._renderFinishedGoodsTab(inv, s, free)}
         </div>
 
         <!-- 说明选项卡 -->
@@ -132,7 +121,7 @@ Pages.warehouse = {
             <p class="text-sm text-muted" style="line-height:1.7;">
               <strong>🚀 如何使用选项卡：</strong><br>
               1. 点击顶部的选项卡按钮可快速切换分类<br>
-              2. <strong>📦 我的库存</strong>：查看已拥有的原料<br>
+              2. <strong>📦 我的库存</strong>：查看已拥有的原料，支持按类型筛选<br>
               3. <strong>⛏️ 矿石市场</strong>：购买煤矿、铁矿等矿石原料<br>
               4. <strong>🌾 农产品市场</strong>：购买小麦、棉花等农产品<br>
               5. <strong>🔥 金属市场</strong>：购买钢材、铜材等金属<br>
@@ -151,9 +140,195 @@ Pages.warehouse = {
     `;
   },
 
+  /* 渲染库存选项卡（含子分类tab） */
+  _renderInventoryTab(inv, s, cap, free) {
+    const subTabs = [
+      { key: 'all',   label: '📦 全部' },
+      { key: 'farm',  label: '🌾 农产品' },
+      { key: 'ore',   label: '⛏️ 矿石' },
+      { key: 'metal', label: '🔥 金属' }
+    ];
+
+    // 统计每个分类的库存数量和市值
+    const catStats = {};
+    for (const key in this._categories) {
+      const codes = this._categories[key].codes;
+      let count = 0, value = 0;
+      codes.forEach(code => {
+        const qty = inv[code] || 0;
+        if (qty > 0) {
+          count++;
+          value += qty * Employees.materialPrice(code);
+        }
+      });
+      catStats[key] = { count, value };
+    }
+    // 全部统计
+    let allCount = 0, allValue = 0;
+    for (const code in inv) {
+      if (inv[code] > 0) {
+        allCount++;
+        allValue += inv[code] * Employees.materialPrice(code);
+      }
+    }
+
+    // 筛选当前子tab的codes
+    let filteredCodes = null;
+    if (this.currentSubTab !== 'all') {
+      filteredCodes = this._categories[this.currentSubTab].codes;
+    }
+
+    // 构建库存列表
+    let listHTML = '';
+    const entries = Object.entries(inv).filter(([code, qty]) => qty > 0);
+    if (entries.length === 0) {
+      listHTML = '<div class="empty">仓库空空如也</div>';
+    } else {
+      const displayEntries = filteredCodes
+        ? entries.filter(([code]) => filteredCodes.includes(code))
+        : entries;
+
+      if (displayEntries.length === 0) {
+        listHTML = '<div class="empty">该分类暂无库存</div>';
+      } else {
+        listHTML = displayEntries.map(([code, qty]) => {
+          const mat = DATA.rawMaterials.find(m => m.code === code);
+          if (!mat) return '';
+          const mkt = Employees.materialPrice(code);
+          const sellP = Employees.materialSellPrice(code);
+          const chgPct = (mkt - mat.price) / mat.price;
+          const chgColor = chgPct > 0.001 ? 'var(--up)' : (chgPct < -0.001 ? 'var(--down)' : 'var(--text-secondary)');
+          const chgArrow = chgPct > 0.001 ? '↑' : (chgPct < -0.001 ? '↓' : '—');
+          return `
+            <div class="list-item">
+              <div class="list-row">
+                <div>
+                  <div class="font-medium">${mat.name}</div>
+                  <div class="text-sm text-muted">${qty.toFixed(1)} ${mat.unit} · 市值 ¥${(qty * mkt).toLocaleString('zh-CN', {maximumFractionDigits:0})}</div>
+                </div>
+                <div style="text-align:right;">
+                  <div class="text-sm" style="color:${chgColor};">市场价 ¥${mkt}/${mat.unit} ${chgArrow}${Math.abs(chgPct*100).toFixed(1)}%</div>
+                  <div class="text-sm text-muted">卖出 ¥${(qty * sellP).toLocaleString('zh-CN', {maximumFractionDigits:0})}</div>
+                </div>
+              </div>
+              <div class="flex gap-8 mt-8">
+                <button class="btn sm" style="flex:1;" onclick="Warehouse.showSell('${code}', ${qty})">卖出</button>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    // 子tab栏
+    let subTabHTML = '<div class="tab-container" style="margin-bottom:8px;"><div class="tab-bar">';
+    subTabs.forEach(t => {
+      const isActive = this.currentSubTab === t.key;
+      let badge = '';
+      if (t.key === 'all' && allCount > 0) {
+        badge = ` (${allCount})`;
+      } else if (t.key !== 'all' && catStats[t.key] && catStats[t.key].count > 0) {
+        badge = ` (${catStats[t.key].count})`;
+      }
+      subTabHTML += `<div class="tab${isActive ? ' active' : ''}" onclick="Pages.warehouse.switchSubTab('${t.key}')">${t.label}${badge}</div>`;
+    });
+    subTabHTML += '</div></div>';
+
+    // 当前分类市值
+    let valueLabel = '';
+    if (this.currentSubTab === 'all') {
+      valueLabel = allValue > 0 ? `总市值 ¥${allValue.toLocaleString('zh-CN', {maximumFractionDigits:0})}` : '';
+    } else {
+      const st = catStats[this.currentSubTab];
+      if (st && st.value > 0) {
+        valueLabel = `${this._categories[this.currentSubTab].label} 市值 ¥${st.value.toLocaleString('zh-CN', {maximumFractionDigits:0})}`;
+      }
+    }
+
+    return `
+      ${subTabHTML}
+      ${valueLabel ? `<div class="text-sm text-muted" style="margin-bottom:8px;padding:0 4px;">${valueLabel}</div>` : ''}
+      <div class="section-title">我的库存</div>
+      ${listHTML}
+    `;
+  },
+
+
+  /* 渲染成品选项卡 */
+  _renderFinishedGoodsTab(inv, s, free) {
+    // 动态获取成品列表
+    const finishedCodes = [];
+    if (window.FactoryProducts) {
+      FactoryProducts._forEachProduct((factoryCode, product) => {
+        if (product.output && !finishedCodes.includes(product.output.code)) {
+          finishedCodes.push(product.output.code);
+        }
+      });
+    }
+    
+    if (finishedCodes.length === 0) {
+      return '<div class="empty">暂无成品，需先分配工厂产品</div>';
+    }
+    
+    // 统计成品库存
+    let totalValue = 0;
+    let itemCount = 0;
+    const entries = [];
+    finishedCodes.forEach(code => {
+      const qty = inv[code] || 0;
+      if (qty > 0) {
+        const mat = DATA.rawMaterials.find(m => m.code === code);
+        if (mat) {
+          const mkt = Employees.materialPrice(code);
+          totalValue += qty * mkt;
+          itemCount++;
+          entries.push({ code, qty, mat, mkt });
+        }
+      }
+    });
+    
+    let h = '';
+    if (totalValue > 0) {
+      h += '<div class="text-sm text-muted" style="margin-bottom:8px;padding:0 4px;">成品总市值 ¥' + totalValue.toLocaleString('zh-CN', {maximumFractionDigits:0}) + ' · ' + itemCount + ' 种</div>';
+      h += '<button class="btn sm primary" style="width:100%;margin-bottom:12px;" onclick="Warehouse.sellAllFinished()">一键售出全部成品</button>';
+    }
+    
+    h += '<div class="section-title">成品库存</div>';
+    
+    if (entries.length === 0) {
+      h += '<div class="empty">成品仓库为空</div>';
+    } else {
+      entries.forEach(({ code, qty, mat, mkt }) => {
+        const sellP = Employees.materialSellPrice(code);
+        const chgPct = (mkt - mat.price) / mat.price;
+        const chgColor = chgPct > 0.001 ? 'var(--up)' : (chgPct < -0.001 ? 'var(--down)' : 'var(--text-secondary)');
+        const chgArrow = chgPct > 0.001 ? '↑' : (chgPct < -0.001 ? '↓' : '—');
+        h += '<div class="list-item">';
+        h += '<div class="list-row"><div>';
+        h += '<div class="font-medium">' + mat.name + '</div>';
+        h += '<div class="text-sm text-muted">' + qty.toFixed(1) + ' ' + mat.unit + ' · 市值 ¥' + (qty * mkt).toLocaleString('zh-CN', {maximumFractionDigits:0}) + '</div>';
+        h += '</div><div style="text-align:right;">';
+        h += '<div class="text-sm" style="color:' + chgColor + ';">¥' + mkt + '/' + mat.unit + ' ' + chgArrow + Math.abs(chgPct*100).toFixed(1) + '%</div>';
+        h += '<div class="text-sm text-muted">卖出 ¥' + (qty * sellP).toLocaleString('zh-CN', {maximumFractionDigits:0}) + '</div>';
+        h += '</div></div>';
+        h += '<div class="flex gap-8 mt-8">';
+        h += '<button class="btn sm primary" style="flex:1;" onclick="Warehouse.showSell(\'' + code + '\', ' + qty + ')">卖出</button>';
+        h += '</div></div>';
+      });
+    }
+    
+    return h;
+  },
+
   /* 切换选项卡 */
   switchTab(tabName) {
     this.currentTab = tabName;
+    this.render(document.getElementById('app'));
+  },
+
+  /* 切换库存子选项卡 */
+  switchSubTab(subTab) {
+    this.currentSubTab = subTab;
     this.render(document.getElementById('app'));
   },
 
@@ -234,9 +409,34 @@ const Warehouse = {
         Employees.sellMaterial(code, qty);
       }
     });
+  },
+  /* 一键售出全部成品 */
+  sellAllFinished() {
+    if (!window.FactoryProducts) { UI.toast('产品系统未加载'); return; }
+    const inv = State.data.inventory || {};
+    let totalSold = 0;
+    let totalCash = 0;
+    FactoryProducts._forEachProduct((factoryCode, product) => {
+      if (!product.output) return;
+      const code = product.output.code;
+      const qty = inv[code] || 0;
+      if (qty <= 0) return;
+      const sellP = Employees.materialSellPrice(code);
+      const cash = Math.floor(sellP * qty);
+      totalCash += cash;
+      totalSold += qty;
+      delete inv[code];
+    });
+    if (totalSold <= 0) {
+      UI.toast('没有可售出的成品');
+      return;
+    }
+    State.data.cash += totalCash;
+    State.save();
+    UI.toast('售出全部成品 ' + totalSold.toFixed(0) + ' 单位，到账 ' + State.formatMoney(totalCash));
+    Router.refresh();
   }
 };
-
 window.Pages = window.Pages || {};
 window.Pages.warehouse = Pages.warehouse;
 window.Warehouse = Warehouse;

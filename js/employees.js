@@ -341,6 +341,55 @@ const Employees = {
     }
   },
 
+
+  /* 工厂产品原料满足率（遍历该工厂所有已分配产品） */
+  factoryProductSatisfaction(factoryCode, factoryQty) {
+    const owned = State.data.industries.find(i => i.type === 'factory' && i.category === factoryCode);
+    if (!owned || !owned.products || !window.FactoryProducts) return 1.0;
+    let minSat = 1.0;
+    Object.entries(owned.products).forEach(([prodCode, lineCount]) => {
+      if (lineCount <= 0) return;
+      const sat = FactoryProducts.productSatisfaction(factoryCode, prodCode, lineCount);
+      minSat = Math.min(minSat, sat);
+    });
+    return minSat;
+  },
+
+  /* 工厂产品消耗原料 */
+  consumeFactoryProductMaterials(factoryCode, factoryQty) {
+    const owned = State.data.industries.find(i => i.type === 'factory' && i.category === factoryCode);
+    if (!owned || !owned.products || !window.FactoryProducts) return;
+    Object.entries(owned.products).forEach(([prodCode, lineCount]) => {
+      if (lineCount <= 0) return;
+      const sat = FactoryProducts.productSatisfaction(factoryCode, prodCode, lineCount);
+      FactoryProducts.consumeProductMaterials(factoryCode, prodCode, lineCount, sat);
+    });
+  },
+
+  /* 工厂产品生产成品到仓库 */
+  produceFactoryProducts(factoryCode, factoryQty, log) {
+    const owned = State.data.industries.find(i => i.type === 'factory' && i.category === factoryCode);
+    if (!owned || !owned.products || !window.FactoryProducts) return;
+    Object.entries(owned.products).forEach(([prodCode, lineCount]) => {
+      if (lineCount <= 0) return;
+      const sat = FactoryProducts.productSatisfaction(factoryCode, prodCode, lineCount);
+      const product = FactoryProducts.getProduct(factoryCode, prodCode);
+      if (!product) return;
+      const result = FactoryProducts.produceProductOutput(factoryCode, prodCode, lineCount, sat);
+      if (result && log) {
+        const matName = product.name;
+        if (result.stored > 0) {
+          log.details.push({ label: '产出 ' + matName + ' +' + result.stored.toFixed(1) + product.unit, amount: 0, type: 'info' });
+        }
+        if (result.overflow > 0.01) {
+          const cashIn = Math.floor(result.sellPrice * 0.98 * result.overflow);
+          State.data.cash += cashIn;
+          log.income += cashIn;
+          log.details.push({ label: '溢出 ' + matName + ' ' + result.overflow.toFixed(1) + ' 自动售出 +' + State.formatMoney(cashIn), amount: cashIn, type: 'income' });
+        }
+      }
+    });
+  },
   /* ===== 仓库系统 ===== */
 
   /* 获取原料当前市场价 */

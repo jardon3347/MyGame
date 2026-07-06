@@ -21,7 +21,7 @@ Pages.overview = {
       const cat = State.findIndustryCategory(ind.type, ind.category);
       if (cat) {
         const qty = ind.quantity || 1;
-        industryValue += cat.cost * 0.8 * qty;
+        if (cat.cost) industryValue += cat.cost * 0.8 * qty;
         const empMult = Employees.multiplier(ind.type, ind.category);
         if (empMult > 0) {
           let recipeSat = 1.0;

@@ -216,7 +216,7 @@ const Staff = {
   },
 
   // 选项卡状态
-  currentAssignTab: 'current',
+  currentAssignTab: 'quick',
   currentAssignedInd: null,
 
   /* 模式 A：指定员工组，选产业 + 数量 */
@@ -251,15 +251,15 @@ const Staff = {
     const ind = DATA.industries[type];
 
     // 设置当前状态
-    this.currentAssignTab = 'current';
+    this.currentAssignTab = 'quick';
     this.currentAssignedInd = { type, category };
 
     // 选项卡界面
     const tabsHtml = `
       <div class="tab-container" style="margin-bottom:12px;">
         <div class="tab-bar">
-          <div class="tab active" data-tab="current" onclick="Staff.switchAssignTab('current')">
-            📦 当前员工
+          <div class="tab active" data-tab="quick" onclick="Staff.switchAssignTab('quick')">
+            ⚡ 快速分配
           </div>
           <div class="tab" data-tab="unassigned" onclick="Staff.switchAssignTab('unassigned')">
             🆕 可分配
@@ -267,13 +267,13 @@ const Staff = {
           <div class="tab" data-tab="transfer" onclick="Staff.switchAssignTab('transfer')">
             🔄 可调拨
           </div>
-          <div class="tab" data-tab="quick" onclick="Staff.switchAssignTab('quick')">
-            ⚡ 快速分配
+          <div class="tab" data-tab="current" onclick="Staff.switchAssignTab('current')">
+            📦 当前员工
           </div>
         </div>
       </div>
       <div id="assign-tab-content" style="max-height:50vh; overflow-y:auto; -webkit-overflow-scrolling:touch;">
-        ${this._renderCurrentTab(type, category)}
+        ${this._renderQuickTab(type, category)}
       </div>
     `;
 
@@ -446,16 +446,36 @@ const Staff = {
     const totalUnassigned = unassigned.reduce((sum, g) => sum + g.count, 0);
     const owned = State.data.industries.find(i => i.type === type && i.category === category);
     const qty = owned ? (owned.quantity || 1) : 1;
-    
+
     // 统计各等级未分配员工
     const lvlCounts = {1: 0, 2: 0, 3: 0, 4: 0};
     unassigned.forEach(g => {
       lvlCounts[g.level] = (lvlCounts[g.level] || 0) + g.count;
     });
-    
+
     let html = `<div class="text-sm text-muted" style="margin:0 0 8px;">快速分配助手</div>`;
-    
-    // 一键分配所有未分配员工
+
+    // 智能推荐
+    const recommended = this._calculateRecommended(type, category, qty, lvlCounts);
+    if (recommended.total > 0) {
+      html += `
+        <div class="text-sm text-muted" style="margin:16px 0 8px;">智能推荐</div>
+        <div class="list-item" style="background:var(--bg-soft);">
+          <div class="font-medium">🧠 根据产业规模推荐</div>
+          <div class="text-sm text-muted" style="margin:6px 0 10px;">
+            基于您拥有${qty}个产业单位，推荐分配：<br>
+            ${Object.entries(recommended.byLevel).filter(([_, c]) => c > 0).map(([lvl, cnt]) => `
+              <span style="color:${DATA.employeeLevels['L' + lvl].color};">${DATA.employeeLevels['L' + lvl].name} ${cnt}名</span>
+            `).join(' · ')}
+          </div>
+          <button class="btn primary full" onclick="Staff._assignRecommended('${type}', '${category}')">
+            ✅ 按推荐分配
+          </button>
+        </div>
+      `;
+    }
+
+    // 一键全派
     html += `
       <div class="list-item" style="margin-bottom:12px;background:var(--bg-soft);">
         <div class="font-medium">🚀 一键全派</div>
@@ -464,24 +484,24 @@ const Staff = {
         </div>
         <button class="btn primary full" onclick="Staff._assignAllUnassigned('${type}', '${category}')"
           ${totalUnassigned <= 0 ? 'disabled' : ''}>
-          💥 分配全部${totalUnassigned}名员工
+          📋 分配全部${totalUnassigned}名员工
         </button>
       </div>
     `;
-    
+
     // 按等级分配
     html += `<div class="text-sm text-muted" style="margin:16px 0 8px;">按等级分配</div>`;
-    
+
     [1, 2, 3, 4].forEach(level => {
       const count = lvlCounts[level] || 0;
       if (count === 0) return;
       const lvl = DATA.employeeLevels['L' + level];
-      
+
       html += `
         <div class="list-item" style="padding:10px 12px;margin-bottom:8px;">
           <div class="list-row">
             <div>
-              <span class="font-medium" style="color:${lvl.color};">● ${lvl.name} ×${count}</span>
+              <span class="font-medium" style="color:${lvl.color};">• ${lvl.name} ×${count}</span>
               <div class="text-sm text-muted">产出 ×${lvl.multiplier}/人 · 日薪 ¥${lvl.salary}/人</div>
             </div>
           </div>
@@ -495,27 +515,7 @@ const Staff = {
         </div>
       `;
     });
-    
-    // 智能推荐
-    const recommended = this._calculateRecommended(type, category, qty, lvlCounts);
-    if (recommended.total > 0) {
-      html += `
-        <div class="text-sm text-muted" style="margin:16px 0 8px;">智能推荐</div>
-        <div class="list-item" style="background:var(--bg-soft);">
-          <div class="font-medium">🤖 根据产业规模推荐</div>
-          <div class="text-sm text-muted" style="margin:6px 0 10px;">
-            基于您拥有${qty}个产业单位，推荐分配：<br>
-            ${Object.entries(recommended.byLevel).filter(([_, c]) => c > 0).map(([lvl, cnt]) => `
-              <span style="color:${DATA.employeeLevels['L' + lvl].color};">${DATA.employeeLevels['L' + lvl].name} ${cnt}名</span>
-            `).join(' · ')}
-          </div>
-          <button class="btn primary full" onclick="Staff._assignRecommended('${type}', '${category}')">
-            ✨ 按推荐分配
-          </button>
-        </div>
-      `;
-    }
-    
+
     if (totalUnassigned === 0 && Object.values(lvlCounts).every(c => c === 0)) {
       html = `
         <div class="empty">暂无未分配员工</div>
@@ -525,7 +525,7 @@ const Staff = {
         </div>
       `;
     }
-    
+
     return html;
   },
 
