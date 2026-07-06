@@ -201,14 +201,7 @@ Pages.home = {
 const Home = {
   _advancing: false,
   advance(days) {
-    // 僵尸锁自愈：若上次模态框被非正常途径关闭（页面导航/刷新/浏览器后退），
-    // _advancing 可能残留为 true，导致后续所有推进都被吞掉。检测并清理。
-    if (this._advancing && !document.querySelector('.modal-mask')) {
-      console.warn('Home.advance: 检测到残留的 _advancing 锁，已自动清理');
-      this._advancing = false;
-      TimeManager.autoResume();
-    }
-    if (this._advancing) return; // 真正在推进中，忽略重复点击
+    if (this._advancing) return;
     this._advancing = true;
     // 加速期间暂停自然流逝，避免叠加
     TimeManager.autoPause();
@@ -230,8 +223,7 @@ const Home = {
     TimeManager.remaining = TimeManager.totalSec;
     TimeManager.autoResume();
 
-    // 显示结算弹窗（用 try/finally 确保 _advancing 必定被重置）
-    try {
+    // 显示结算弹窗
     let content = '';
     if (result.summaries.length === 1) {
       const log = result.summaries[0];
@@ -304,16 +296,6 @@ const Home = {
     if (mask) {
       const modalEl = mask.querySelector('.modal');
       if (modalEl) modalEl.dataset.dismissable = 'false';
-    }
-    } catch (e) {
-      console.error('结算弹窗渲染失败:', e);
-      UI.toast('结算弹窗渲染失败: ' + e.message);
-    } finally {
-      // 无论成功还是失败，都要重置 _advancing，避免死锁
-      this._advancing = false;
-      TimeManager.autoResume();
-      TimeManager.updateUI();
-      if (Router.current === 'home') Router.refresh();
     }
   },
 

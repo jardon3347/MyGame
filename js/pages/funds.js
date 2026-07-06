@@ -161,7 +161,7 @@ Pages.fundDetail = {
         <div class="topbar">
           <div style="font-size:11px;color:var(--text-secondary);">${f.code} \u00b7 ${f.type} \u00b7 \u98CE\u9669\u7B49\u7EA7\uFF1A${f.risk}</div>
           <div style="font-size:28px;font-weight:600;margin-top:4px;" class="${change >= 0 ? 'text-up' : 'text-down'}">\u00A5${price.toFixed(4)}</div>
-          <div class="text-sm ${change >= 0 ? 'text-up' : 'text-down'}">${change >= 0 ? '+' : ''}${price - prev >= 0 ? '+' : ''}${(price-prev).toFixed(4)} (${State.formatPct(changePct)})</div>
+          <div class="text-sm ${change >= 0 ? 'text-up' : 'text-down'}">${change >= 0 ? '+' : ''}${(price-prev).toFixed(4)} (${State.formatPct(changePct)})</div>
         </div>
 
         <div class="section-title">\u51C0\u503C\u8D70\u52BF\uFF08\u8FD1 ${Math.min(hist.length, 30)} \u65E5\uFF09</div>

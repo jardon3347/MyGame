@@ -2,13 +2,23 @@
 
 const LogisticsSystem = {
 
-  /* 获取物流总规则槽位（所有物流站的 slots × 数量） */
+  /* 等级效率加成：每升一级+20% */
+  getLevelMultiplier(level) {
+    return 1 + (level - 1) * 0.2;
+  },
+
+  /* 获取单个物流站的有效槽位数（含等级加成） */
+  getEffectiveSlots(cat, level, quantity) {
+    return Math.floor((cat.slots || 5) * (quantity || 1) * this.getLevelMultiplier(level || 1));
+  },
+
+  /* 获取物流总规则槽位（所有物流站的有效槽位之和） */
   getTotalSlots() {
     let slots = 0;
     (State.data.industries || []).forEach(ind => {
       if (ind.type !== 'logistics') return;
       const cat = State.findIndustryCategory('logistics', ind.category);
-      if (cat) slots += (cat.slots || 5) * (ind.quantity || 1);
+      if (cat) slots += this.getEffectiveSlots(cat, ind.level, ind.quantity);
     });
     return slots;
   },
@@ -18,13 +28,26 @@ const LogisticsSystem = {
     return (State.data.logisticsRules || []).length;
   },
 
-  /* 最优手续费率（取所有物流站中最低的） */
+  /* 剩余槽位 */
+  getFreeSlots() {
+    return Math.max(0, this.getTotalSlots() - this.getUsedSlots());
+  },
+
+  /* 获取单个物流站的有效手续费率（含等级加成，等级越高手续费越低） */
+  getEffectiveFeeRate(cat, level) {
+    return (cat.feeRate || 0.02) / this.getLevelMultiplier(level || 1);
+  },
+
+  /* 最优手续费率（取所有物流站中最低的，含等级加成） */
   getBestFeeRate() {
-    let best = 0.02; // 默认2%
+    let best = 0.02;
     (State.data.industries || []).forEach(ind => {
       if (ind.type !== 'logistics') return;
       const cat = State.findIndustryCategory('logistics', ind.category);
-      if (cat && cat.feeRate && cat.feeRate < best) best = cat.feeRate;
+      if (cat && cat.feeRate !== undefined) {
+        const effective = this.getEffectiveFeeRate(cat, ind.level);
+        if (effective < best) best = effective;
+      }
     });
     return best;
   },
@@ -47,6 +70,15 @@ const LogisticsSystem = {
     });
   },
 
+  /* 是否支持高端物料（跨境物流站） */
+  canManagePremium() {
+    return (State.data.industries || []).some(ind => {
+      if (ind.type !== 'logistics') return false;
+      const cat = State.findIndustryCategory('logistics', ind.category);
+      return cat && cat.premiumOnly;
+    });
+  },
+
   /* 物流站类型信息摘要 */
   getStationSummary() {
     const stations = [];
@@ -55,13 +87,17 @@ const LogisticsSystem = {
       const cat = State.findIndustryCategory('logistics', ind.category);
       if (cat) {
         stations.push({
+          code: cat.code,
           name: cat.name,
           quantity: ind.quantity || 1,
           level: ind.level || 1,
-          slots: (cat.slots || 5) * (ind.quantity || 1),
-          feeRate: cat.feeRate || 0.02,
+          effectiveSlots: this.getEffectiveSlots(cat, ind.level, ind.quantity),
+          effectiveFeeRate: this.getEffectiveFeeRate(cat, ind.level),
+          rawFeeRate: cat.feeRate || 0.02,
+          rawSlots: cat.slots || 5,
           canBuy: !!cat.canBuy,
-          finishedOnly: !!cat.finishedOnly
+          finishedOnly: !!cat.finishedOnly,
+          premiumOnly: !!cat.premiumOnly
         });
       }
     });
@@ -95,7 +131,7 @@ const LogisticsSystem = {
   /* ===== 每日结算 ===== */
   settle(log) {
     const rules = State.data.logisticsRules;
-    if (!rules || rules.length === 0) return;
+    if (!rules || !Array.isArray(rules) || rules.length === 0) return;
     if (!State.data.inventory) State.data.inventory = {};
     const inv = State.data.inventory;
     const feeRate = this.getBestFeeRate();

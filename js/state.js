@@ -117,7 +117,7 @@ const State = {
       });
     }
     // 物流规则系统迁移
-    if (!d.logisticsRules) d.logisticsRules = {};
+    if (!d.logisticsRules || !Array.isArray(d.logisticsRules)) d.logisticsRules = [];
   },
 
   /* 探测 localStorage 是否可用 */
@@ -182,7 +182,7 @@ const State = {
       nextNewsDay: 4,        // 首次新闻在第 4 天
       news: [],             // 新闻历史
       logs: []
-      ,logisticsRules: {}     // 物流自动买卖规则 { logisticsId: { rules: [...] } }
+      ,logisticsRules: []      // 物流自动买卖规则（数组）
     };
     // 初始化股票价格
     DATA.stocks.forEach(s => { this.data.stockPrices[s.code] = s.basePrice; });

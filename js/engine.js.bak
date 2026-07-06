@@ -113,20 +113,6 @@ const Engine = {
     return { summaries, events, completedDays: summaries.length };
   },
 
-  /* 深拷贝当前存档（用于事务回滚） */
-  _snapshot() {
-    return JSON.stringify(State.data);
-  },
-
-  /* 还原存档快照 */
-  _restore(snapshot) {
-    try {
-      State.data = JSON.parse(snapshot);
-    } catch (e) {
-      // 解析失败时保持现状，避免二次破坏
-    }
-  },
-
   /* 推进一天 */
   advanceOneDay() {
     const d = State.data.date;

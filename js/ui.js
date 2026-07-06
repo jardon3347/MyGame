@@ -234,6 +234,69 @@ const UI = {
     this.closeModal();
     if (st.onConfirm) st.onConfirm(val);
   },
+  capacitySlider({ title, max, current, unitLabel, onConfirm }) {
+    const id = 'cs_' + Date.now();
+    const step = max <= 10 ? 1 : (max <= 50 ? 5 : (max <= 100 ? 10 : 50));
+
+    const content = `
+      <div class="np-info">
+        <div class="np-unit">${unitLabel}</div>
+        <div class="np-max">最多 ${max.toLocaleString('zh-CN')}</div>
+      </div>
+      <div class="np-display" id="${id}_val">${current.toLocaleString('zh-CN')}</div>
+      <div class="np-unit-text">单位产能</div>
+      <input type="range" class="np-slider" id="${id}_slider"
+             min="0" max="${max}" value="${current}" step="${step}"
+             oninput="UI._csUpdate('${id}', this.value)">
+      <div class="np-quick">
+        ${[1, 5, 10, 50].filter(n => n <= max).map(n => `<button class="np-quick-btn" onclick="UI._csAdd('${id}', ${n})">+${n}</button>`).join('')}
+        <button class="np-quick-btn np-max-btn" onclick="UI._csSet('${id}', ${max})">最大</button>
+      </div>
+      <div class="np-total">
+        <span>分配后</span>
+        <span id="${id}_result">${current.toLocaleString('zh-CN')}</span>
+      </div>
+    `;
+
+    this.modal(title, content, [
+      { label: '取消', onclick: 'UI.closeModal()' },
+      { label: '确认', class: 'primary', onclick: `UI._csSubmit('${id}')` }
+    ]);
+
+    window._csState = { id, max, current, value: current, onConfirm };
+  },
+
+  _csUpdate(id, val) {
+    val = parseInt(val) || 0;
+    const st = window._csState;
+    st.value = val;
+    document.getElementById(id + '_val').textContent = val.toLocaleString('zh-CN');
+    document.getElementById(id + '_result').textContent = val.toLocaleString('zh-CN');
+  },
+
+  _csSet(id, val) {
+    const st = window._csState;
+    val = Math.max(0, Math.min(st.max, val));
+    st.value = val;
+    document.getElementById(id + '_val').textContent = val.toLocaleString('zh-CN');
+    document.getElementById(id + '_slider').value = val;
+    document.getElementById(id + '_result').textContent = val.toLocaleString('zh-CN');
+  },
+
+  _csAdd(id, n) {
+    const st = window._csState;
+    const newVal = Math.min(st.value + n, st.max);
+    this._csSet(id, newVal);
+  },
+
+  _csSubmit(id) {
+    const st = window._csState;
+    const val = st.value;
+    this.closeModal();
+    if (st.onConfirm) st.onConfirm(val);
+  },
+
+
 
   /* 输入弹窗 */
   prompt(title, label, placeholder, defaultValue, onSubmit) {

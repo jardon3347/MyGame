@@ -235,10 +235,10 @@ const Overview = {
     const isDark = html.getAttribute('data-theme') === 'dark';
     if (isDark) {
       html.removeAttribute('data-theme');
-      localStorage.setItem('shengshi_theme', 'light');
+      try { localStorage.setItem('shengshi_theme', 'light'); } catch (e) {}
     } else {
       html.setAttribute('data-theme', 'dark');
-      localStorage.setItem('shengshi_theme', 'dark');
+      try { localStorage.setItem('shengshi_theme', 'dark'); } catch (e) {}
     }
     // 刷新按钮文字
     const btn = document.getElementById('theme-toggle-btn');
@@ -250,9 +250,13 @@ const Overview = {
   },
 
   initTheme() {
-    const saved = localStorage.getItem('shengshi_theme');
-    if (saved === 'dark') {
-      document.documentElement.setAttribute('data-theme', 'dark');
+    try {
+      const saved = localStorage.getItem('shengshi_theme');
+      if (saved === 'dark') {
+        document.documentElement.setAttribute('data-theme', 'dark');
+      }
+    } catch (e) {
+      // localStorage unavailable (e.g. file:// protocol)
     }
   }
 };

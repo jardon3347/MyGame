@@ -80,18 +80,18 @@ const DATA = {
       icon: '🌾',
       unit: '亩',
       categories: [
-        { code: 'wheat',   name: '小麦',  dailyIncome: 24,  cycle: '秋播夏收',  produces: { code: 'wheat',   qty: 2.0 } },
-        { code: 'rice',    name: '水稻',  dailyIncome: 30,  cycle: '一年两熟',  produces: { code: 'rice',    qty: 2.5 } },
-        { code: 'soy',     name: '大豆',  dailyIncome: 20,  cycle: '周期短',    produces: { code: 'soy',     qty: 1.8 } },
-        { code: 'corn',    name: '玉米',  dailyIncome: 22,  cycle: '饲料刚需',  produces: { code: 'corn',    qty: 2.0 } },
-        { code: 'cotton',  name: '棉花',  dailyIncome: 36,  cycle: '工业原料',  produces: { code: 'cotton',  qty: 1.5 } },
-        { code: 'rape',    name: '油菜',  dailyIncome: 26,  cycle: '油料作物',  produces: { code: 'rape',    qty: 1.8 } },
-        { code: 'sugarc',  name: '甘蔗',  dailyIncome: 40,  cycle: '糖料来源',  produces: { code: 'sugarc',  qty: 3.0 } },
-        { code: 'tea',     name: '茶园',  dailyIncome: 56,  cycle: '经济作物',  produces: { code: 'tea',     qty: 0.8 } },
-        { code: 'veg',     name: '蓔菜',  dailyIncome: 18,  cycle: '周期最短',  produces: { code: 'veg',     qty: 2.5 } },
-        { code: 'fruit',   name: '果树',  dailyIncome: 48,  cycle: '多年生',    produces: { code: 'fruit',   qty: 1.2 } },
-        { code: 'rubber',  name: '橡胶',  dailyIncome: 70,  cycle: '热带作物',  produces: { code: 'rubber',  qty: 0.8 } },
-        { code: 'tobacco', name: '烟叶',  dailyIncome: 64,  cycle: '专卖作物',  produces: { code: 'tobacco', qty: 0.8 } }
+        { code: 'wheat',   name: '小麦',  dailyIncome: 48,  cycle: '秋播夏收',  produces: { code: 'wheat',   qty: 2.0 } },
+        { code: 'rice',    name: '水稻',  dailyIncome: 60,  cycle: '一年两熟',  produces: { code: 'rice',    qty: 2.5 } },
+        { code: 'soy',     name: '大豆',  dailyIncome: 40,  cycle: '周期短',    produces: { code: 'soy',     qty: 1.8 } },
+        { code: 'corn',    name: '玉米',  dailyIncome: 44,  cycle: '饲料刚需',  produces: { code: 'corn',    qty: 2.0 } },
+        { code: 'cotton',  name: '棉花',  dailyIncome: 72,  cycle: '工业原料',  produces: { code: 'cotton',  qty: 1.5 } },
+        { code: 'rape',    name: '油菜',  dailyIncome: 52,  cycle: '油料作物',  produces: { code: 'rape',    qty: 1.8 } },
+        { code: 'sugarc',  name: '甘蔗',  dailyIncome: 80,  cycle: '糖料来源',  produces: { code: 'sugarc',  qty: 3.0 } },
+        { code: 'tea',     name: '茶园',  dailyIncome: 112,  cycle: '经济作物',  produces: { code: 'tea',     qty: 0.8 } },
+        { code: 'veg',     name: '蓔菜',  dailyIncome: 36,  cycle: '周期最短',  produces: { code: 'veg',     qty: 2.5 } },
+        { code: 'fruit',   name: '果树',  dailyIncome: 96,  cycle: '多年生',    produces: { code: 'fruit',   qty: 1.2 } },
+        { code: 'rubber',  name: '橡胶',  dailyIncome: 140,  cycle: '热带作物',  produces: { code: 'rubber',  qty: 0.8 } },
+        { code: 'tobacco', name: '烟叶',  dailyIncome: 128,  cycle: '专卖作物',  produces: { code: 'tobacco', qty: 0.8 } }
       ]
     },
     mining: {
@@ -117,16 +117,16 @@ const DATA = {
       icon: '🔥',
       unit: '单位产能',
       categories: [
-        { code: 'steel',    name: '炼钢',       dailyIncome: 140,  produces: { code: 'steel',    qty: 1.5 } },
-        { code: 'copperR',  name: '炼铜',       dailyIncome: 160,  produces: { code: 'copperR',  qty: 1.2 } },
-        { code: 'alum',     name: '炼铝',       dailyIncome: 150,  produces: { code: 'alum',     qty: 1.3 } },
-        { code: 'precious', name: '贵金属冶炼', dailyIncome: 260, produces: { code: 'precious_m', qty: 0.3 } },
-        { code: 'ironR',    name: '炼铁',       dailyIncome: 116,  produces: { code: 'ironR',    qty: 1.8 } },
-        { code: 'zincR',    name: '炼锌',       dailyIncome: 144,  produces: { code: 'zincR',    qty: 1.2 } },
-        { code: 'leadR',    name: '炼铅',       dailyIncome: 136,  produces: { code: 'leadR',    qty: 1.2 } },
-        { code: 'tinR',     name: '炼锡',       dailyIncome: 200,  produces: { code: 'tinR',     qty: 1.0 } },
-        { code: 'tungR',    name: '炼钨',       dailyIncome: 280,  produces: { code: 'tungR',    qty: 0.8 } },
-        { code: 'alloy',    name: '铝合金',     dailyIncome: 230,  produces: { code: 'alloy',    qty: 1.0 } }
+        { code: 'steel',    name: '炼钢',       dailyIncome: 280,  produces: { code: 'steel',    qty: 1.5 } },
+        { code: 'copperR',  name: '炼铜',       dailyIncome: 320,  produces: { code: 'copperR',  qty: 1.2 } },
+        { code: 'alum',     name: '炼铝',       dailyIncome: 300,  produces: { code: 'alum',     qty: 1.3 } },
+        { code: 'precious', name: '贵金属冶炼', dailyIncome: 520, produces: { code: 'precious_m', qty: 0.3 } },
+        { code: 'ironR',    name: '炼铁',       dailyIncome: 232,  produces: { code: 'ironR',    qty: 1.8 } },
+        { code: 'zincR',    name: '炼锌',       dailyIncome: 288,  produces: { code: 'zincR',    qty: 1.2 } },
+        { code: 'leadR',    name: '炼铅',       dailyIncome: 272,  produces: { code: 'leadR',    qty: 1.2 } },
+        { code: 'tinR',     name: '炼锡',       dailyIncome: 400,  produces: { code: 'tinR',     qty: 1.0 } },
+        { code: 'tungR',    name: '炼钨',       dailyIncome: 560,  produces: { code: 'tungR',    qty: 0.8 } },
+        { code: 'alloy',    name: '铝合金',     dailyIncome: 460,  produces: { code: 'alloy',    qty: 1.0 } }
       ]
     },
     factory: {
@@ -134,16 +134,16 @@ const DATA = {
       icon: '🏭',
       unit: '条生产线',
       categories: [
-        { code: 'food',    name: '食品厂',   dailyIncome: 104 },
-        { code: 'textile', name: '纺织厂',   dailyIncome: 90 },
-        { code: 'machine', name: '机械厂',   dailyIncome: 190 },
-        { code: 'electr',  name: '电子厂',   dailyIncome: 240 },
-        { code: 'fert',    name: '化肥厂',   dailyIncome: 144 },
-        { code: 'paper',   name: '造纸厂',   dailyIncome: 116 },
-        { code: 'cement',  name: '水泥厂',   dailyIncome: 200 },
-        { code: 'furn',    name: '家具厂',   dailyIncome: 130 },
-        { code: 'brew',    name: '酿酒厂',   dailyIncome: 180 },
-        { code: 'feed',    name: '饲料厂',   dailyIncome: 110 }      ]
+        { code: 'food',    name: '食品厂',   dailyIncome: 208 },
+        { code: 'textile', name: '纺织厂',   dailyIncome: 180 },
+        { code: 'machine', name: '机械厂',   dailyIncome: 380 },
+        { code: 'electr',  name: '电子厂',   dailyIncome: 480 },
+        { code: 'fert',    name: '化肥厂',   dailyIncome: 288 },
+        { code: 'paper',   name: '造纸厂',   dailyIncome: 232 },
+        { code: 'cement',  name: '水泥厂',   dailyIncome: 400 },
+        { code: 'furn',    name: '家具厂',   dailyIncome: 260 },
+        { code: 'brew',    name: '酿酒厂',   dailyIncome: 360 },
+        { code: 'feed',    name: '饲料厂',   dailyIncome: 220 }      ]
     },
     estate: {
       name: '地产',
@@ -154,7 +154,9 @@ const DATA = {
         { code: 'warehouse',   name: '仓库',       cost: 7000,  dailyIncome: 22 },
         { code: 'farmland',    name: '农用地',     cost: 3000,  dailyIncome: 8 },
         { code: 'mine_land',   name: '采矿权',     cost: 8000,  dailyIncome: 20 },
-        { code: 'factory_land',name: '工业用地', cost: 6000,  dailyIncome: 15 }
+        { code: 'factory_land',name: '工业用地', cost: 6000,  dailyIncome: 15 },
+        { code: 'industrial_park', name: '产业园', cost: 35000, dailyIncome: 100 },
+        { code: 'logistics_park',  name: '物流产业园', cost: 12000, dailyIncome: 40 }
       ]
     },
     logistics: {
@@ -162,9 +164,11 @@ const DATA = {
       icon: '🚛',
       unit: '站',
       categories: [
-        { code: 'basic_logistics', name: '基础物流站', cost: 5000, dailyIncome: 15, slots: 5, feeRate: 0.02 },
-        { code: 'auto_logistics', name: '自动物流站', cost: 12000, dailyIncome: 30, slots: 10, feeRate: 0.015, canBuy: true },
-        { code: 'smart_logistics', name: '智能物流中心', cost: 25000, dailyIncome: 50, slots: 20, feeRate: 0.01, canBuy: true, finishedOnly: true }
+        { code: 'basic_logistics',       name: '基础物流站',   cost: 8000,  dailyIncome: 30,  slots: 5,  feeRate: 0.02 },
+        { code: 'regional_logistics',    name: '区域物流站',   cost: 15000, dailyIncome: 60,  slots: 10, feeRate: 0.015, canBuy: true },
+        { code: 'smart_logistics',       name: '智能物流中心', cost: 30000, dailyIncome: 120, slots: 20, feeRate: 0.01,  canBuy: true },
+        { code: 'cold_chain_logistics',  name: '冷链物流站',   cost: 25000, dailyIncome: 80,  slots: 15, feeRate: 0.012, finishedOnly: true },
+        { code: 'cross_border_logistics',name: '跨境物流站',   cost: 40000, dailyIncome: 150, slots: 25, feeRate: 0.005, canBuy: true, premiumOnly: true }
       ]
     }
   },
@@ -197,7 +201,8 @@ const DATA = {
     // 地产
     residential: ['estate', 'residential'], warehouse: ['estate', 'warehouse'],
     farmland: ['estate', 'farmland'], mine_land: ['estate', 'mine_land'],
-    factory_land: ['estate', 'factory_land']
+    factory_land: ['estate', 'factory_land'],
+    industrial_park: ['estate', 'industrial_park']
   },
 
   /* ===== 工厂配方：消耗仓库原料（农产品+金属） ===== */
@@ -251,10 +256,11 @@ const DATA = {
 
   /* ===== 土地前置需求：产业→所需土地类型 ===== */
   landPrereqs: {
-    farm:    { code: 'farmland',     name: '农用地' },
-    mining:  { code: 'mine_land',    name: '采矿权' },
-    factory: { code: 'factory_land', name: '工业用地' },
-    metall:  { code: 'factory_land', name: '工业用地' }
+    farm:      { code: 'farmland',        name: '农用地' },
+    mining:    { code: 'mine_land',       name: '采矿权' },
+    factory:   { code: 'industrial_park', name: '产业园' },
+    metall:    { code: 'factory_land',    name: '工业用地' },
+    logistics: { code: 'logistics_park',  name: '物流产业园' }
   },
 
   /* ===== 产能配置 ===== */
