@@ -287,7 +287,7 @@ const Funds = {
     const maxShares = Math.floor(State.data.cash / unitCost);
     if (maxShares <= 0) { UI.toast('\u73B0\u91D1\u4E0D\u8DB3'); return; }
 
-    UI.numberPicker({
+    UI.numberPicker({ noPlusOne: true,
       title: '\u7533\u8D2D ' + f.name,
       unit: unitCost,
       unitName: '\u4EFD',
@@ -331,7 +331,7 @@ const Funds = {
     const feeRate = held7 ? 0 : 0.0025;
     const unitNet = price * (1 - feeRate);
 
-    UI.numberPicker({
+    UI.numberPicker({ noPlusOne: true,
       title: '\u8D4E\u56DE ' + f.name,
       unit: unitNet,
       unitName: '\u4EFD',

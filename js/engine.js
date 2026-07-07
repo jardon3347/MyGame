@@ -6,6 +6,30 @@ const Engine = {
     return (level || 1) * 1.2;
   },
 
+  /* 工厂秒级结算（3 秒一批，由 TimeManager 每 3 秒调用）
+     不推进日期、不触发新闻、不更新股价、不计入 daily log */
+  factoryTick() {
+    if (!State.data) return;
+    State.data.industries.forEach(ind => {
+      if (ind.type !== 'factory') return;
+      const empMult = Employees.multiplier(ind.type, ind.category);
+      if (empMult <= 0) return;
+      // 没有产品分配则跳过
+      if (!ind.products || Object.keys(ind.products).length === 0) return;
+      const levelMult = Engine.levelMultiplier(ind.level || 1);
+      // 检查是否有正数的产品分配
+      let hasAlloc = false;
+      Object.values(ind.products).forEach(v => { if (v > 0) hasAlloc = true; });
+      if (!hasAlloc) return;
+      const batchIncome = FactoryProducts.produceBatch(ind, empMult, levelMult);
+      if (batchIncome > 0) {
+        State.data.cash += batchIncome;
+      }
+    });
+    State.save();
+  },
+
+
   /* 破产检测：返回 true 表示破产 */
   checkBankruptcy() {
     const s = State.data;
@@ -136,6 +160,8 @@ const Engine = {
     // 阶段1：矿业+农业产出原料进仓库
     State.data.industries.forEach(ind => {
       if (ind.type !== 'mining' && ind.type !== 'farm') return;
+      // 采矿许可证检查：无许可证不产出
+      if (ind.type === 'mining' && (!ind.licenseLevel || ind.licenseLevel <= 0)) return;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
       Employees.produceMaterials(ind, empMult, log);
@@ -167,52 +193,8 @@ const Engine = {
       Employees.produceMaterials(ind, empMult, log);
     });
 
-    // 阶段3：工厂产品系统（消耗原料 → 生产成品到仓库 + 现金收入）
-    State.data.industries.forEach(ind => {
-      if (ind.type !== 'factory') return;
-      const cat = State.findIndustryCategory(ind.type, ind.category);
-      if (!cat) return;
-      const qty = ind.quantity || 1;
-      const empMult = Employees.multiplier(ind.type, ind.category);
-      if (empMult <= 0) return;
-      const levelMult = Engine.levelMultiplier(ind.level || 1);
-      const empCnt = Employees.assignedCount(ind.type, ind.category);
-      
-      // 新产品系统
-      if (window.FactoryProducts && ind.products && Object.keys(ind.products).length > 0) {
-        let daily = 0;
-        Object.entries(ind.products).forEach(([prodCode, lineCount]) => {
-          if (lineCount <= 0) return;
-          const product = FactoryProducts.getProduct(ind.category, prodCode);
-          if (!product) return;
-          const sat = FactoryProducts.productSatisfaction(ind.category, prodCode, lineCount);
-          // 消耗原料
-          FactoryProducts.consumeProductMaterials(ind.category, prodCode, lineCount, sat);
-          // 生产成品到仓库
-          FactoryProducts.produceProductOutput(ind.category, prodCode, lineCount, sat);
-          // 计算现金收入
-          const prodIncome = product.sellPrice * lineCount * empMult * levelMult * sat;
-          daily += prodIncome;
-        });
-        if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
-        State.data.cash += daily;
-        log.income += daily;
-        log.details.push({ label: cat.name + '×' + qty + ' 员工×' + empCnt, amount: daily, type: 'income' });
-      } else {
-        // 兼容旧系统（无产品分配）
-        let recipeSat = 1.0;
-        if (DATA.factoryRecipes[ind.category]) {
-          recipeSat = Employees.recipeSatisfaction(ind.category, qty);
-          Employees.consumeFactoryMaterials(ind.category, qty, recipeSat);
-        }
-        let daily = (cat.dailyIncome || 0) * levelMult * qty * (empMult || 0) * (recipeSat || 1);
-        if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
-        State.data.cash += daily;
-        log.income += daily;
-        const satTag = recipeSat < 1 ? ' (原料' + Math.round(recipeSat*100) + '%)' : '';
-        log.details.push({ label: cat.name + '×' + qty + ' 员工×' + empCnt + satTag, amount: daily, type: 'income' });
-      }
-    });
+    // 阶段3：工厂产品系统（已由 3 秒实时结算替代，此处跳过）
+    // （保留空循环避免影响阶段编号，但不再执行工厂生产）
 
     // 阶段4：无配方产业（纯现金收入，冶金/工厂已在阶段2/3结算过）
     State.data.industries.forEach(ind => {
@@ -223,6 +205,10 @@ const Engine = {
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
       let daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * (empMult || 0);
+      // 矿业：许可证等级加成 — 每级 +20%
+      if (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1) {
+        daily *= (1 + (ind.licenseLevel - 1) * 0.2);
+      }
       if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
       State.data.cash += daily;
       log.income += daily;
@@ -234,6 +220,16 @@ const Engine = {
     // 阶段5：物流结算（自动卖出/自动买入）
     if (window.LogisticsSystem) {
       LogisticsSystem.settle(log);
+      // 统计物流产业真实收支
+      let logisticsIncome = 0, logisticsExpense = 0;
+      log.details.forEach(d => {
+        if (d.label.startsWith('🚛物流')) {
+          if (d.type === 'income') logisticsIncome += d.amount;
+          else if (d.type === 'expense') logisticsExpense += d.amount;
+        }
+      });
+      State.data.lastLogisticsIncome = logisticsIncome;
+      State.data.lastLogisticsExpense = logisticsExpense;
     }
     const salary = Employees.totalSalary();
     if (salary > 0) {
@@ -251,12 +247,17 @@ const Engine = {
 
     // 2b. 贷款利息
     if ((State.data.loan || 0) > 0) {
-      const loanRate = depoRate * DATA.bank.loanRateMultiplier;
+      const credit = DATA.bank.creditRatings[State.data.creditRating] || DATA.bank.creditRatings[State.data.defaultCredit || 'B'];
+      const loanRateMultiplier = credit ? credit.rateMultiplier : DATA.bank.loanRateMultiplier;
+      const loanRate = depoRate * loanRateMultiplier;
       const loanInterest = State.data.loan * loanRate / 365;
       State.data.cash -= loanInterest;
       log.expense += loanInterest;
       log.details.push({ label: `贷款利息 (${(loanRate*100).toFixed(2)}%)`, amount: loanInterest, type: 'expense' });
     }
+
+    // 2b+. 信用评级每日更新
+    this.updateCreditRating();
 
     // 2c. 处理活跃效果到期
     this.processActiveEffects();
@@ -270,7 +271,13 @@ const Engine = {
     let maintenance = 0;
     State.data.industries.forEach(ind => {
       const cat = State.findIndustryCategory(ind.type, ind.category);
-      if (cat && cat.cost) maintenance += cat.cost * 0.0001 * Engine.levelMultiplier(ind.level || 1) * (ind.quantity || 1);
+      if (!cat || !cat.cost) return;
+      let cost = cat.cost * 0.0001 * Engine.levelMultiplier(ind.level || 1) * (ind.quantity || 1);
+      // 矿业：许可证等级降低维护成本 — 每级 -10%
+      if (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1) {
+        cost = cost / (1 + (ind.licenseLevel - 1) * 0.1);
+      }
+      maintenance += cost;
     });
     State.data.cash -= maintenance;
     log.expense += maintenance;
@@ -376,6 +383,46 @@ const Engine = {
     d.day = date.getDate();
     d.dayOfWeek = date.getDay();
     State.data.realDate = date.toISOString().slice(0, 10);
+  },
+
+  /* 每日更新信用评级 */
+  updateCreditRating() {
+    const s = State.data;
+    const bank = DATA.bank;
+    const ratings = bank.creditRatings;
+    if (!ratings) return;
+    const keys = ['A','B','C','D'];
+    if (s.loan === 0 || !s.loan) {
+      s.creditDaysWithoutLoan = (s.creditDaysWithoutLoan || 0) + 1;
+    } else {
+      s.creditDaysWithoutLoan = 0;
+    }
+    // 升级检测
+    if (s.creditDaysWithoutLoan >= bank.creditUpgradeDays && s.creditRating !== 'A') {
+      const idx = keys.indexOf(s.creditRating || bank.defaultCredit);
+      if (idx > 0) {
+        s.creditRating = keys[idx - 1];
+        // 通知玩家
+        if (!s._silentCredit) {
+          State.data.news = State.data.news || [];
+          s.news.unshift({ id: 'cr_up_' + Date.now(), title: '信用评级提升', desc: '连续无贷款表现良好，信用评级升至 ' + ratings[s.creditRating].name, type: 'info', date: this.dateString(), day: s.date.totalDays });
+        }
+        s.creditDaysWithoutLoan = 0;
+      }
+    }
+    // 降级检测（loan > 0 连续 creditDowngradeDays 天）
+    if ((s.loan || 0) > 0) {
+      s._creditLoanDays = (s._creditLoanDays || 0) + 1;
+    } else {
+      s._creditLoanDays = 0;
+    }
+    if ((s._creditLoanDays || 0) >= bank.creditDowngradeDays && s.creditRating !== 'D') {
+      const idx = keys.indexOf(s.creditRating || bank.defaultCredit);
+      if (idx >= 0 && idx < keys.length - 1) {
+        s.creditRating = keys[idx + 1];
+        s._creditLoanDays = 0;
+      }
+    }
   },
 
   /* 日期字符串 */

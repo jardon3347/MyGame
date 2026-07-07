@@ -196,7 +196,7 @@ const UI = {
     return 10000;
   },
 
-  numberPicker({ title, unit, unitName, unitLabel, max, quickAdds, onConfirm }) {
+  numberPicker({ title, unit, unitName, unitLabel, max, quickAdds, onConfirm, noPlusOne }) {
     const id = 'np_' + Date.now();
     const step = this._calcStep(max);
     window._npState = { id, unit, unitName, max, value: 0, onConfirm };
@@ -212,7 +212,7 @@ const UI = {
              min="0" max="${max}" value="0" step="${step}"
              oninput="UI._npUpdate('${id}', this.value)">
       <div class="np-quick">
-        ${quickAdds.map(n => `<button class="np-quick-btn" onclick="UI._npAdd('${id}', ${n})" ${n > max ? 'disabled' : ''}>+${n.toLocaleString('zh-CN')}</button>`).join('')}
+        ${(noPlusOne ? quickAdds : [1, ...quickAdds.filter(n => n !== 1)]).map((n, i) => `<button class="np-quick-btn" onclick="UI._npAdd('${id}', ${n})" ${i > 0 && n > max ? 'disabled' : ''}>+${n.toLocaleString('zh-CN')}</button>`).join('')}
         <button class="np-quick-btn np-max-btn" onclick="UI._npSet('${id}', ${max})">最大</button>
       </div>
       <div class="np-total">
@@ -252,7 +252,7 @@ const UI = {
     this.closeModal();
     if (st.onConfirm) st.onConfirm(val);
   },
-  capacitySlider({ title, max, current, unitLabel, onConfirm }) {
+  capacitySlider({ title, max, current, unitLabel, onConfirm, showTotal = true }) {
     const id = 'cs_' + Date.now();
     const step = max <= 10 ? 1 : (max <= 50 ? 5 : (max <= 100 ? 10 : 50));
 
@@ -262,18 +262,14 @@ const UI = {
         <div class="np-max">最多 ${max.toLocaleString('zh-CN')}</div>
       </div>
       <div class="np-display" id="${id}_val">${current.toLocaleString('zh-CN')}</div>
-      <div class="np-unit-text">单位产能</div>
-      <input type="range" class="np-slider" id="${id}_slider"
+            <input type="range" class="np-slider" id="${id}_slider"
              min="0" max="${max}" value="${current}" step="${step}"
              oninput="UI._csUpdate('${id}', this.value)">
       <div class="np-quick">
         ${[1, 5, 10, 50].filter(n => n <= max).map(n => `<button class="np-quick-btn" onclick="UI._csAdd('${id}', ${n})">+${n}</button>`).join('')}
         <button class="np-quick-btn np-max-btn" onclick="UI._csSet('${id}', ${max})">最大</button>
       </div>
-      <div class="np-total">
-        <span>分配后</span>
-        <span id="${id}_result">${current.toLocaleString('zh-CN')}</span>
-      </div>
+      ${showTotal ? `<div class="np-total"><span>分配后</span><span id="${id}_result">${current.toLocaleString('zh-CN')}</span></div>` : ''}
     `;
 
     this.modal(title, content, [
@@ -281,24 +277,32 @@ const UI = {
       { label: '确认', class: 'primary', onclick: `UI._csSubmit('${id}')` }
     ]);
 
-    window._csState = { id, max, current, value: current, onConfirm };
+    window._csState = { id, max, current, value: current, onConfirm, _labelUpdater: null };
   },
 
   _csUpdate(id, val) {
     val = parseInt(val) || 0;
     const st = window._csState;
     st.value = val;
-    document.getElementById(id + '_val').textContent = val.toLocaleString('zh-CN');
-    document.getElementById(id + '_result').textContent = val.toLocaleString('zh-CN');
+    const display = st._labelUpdater ? st._labelUpdater(val) : val.toLocaleString('zh-CN');
+    document.getElementById(id + '_val').textContent = display;
+    document.getElementById(id + '_result').textContent = display;
+  },
+
+  /* 为容量滑块设置自定义标签更新器 */
+  _customLabelUpdater(id, updater) {
+    const st = window._csState;
+    if (st) st._labelUpdater = updater;
   },
 
   _csSet(id, val) {
     const st = window._csState;
     val = Math.max(0, Math.min(st.max, val));
     st.value = val;
-    document.getElementById(id + '_val').textContent = val.toLocaleString('zh-CN');
+    const display = st._labelUpdater ? st._labelUpdater(val) : val.toLocaleString('zh-CN');
+    document.getElementById(id + '_val').textContent = display;
     document.getElementById(id + '_slider').value = val;
-    document.getElementById(id + '_result').textContent = val.toLocaleString('zh-CN');
+    document.getElementById(id + '_result').textContent = display;
   },
 
   _csAdd(id, n) {
@@ -405,11 +409,11 @@ const UI = {
         const qty = o.quantity || 1;
         count += qty;
         const empMult = Employees.multiplier(type, o.category);
-        if (empMult <= 0 && !['farmland', 'mine_land', 'factory_land'].includes(o.category)) {
+        if (empMult <= 0 && !['farmland', 'factory_land'].includes(o.category)) {
           unstaffed += qty;
         } else {
           let recipeSat = 1.0;
-          if (type === 'factory' && window.FactoryProducts && o.products && Object.keys(o.products).length > 0) {
+          if (type === 'factory' && window.FactoryProducts && o.products !== undefined) {
             daily += FactoryProducts.factoryDailyIncome(o.category);
           } else if (type === 'factory' && DATA.factoryRecipes[o.category]) {
             recipeSat = Employees.recipeSatisfaction(o.category, qty);

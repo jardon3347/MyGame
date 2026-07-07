@@ -1,8 +1,17 @@
-/* employees.js — 员工系统：按类分组、批量招聘、分配、产出加成 */
+/* employees.js — 员工系统：每人独立，有名字有加成 */
 
 const Employees = {
 
-  /* 员工容量上限 = 住宅套数 × 10（每套住宅容纳 10 人） */
+  /* 百家姓 */
+  _surnames: ['王','李','张','刘','陈','杨','黄','赵','吴','周','徐','孙','马','胡','朱','郭','何','高','林','罗'],
+  _givenNames: ['伟','芳','娜','敏','静','丽','强','磊','洋','勇','艳','杰','娟','涛','明','超','霞','平','峰','鑫'],
+
+  _randomName() {
+    return this._surnames[Math.floor(Math.random() * this._surnames.length)] +
+           this._givenNames[Math.floor(Math.random() * this._givenNames.length)];
+  },
+
+  /* 员工容量上限 = 住宅套数 × 10 */
   capacity() {
     let cap = 0;
     State.data.industries.forEach(ind => {
@@ -13,257 +22,149 @@ const Employees = {
     return cap;
   },
 
-  /* 当前员工总数（按 count 求和） */
+  /* 当前员工总数 */
   count() {
-    let n = 0;
-    (State.data.employees || []).forEach(g => { n += (g.count || 0); });
-    return n;
-  },
-
-  /* 是否还能招人 */
-  canRecruit(n) {
-    return this.count() + (n || 1) <= this.capacity();
+    return (State.data.employees || []).length;
   },
 
   /* 未分配员工数 */
   unassignedCount() {
-    let n = 0;
-    (State.data.employees || []).forEach(g => {
-      if (!g.assign) n += (g.count || 0);
-    });
-    return n;
+    return (State.data.employees || []).filter(e => !e.assign).length;
   },
 
-  /* 按等级统计未分配员工数 */
-  unassignedByLevel() {
-    const cnt = [0, 0, 0, 0]; // L1~L4
-    (State.data.employees || []).forEach(g => {
-      if (!g.assign && g.level >= 1 && g.level <= 4) cnt[g.level - 1] += (g.count || 0);
-    });
-    return cnt;
-  },
-
-  /* 招聘：一次招 batchCount 个 */
+  /* 递归招聘：每人独立生成，免费按档随机，付费均匀随机 */
   recruit(mode, qty) {
     const cfg = DATA.recruit[mode];
     if (!cfg) return;
-    const count = qty || cfg.batchCount || DATA.recruit.batchCount;
-
-    if (!this.canRecruit(count)) {
-      const room = this.capacity() - this.count();
-      UI.toast(`宿舍仅剩 ${room} 个名额，无法一次招 ${count} 人`);
-      return;
-    }
-    const totalCost = cfg.cost > 0 ? DATA.recruit.costPerPerson(mode) * count : 0;
+    const count = qty || 1;
+    const cap = this.capacity();
+    const cur = this.count();
+    const room = cap - cur;
+    if (room <= 0) { UI.toast('宿舍已满，无法招聘'); return; }
+    const actual = Math.min(count, room);
+    const totalCost = cfg.cost * actual;
     if (totalCost > 0 && State.data.cash < totalCost) {
       UI.toast('现金不足，需要 ¥' + totalCost.toLocaleString('zh-CN'));
       return;
     }
-
-    // 扣钱
     if (totalCost > 0) State.data.cash -= totalCost;
 
-    // 按概率抽取 count 个员工的等级
-    const results = [0, 0, 0, 0]; // L1~L4 数量
-    for (let i = 0; i < count; i++) {
-      const r = Math.random();
-      let acc = 0, level = 0;
-      for (let j = 0; j < cfg.prob.length; j++) {
-        acc += cfg.prob[j];
-        if (r < acc) { level = j + 1; break; }
-      }
-      if (level === 0) level = 1; // 兜底
-      results[level - 1]++;
-    }
-
-    // 合并到未分配组（同等级合并）
     if (!State.data.employees) State.data.employees = [];
-    results.forEach((cnt, idx) => {
-      if (cnt <= 0) return;
-      const level = idx + 1;
-      const existing = State.data.employees.find(g => !g.assign && g.level === level);
-      if (existing) {
-        existing.count = (existing.count || 0) + cnt;
+    const hired = [];
+    for (let i = 0; i < actual; i++) {
+      let mult;
+      if (mode === 'free' && cfg.tiers) {
+        // 免费招聘：随机选档（0-3 各 25%），再在档内均匀随机
+        const tierIdx = Math.floor(Math.random() * cfg.tiers.length);
+        const tier = cfg.tiers[tierIdx];
+        mult = Math.round((tier.min + Math.random() * (tier.max - tier.min)) * 10) / 10;
       } else {
-        State.data.employees.push({
-          id: 'grp_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
-          level: level,
-          count: cnt,
-          assign: null
-        });
+        // 付费招聘：minMult ~ maxMult 均匀随机
+        mult = Math.round((cfg.minMult + Math.random() * (cfg.maxMult - cfg.minMult)) * 10) / 10;
       }
-    });
-    State.save();
-
-    // 构建结果展示
-    const summary = results.map((cnt, idx) => {
-      if (cnt === 0) return '';
-      const lvl = DATA.employeeLevels['L' + (idx + 1)];
-      return `<div class="list-row">
-        <span class="list-label" style="color:${lvl.color};">● ${lvl.name}</span>
-        <span class="list-value">${cnt} 人 · 产出 ×${lvl.multiplier} · 日薪 ¥${lvl.salary}/人</span>
-      </div>`;
-    }).join('');
-
-    const perCost = DATA.recruit.costPerPerson(mode);
-    const modeLabel = mode === 'free' ? '免费招聘' : (mode === 'paid' ? '付费招聘 ¥' + perCost.toLocaleString('zh-CN') + '/人' : '猎头招聘 ¥' + perCost.toLocaleString('zh-CN') + '/人');
-    UI.modal('🎉 招聘成功（' + count + '人）', `
-      <p style="font-size:13px; color:var(--text-secondary); margin-bottom:10px;">${modeLabel}</p>
-      ${summary || '<div class="empty">未招到任何员工</div>'}
-    `, [
-      { label: '好的', class: 'primary', onclick: 'UI.closeModal()' }
-    ]);
-    Router.refresh();
-  },
-
-  /* 分配员工到产业：从某等级未分配组中拆出 n 人 */
-  assign(groupId, n, type, category) {
-    const grp = (State.data.employees || []).find(g => g.id === groupId);
-    if (!grp) { UI.toast('员工组不存在'); return; }
-    if (grp.assign) { UI.toast('该组已分配'); return; }
-    n = Math.min(n, grp.count || 0);
-    if (n <= 0) { UI.toast('数量无效'); return; }
-
-    // 检查目标是否已有同等级分配组，有则合并
-    const target = State.data.employees.find(g =>
-      g.assign && g.assign.type === type && g.assign.category === category && g.level === grp.level
-    );
-    if (target) {
-      target.count = (target.count || 0) + n;
-    } else {
-      State.data.employees.push({
-        id: 'grp_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
-        level: grp.level,
-        count: n,
-        assign: { type, category }
-      });
-    }
-    // 从源组扣除
-    grp.count -= n;
-    if (grp.count <= 0) {
-      State.data.employees = State.data.employees.filter(g => g.id !== grp.id);
-    }
-    State.save();
-    UI.toast(`已分配 ${n} 人到产业`);
-    Router.refresh();
-  },
-
-  /* 撤回分配：整组撤回为未分配 */
-  unassign(groupId) {
-    const grp = (State.data.employees || []).find(g => g.id === groupId);
-    if (!grp || !grp.assign) return;
-    // 合并到同等级未分配组
-    const unassigned = State.data.employees.find(g => !g.assign && g.level === grp.level);
-    if (unassigned) {
-      unassigned.count = (unassigned.count || 0) + (grp.count || 0);
-      State.data.employees = State.data.employees.filter(g => g.id !== grp.id);
-    } else {
-      grp.assign = null;
-    }
-    State.save();
-    UI.toast('已撤回，员工空闲');
-    Router.refresh();
-  },
-
-  /* 跨品类调拨：从某已分配组拆 n 人到另一个品类 */
-  transfer(fromGroupId, n, toType, toCategory) {
-    const grp = (State.data.employees || []).find(g => g.id === fromGroupId);
-    if (!grp || !grp.assign) { UI.toast('员工组不存在或未分配'); return; }
-    n = Math.min(n, grp.count || 0);
-    if (n <= 0) { UI.toast('数量无效'); return; }
-
-    // 如果目标是同类型同品类，不允许（就是自己）
-    if (grp.assign.type === toType && grp.assign.category === toCategory) {
-      UI.toast('已在当前品类');
-      return;
-    }
-
-    // 添加到目标（同等级合并）
-    const target = State.data.employees.find(g =>
-      g.assign && g.assign.type === toType && g.assign.category === toCategory && g.level === grp.level
-    );
-    if (target) {
-      target.count = (target.count || 0) + n;
-    } else {
-      State.data.employees.push({
-        id: 'grp_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
-        level: grp.level,
-        count: n,
-        assign: { type: toType, category: toCategory }
-      });
-    }
-    // 从源组扣除
-    grp.count -= n;
-    if (grp.count <= 0) {
-      State.data.employees = State.data.employees.filter(g => g.id !== grp.id);
-    }
-    State.save();
-    const fromCat = State.findIndustryCategory(grp.assign.type, grp.assign.category);
-    const toCat = State.findIndustryCategory(toType, toCategory);
-    UI.toast(`已调拨 ${n} 人：${fromCat ? fromCat.name : ''} → ${toCat ? toCat.name : ''}`);
-    Router.refresh();
-  },
-
-  /* 撤回部分员工 */
-  unassignSome(groupId, n) {
-    const grp = (State.data.employees || []).find(g => g.id === groupId);
-    if (!grp || !grp.assign) return;
-    n = Math.min(n, grp.count || 0);
-    if (n <= 0) return;
-    const unassigned = State.data.employees.find(g => !g.assign && g.level === grp.level);
-    if (unassigned) {
-      unassigned.count = (unassigned.count || 0) + n;
-    } else {
-      State.data.employees.push({
-        id: 'grp_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
-        level: grp.level,
-        count: n,
+      const emp = {
+        id: 'emp_' + Date.now() + '_' + Math.floor(Math.random() * 10000),
+        name: this._randomName(),
+        multiplier: mult,
         assign: null
-      });
-    }
-    grp.count -= n;
-    if (grp.count <= 0) {
-      State.data.employees = State.data.employees.filter(g => g.id !== grp.id);
+      };
+      State.data.employees.push(emp);
+      hired.push(emp);
     }
     State.save();
-    UI.toast(`已撤回 ${n} 人`);
+
+    // 结果弹窗：>5人精简显示，≤5人完整列表
+    const modeLabel = mode === 'free' ? '免费招聘' : '付费招聘';
+    let rowsHtml;
+    if (hired.length > 5) {
+      const sorted = [...hired].sort((a, b) => b.multiplier - a.multiplier);
+      const best = sorted.slice(0, 3);
+      const rest = sorted.slice(3, -2);
+      const worst = sorted.slice(-2);
+      const avgMult = (hired.reduce((s, e) => s + e.multiplier, 0) / hired.length);
+      const totalSalary = hired.reduce((s, e) => s + Math.round(e.multiplier * 100), 0);
+      rowsHtml = `
+        <p style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">${modeLabel} · 共花费 ${State.formatMoney(totalCost)}</p>
+        <div style="border-bottom:0.5px solid var(--border);margin-bottom:6px;"></div>
+        ${best.map(e => `<div class="list-row"><span class="list-label" style="color:var(--up);">最佳</span><span>${e.name} ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 100)}</span></div>`).join('')}
+        <div class="text-sm text-muted" style="padding:4px 8px;">...还有 ${rest.length} 人</div>
+        ${worst.map(e => `<div class="list-row"><span class="list-label" style="color:var(--down);">最差</span><span>${e.name} ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 100)}</span></div>`).join('')}
+        <div style="border-bottom:0.5px solid var(--border);margin:6px 0;"></div>
+        <div class="list-row"><span class="text-sm text-muted">平均加成 ×${avgMult.toFixed(1)}</span><span class="text-sm text-muted">总日薪 ¥${totalSalary.toLocaleString('zh-CN')}/天</span></div>
+      `;
+    } else {
+      rowsHtml = `
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">${modeLabel} · 共花费 ${State.formatMoney(totalCost)}</p>
+        ${hired.map(e => `<div class="list-row"><span class="list-label">${e.name}</span><span class="list-value">加成 ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 100)}</span></div>`).join('')}
+      `;
+    }
+    UI.modal('🎉 招聘成功（' + actual + '人）· ' + modeLabel, rowsHtml,
+      [{ label: '好的', class: 'primary', onclick: 'UI.closeModal()' }]);
     Router.refresh();
   },
 
-  /* 解雇员工组 */
-  fire(groupId) {
-    const grp = (State.data.employees || []).find(g => g.id === groupId);
-    if (!grp) return;
-    const lvl = DATA.employeeLevels['L' + grp.level];
-    UI.confirm('解雇员工', `确认解雇 ${grp.count} 名${lvl.name}？无需补偿。`, () => {
-      State.data.employees = (State.data.employees || []).filter(g => g.id !== groupId);
+  /* 分配单个员工到产业 */
+  assign(empId, type, category, silent) {
+    const emp = (State.data.employees || []).find(e => e.id === empId);
+    if (!emp) { UI.toast('员工不存在'); return; }
+    if (emp.assign) { UI.toast('该员工已分配'); return; }
+    emp.assign = { type, category };
+    State.save();
+    if (!silent) { UI.toast(emp.name + ' 已分配'); Router.refresh(); }
+  },
+
+  /* 撤回单个员工 */
+  unassign(empId, silent) {
+    const emp = (State.data.employees || []).find(e => e.id === empId);
+    if (!emp || !emp.assign) return;
+    emp.assign = null;
+    State.save();
+    if (!silent) { UI.toast(emp.name + ' 已撤回'); Router.refresh(); }
+  },
+
+  /* 调拨单个员工 */
+  transfer(empId, toType, toCategory) {
+    const emp = (State.data.employees || []).find(e => e.id === empId);
+    if (!emp || !emp.assign) { UI.toast('员工未分配'); return; }
+    if (emp.assign.type === toType && emp.assign.category === toCategory) {
+      UI.toast('已在当前产业'); return;
+    }
+    emp.assign = { type: toType, category: toCategory };
+    State.save();
+    const toCat = State.findIndustryCategory(toType, toCategory);
+    UI.toast(emp.name + ' 已调拨至 ' + (toCat ? toCat.name : ''));
+    Router.refresh();
+  },
+
+  /* 解雇 */
+  fire(empId) {
+    const emp = (State.data.employees || []).find(e => e.id === empId);
+    if (!emp) return;
+    UI.confirm('解雇员工', '确认解雇 ' + emp.name + '（加成 ×' + emp.multiplier + '）？', () => {
+      State.data.employees = State.data.employees.filter(e => e.id !== empId);
       State.save();
       UI.toast('已解雇');
       Router.refresh();
     });
   },
 
-  /* 获取分配到某产业的所有员工组 */
+  /* 获取分配到某产业的所有员工 */
   getAssigned(type, category) {
-    return (State.data.employees || []).filter(g =>
-      g.assign && g.assign.type === type && g.assign.category === category
+    return (State.data.employees || []).filter(e =>
+      e.assign && e.assign.type === type && e.assign.category === category
     );
   },
 
-  /* 计算某产业的员工加成倍率（各组 count × multiplier 之和） */
+  /* 计算某产业的员工加成倍率 */
   multiplier(type, category) {
     let m = 0;
-    this.getAssigned(type, category).forEach(g => {
-      m += (g.count || 0) * DATA.employeeLevels['L' + g.level].multiplier;
-    });
+    this.getAssigned(type, category).forEach(e => { m += e.multiplier; });
     return m;
   },
 
   /* 某产业分配的员工人数 */
   assignedCount(type, category) {
-    let n = 0;
-    this.getAssigned(type, category).forEach(g => { n += (g.count || 0); });
-    return n;
+    return this.getAssigned(type, category).length;
   },
 
   /* 计算某产业是否有员工 */
@@ -274,13 +175,26 @@ const Employees = {
   /* 每日员工薪水总额 */
   totalSalary() {
     let s = 0;
-    (State.data.employees || []).forEach(g => {
-      s += (g.count || 0) * DATA.employeeLevels['L' + g.level].salary;
-    });
+    (State.data.employees || []).forEach(e => { s += Math.round(e.multiplier * 100); });
     return s;
   },
 
-  /* 工厂原料满足率（检查仓库库存，和冶金一样） */
+  /* 获取加成最高的未分配员工 */
+  getBestUnassigned() {
+    const unassigned = (State.data.employees || []).filter(e => !e.assign);
+    if (unassigned.length === 0) return null;
+    return unassigned.sort((a, b) => b.multiplier - a.multiplier)[0];
+  },
+
+  /* 获取某产业加成最低的已分配员工 */
+  getWorstAssigned(type, category) {
+    const assigned = this.getAssigned(type, category);
+    if (assigned.length === 0) return null;
+    return assigned.sort((a, b) => a.multiplier - b.multiplier)[0];
+  },
+
+  /* ===== 以下为产业/仓库相关逻辑，保持不变 ===== */
+
   recipeSatisfaction(factoryCode, factoryQty) {
     const recipe = DATA.factoryRecipes[factoryCode];
     if (!recipe) return 1.0;
@@ -295,7 +209,6 @@ const Employees = {
     return minSat;
   },
 
-  /* 工厂消耗仓库原料 */
   consumeFactoryMaterials(factoryCode, factoryQty, satisfaction) {
     const recipe = DATA.factoryRecipes[factoryCode];
     if (!recipe) return;
@@ -307,12 +220,10 @@ const Employees = {
     });
   },
 
-  /* ===== 产业产出原料到仓库 ===== */
-  // 矿业/农业每日产出原料，冶金每日产出金属
   produceMaterials(ind, empMult, log) {
     const cat = State.findIndustryCategory(ind.type, ind.category);
     if (!cat || !cat.produces) return;
-    if (empMult <= 0) return;  // 无员工不产出
+    if (empMult <= 0) return;
     const qty = ind.quantity || 1;
     const free = this.warehouseFree();
     const produce = cat.produces.qty * qty * empMult * Engine.levelMultiplier(ind.level || 1);
@@ -341,8 +252,6 @@ const Employees = {
     }
   },
 
-
-  /* 工厂产品原料满足率（遍历该工厂所有已分配产品） */
   factoryProductSatisfaction(factoryCode, factoryQty) {
     const owned = State.data.industries.find(i => i.type === 'factory' && i.category === factoryCode);
     if (!owned || !owned.products || !window.FactoryProducts) return 1.0;
@@ -355,7 +264,6 @@ const Employees = {
     return minSat;
   },
 
-  /* 工厂产品消耗原料 */
   consumeFactoryProductMaterials(factoryCode, factoryQty) {
     const owned = State.data.industries.find(i => i.type === 'factory' && i.category === factoryCode);
     if (!owned || !owned.products || !window.FactoryProducts) return;
@@ -366,7 +274,6 @@ const Employees = {
     });
   },
 
-  /* 工厂产品生产成品到仓库 */
   produceFactoryProducts(factoryCode, factoryQty, log) {
     const owned = State.data.industries.find(i => i.type === 'factory' && i.category === factoryCode);
     if (!owned || !owned.products || !window.FactoryProducts) return;
@@ -377,36 +284,27 @@ const Employees = {
       if (!product) return;
       const result = FactoryProducts.produceProductOutput(factoryCode, prodCode, lineCount, sat);
       if (result && log) {
-        const matName = product.name;
         if (result.stored > 0) {
-          log.details.push({ label: '产出 ' + matName + ' +' + result.stored.toFixed(1) + product.unit, amount: 0, type: 'info' });
+          log.details.push({ label: '产出 ' + product.name + ' +' + result.stored.toFixed(1) + product.unit, amount: 0, type: 'info' });
         }
         if (result.overflow > 0.01) {
           const cashIn = Math.floor(result.sellPrice * 0.98 * result.overflow);
           State.data.cash += cashIn;
           log.income += cashIn;
-          log.details.push({ label: '溢出 ' + matName + ' ' + result.overflow.toFixed(1) + ' 自动售出 +' + State.formatMoney(cashIn), amount: cashIn, type: 'income' });
+          log.details.push({ label: '溢出 ' + product.name + ' ' + result.overflow.toFixed(1) + ' 自动售出 +' + State.formatMoney(cashIn), amount: cashIn, type: 'income' });
         }
       }
     });
   },
-  /* ===== 仓库系统 ===== */
 
-  /* 获取原料当前市场价 */
   materialPrice(code) {
-    if (State.data.materialPrices && State.data.materialPrices[code]) {
-      return State.data.materialPrices[code];
-    }
+    if (State.data.materialPrices && State.data.materialPrices[code]) return State.data.materialPrices[code];
     const mat = DATA.rawMaterials.find(m => m.code === code);
     return mat ? mat.price : 0;
   },
 
-  /* 获取原料卖出价（市场价 × 0.98，2% 手续费） */
-  materialSellPrice(code) {
-    return this.materialPrice(code) * 0.98;
-  },
+  materialSellPrice(code) { return this.materialPrice(code) * 0.98; },
 
-  /* 仓库总容量 */
   warehouseCapacity() {
     let cap = 0;
     State.data.industries.forEach(ind => {
@@ -417,7 +315,6 @@ const Employees = {
     return cap;
   },
 
-  /* 仓库已用容量 */
   warehouseUsed() {
     let used = 0;
     const inv = State.data.inventory || {};
@@ -425,52 +322,35 @@ const Employees = {
     return used;
   },
 
-  /* 仓库剩余容量 */
-  warehouseFree() {
-    return Math.max(0, this.warehouseCapacity() - this.warehouseUsed());
-  },
+  warehouseFree() { return Math.max(0, this.warehouseCapacity() - this.warehouseUsed()); },
 
-  /* 仓库库存总市值（按当前市场价计算） */
   warehouseValue() {
     const inv = State.data.inventory || {};
     let val = 0;
-    Object.entries(inv).forEach(([code, qty]) => {
-      val += this.materialPrice(code) * qty;
-    });
+    Object.entries(inv).forEach(([code, qty]) => { val += this.materialPrice(code) * qty; });
     return val;
   },
 
-  /* 购买原料（按当前市场价） */
   buyMaterial(code, qty) {
     const mat = DATA.rawMaterials.find(m => m.code === code);
     if (!mat) return;
     const price = this.materialPrice(code);
     const totalCost = Math.floor(price * qty);
-    if (State.data.cash < totalCost) {
-      UI.toast('现金不足，需要 ¥' + totalCost.toLocaleString('zh-CN'));
-      return;
-    }
+    if (State.data.cash < totalCost) { UI.toast('现金不足'); return; }
     const free = this.warehouseFree();
-    if (qty > free) {
-      UI.toast(`仓库容量不足，仅剩 ${free} 单位`);
-      return;
-    }
+    if (qty > free) { UI.toast('仓库容量不足'); return; }
     State.data.cash -= totalCost;
     if (!State.data.inventory) State.data.inventory = {};
     State.data.inventory[code] = (State.data.inventory[code] || 0) + qty;
     State.save();
-    UI.toast(`购入 ${qty} ${mat.unit} ${mat.name}，单价 ¥${price}`);
+    UI.toast(`购入 ${qty} ${mat.unit} ${mat.name}`);
     Router.refresh();
   },
 
-  /* 出售原料（按当前市场价，2% 手续费） */
   sellMaterial(code, qty) {
     const mat = DATA.rawMaterials.find(m => m.code === code);
     if (!mat) return;
-    if (!State.data.inventory || !State.data.inventory[code]) {
-      UI.toast('无库存');
-      return;
-    }
+    if (!State.data.inventory || !State.data.inventory[code]) { UI.toast('无库存'); return; }
     qty = Math.min(qty, State.data.inventory[code]);
     if (qty <= 0) return;
     const sellPrice = this.materialSellPrice(code);
@@ -479,11 +359,10 @@ const Employees = {
     if (State.data.inventory[code] <= 0) delete State.data.inventory[code];
     State.data.cash += refund;
     State.save();
-    UI.toast(`卖出 ${qty} ${mat.unit}，单价 ¥${sellPrice.toFixed(1)}，到账 ¥${refund.toLocaleString('zh-CN')}`);
+    UI.toast(`卖出 ${qty} ${mat.unit}，到账 ¥${refund.toLocaleString('zh-CN')}`);
     Router.refresh();
   },
 
-  /* 冶金原料满足率（检查仓库库存是否够当日消耗） */
   smelterSatisfaction(smelterCode, smelterQty) {
     const recipe = DATA.smelterRecipes[smelterCode];
     if (!recipe) return 1.0;
@@ -498,7 +377,6 @@ const Employees = {
     return minSat;
   },
 
-  /* 冶金每日消耗原料（从库存扣除） */
   consumeSmelterMaterials(smelterCode, smelterQty, satisfaction) {
     const recipe = DATA.smelterRecipes[smelterCode];
     if (!recipe) return;

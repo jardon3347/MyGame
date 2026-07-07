@@ -1,4 +1,4 @@
-/* data.js — 静态数据：产业、股票、贵金属、新闻事件库 */
+﻿/* data.js — 静态数据：产业、股票、贵金属、新闻事件库 */
 
 const DATA = {
   maxIndustryLevel: 5,
@@ -16,7 +16,16 @@ const DATA = {
     rateMax: 0.10,           // 最高利率 10%
     loanRateMultiplier: 2.5, // 贷款利率 = 存款利率 × 2.5
     maxLoanRatio: 0.5,       // 最高贷款 = 现金 × 0.5
-    rateDriftPerDay: 0.0003  // 每日利率自然漂移幅度（±0.03%/天）
+    rateDriftPerDay: 0.0003,  // 每日利率自然漂移幅度（±0.03%/天）
+    creditRatings: {
+      A: { name: 'AAA', assetRatio: 0.5, rateMultiplier: 1.5 },
+      B: { name: 'AA',  assetRatio: 0.4, rateMultiplier: 2.0 },
+      C: { name: 'A',   assetRatio: 0.3, rateMultiplier: 2.5 },
+      D: { name: 'B',   assetRatio: 0.2, rateMultiplier: 3.0 }
+    },
+    defaultCredit: 'B',
+    creditUpgradeDays: 90,    // 连续 90 天无贷款可升级
+    creditDowngradeDays: 30   // 连续 30 天有贷款未还清可降级
   },
 
   stocks: [
@@ -79,6 +88,10 @@ const DATA = {
       name: '农业',
       icon: '🌾',
       unit: '亩',
+      description: {
+        title: '农业产出机制',
+        content: '农业每日产出农产品存入仓库，供工厂消耗。\n\n• 小麦→食品厂/酿酒厂\n• 棉花→纺织厂\n• 大豆→饲料厂\n• 玉米→食品厂/饲料厂\n• 稻谷→酿酒厂/食品厂\n• 甘蔗→食品厂\n• 高粱→酿酒厂\n• 竹子/松木/杉木→造纸厂\n• 胡桃木/紫檀木/楠木→家具厂\n\n需要有仓库才能存放产出，仓库满则溢出自动售出。',
+      },
       categories: [
         { code: 'wheat',   name: '小麦',  dailyIncome: 48,  cycle: '秋播夏收',  produces: { code: 'wheat',   qty: 2.0 } },
         { code: 'rice',    name: '水稻',  dailyIncome: 60,  cycle: '一年两熟',  produces: { code: 'rice',    qty: 2.5 } },
@@ -91,31 +104,48 @@ const DATA = {
         { code: 'veg',     name: '蓔菜',  dailyIncome: 36,  cycle: '周期最短',  produces: { code: 'veg',     qty: 2.5 } },
         { code: 'fruit',   name: '果树',  dailyIncome: 96,  cycle: '多年生',    produces: { code: 'fruit',   qty: 1.2 } },
         { code: 'rubber',  name: '橡胶',  dailyIncome: 140,  cycle: '热带作物',  produces: { code: 'rubber',  qty: 0.8 } },
-        { code: 'tobacco', name: '烟叶',  dailyIncome: 128,  cycle: '专卖作物',  produces: { code: 'tobacco', qty: 0.8 } }
+        { code: 'tobacco', name: '烟叶',  dailyIncome: 128,  cycle: '专卖作物',  produces: { code: 'tobacco', qty: 0.8 } },
+        { code: 'sorghum', name: '高粱', dailyIncome: 42, cycle: '酿酒刚需', produces: { code: 'sorghum', qty: 2.0 } },
+        { code: 'bamboo',   name: '竹林',   dailyIncome: 36,  cycle: '速生林',  produces: { code: 'wood_bamboo',   qty: 2.0 } },
+        { code: 'pine',     name: '松林',   dailyIncome: 48,  cycle: '轮伐期',  produces: { code: 'wood_pine',     qty: 1.8 } },
+        { code: 'cedar',    name: '杉木林', dailyIncome: 60,  cycle: '中速生长', produces: { code: 'wood_cedar',    qty: 1.5 } },
+        { code: 'walnut',   name: '胡桃林', dailyIncome: 80,  cycle: '慢生硬木', produces: { code: 'wood_walnut',   qty: 1.2 } },
+        { code: 'rosewood', name: '紫檀林', dailyIncome: 120, cycle: '珍稀硬木', produces: { code: 'wood_rosewood', qty: 0.8 } },
+        { code: 'nanmu',    name: '楠木林', dailyIncome: 160, cycle: '顶级硬木', produces: { code: 'wood_nanmu',    qty: 0.5 } }
       ]
     },
     mining: {
       name: '矿业',
       icon: '⛏️',
       unit: '份',
+      description: {
+        title: '矿业产出机制',
+        content: '矿业每日产出矿石存入仓库，供冶金消耗。\n\n• 铁矿石→炼钢/炼铁\n• 铜矿石→炼铜\n• 铝土矿→炼铝\n• 煤炭→炼钢/水泥厂\n• 金矿石/银矿石→贵金属冶炼\n\n首次购买矿场需支付许可证费用。许可证可升级，提升产出并降低维护成本。'
+      },
       categories: [
-        { code: 'coal',   name: '煤矿',   cost: 5000,  dailyIncome: 80,   reserve: 3650, produces: { code: 'coal',     qty: 3.0 } },
-        { code: 'iron',   name: '铁矿',   cost: 6800,  dailyIncome: 100,  reserve: 2920, produces: { code: 'iron',     qty: 2.5 } },
-        { code: 'copper', name: '铜矿',   cost: 7500,  dailyIncome: 115,  reserve: 2555, produces: { code: 'copper',   qty: 2.0 } },
-        { code: 'gold',   name: '金矿',   cost: 12000, dailyIncome: 180,  reserve: 1825, produces: { code: 'gold_ore', qty: 0.3 } },
-        { code: 'silver', name: '银矿',   cost: 6800,  dailyIncome: 105,  reserve: 2190, produces: { code: 'silver_ore', qty: 1.8 } },
-        { code: 'rare',   name: '稀土',   cost: 20000, dailyIncome: 300,  reserve: 1095, produces: { code: 'rare_earth', qty: 0.2 } },
-        { code: 'baux',   name: '铝土矿', cost: 6200,  dailyIncome: 95,   reserve: 2920, produces: { code: 'baux',     qty: 2.5 } },
-        { code: 'tung',   name: '钨矿',   cost: 15000, dailyIncome: 220,  reserve: 1460, produces: { code: 'tung',     qty: 1.0 } },
-        { code: 'tin',    name: '锡矿',   cost: 9500,  dailyIncome: 145,  reserve: 2190, produces: { code: 'tin',      qty: 1.5 } },
-        { code: 'phos',   name: '磷矿',   cost: 4200,  dailyIncome: 65,   reserve: 3650, produces: { code: 'phos_ore', qty: 3.0 } },
-        { code: 'quartz', name: '石英矿', cost: 5500,  dailyIncome: 85,   reserve: 3285, produces: { code: 'quartz_ore', qty: 2.5 } }
-      ]
+        { code: 'coal',   name: '煤矿',   cost: 5000,  licenseCost: 15000, dailyIncome: 80,   reserve: 3650, produces: { code: 'coal',     qty: 3.0 } },
+        { code: 'iron',   name: '铁矿',   cost: 6800,  licenseCost: 20400, dailyIncome: 100,  reserve: 2920, produces: { code: 'iron',     qty: 2.5 } },
+        { code: 'copper', name: '铜矿',   cost: 7500,  licenseCost: 22500, dailyIncome: 115,  reserve: 2555, produces: { code: 'copper',   qty: 2.0 } },
+        { code: 'gold',   name: '金矿',   cost: 12000, licenseCost: 36000, dailyIncome: 180,  reserve: 1825, produces: { code: 'gold_ore', qty: 0.3 } },
+        { code: 'silver', name: '银矿',   cost: 6800,  licenseCost: 20400, dailyIncome: 105,  reserve: 2190, produces: { code: 'silver_ore', qty: 1.8 } },
+        { code: 'rare',   name: '稀土',   cost: 20000, licenseCost: 60000, dailyIncome: 300,  reserve: 1095, produces: { code: 'rare_earth', qty: 0.2 } },
+        { code: 'baux',   name: '铝土矿', cost: 6200,  licenseCost: 18600, dailyIncome: 95,   reserve: 2920, produces: { code: 'baux',     qty: 2.5 } },
+        { code: 'tung',   name: '钨矿',   cost: 15000, licenseCost: 45000, dailyIncome: 220,  reserve: 1460, produces: { code: 'tung',     qty: 1.0 } },
+        { code: 'tin',    name: '锡矿',   cost: 9500,  licenseCost: 28500, dailyIncome: 145,  reserve: 2190, produces: { code: 'tin',      qty: 1.5 } },
+        { code: 'phos',   name: '磷矿',   cost: 4200,  licenseCost: 12600, dailyIncome: 65,   reserve: 3650, produces: { code: 'phos_ore', qty: 3.0 } },
+        { code: 'quartz', name: '石英矿', cost: 5500,  licenseCost: 16500, dailyIncome: 85,   reserve: 3285, produces: { code: 'quartz_ore', qty: 2.5 } },
+        { code: 'limestone', name: '石灰矿', cost: 3000, licenseCost: 9000, dailyIncome: 50, reserve: 5000, produces: { code: 'limestone', qty: 3.0 } },
+      ],
+      licenseMaxLevel: 5
     },
     metall: {
       name: '冶金',
       icon: '🔥',
       unit: '单位产能',
+      description: {
+        title: '冶金联动机制',
+        content: '冶金从仓库消费矿石，产出金属存入仓库供工厂使用。\n\n• 炼钢：铁矿石+煤炭→钢材\n• 炼铜：铜矿石→铜锭\n• 炼铝：铝土矿→铝锭\n• 贵金属冶炼：金矿石+银矿石→贵金属\n\n原料不足时产出按比例下降，需要矿业供应或从仓库购买。'
+      },
       categories: [
         { code: 'steel',    name: '炼钢',       dailyIncome: 280,  produces: { code: 'steel',    qty: 1.5 } },
         { code: 'copperR',  name: '炼铜',       dailyIncome: 320,  produces: { code: 'copperR',  qty: 1.2 } },
@@ -133,6 +163,10 @@ const DATA = {
       name: '工厂',
       icon: '🏭',
       unit: '条生产线',
+      description: {
+        title: '工厂生产机制',
+        content: '工厂从仓库消费原料（农产品+金属），产出成品可售出获利。\n\n• 食品厂：小麦+大豆+玉米\n• 纺织厂：棉花\n• 机械厂：钢材+生铁\n• 电子厂：铜锭+铝锭+稀土\n\n工厂需要分配产品才能生产，每3秒结算一批。原料不足时产出按比例下降。'
+      },
       categories: [
         { code: 'food',    name: '食品厂',   dailyIncome: 208 },
         { code: 'textile', name: '纺织厂',   dailyIncome: 180 },
@@ -149,11 +183,14 @@ const DATA = {
       name: '地产',
       icon: '🏢',
       unit: '套',
+      description: {
+        title: '地产功能说明',
+        content: '地产提供基础设施支持：\n\n• 住宅：每套容纳10名员工（可升级扩容）\n• 仓库：每套存5000单位原料（可升级扩容）\n• 农用地：农业产能前置\n• 工业用地：冶金产能前置\n• 产业园：工厂产能前置\n• 物流产业园：物流产能前置\n\n地产可升级，提升容量和收益。'
+      },
       categories: [
         { code: 'residential', name: '住宅',       cost: 15000, dailyIncome: 40 },
         { code: 'warehouse',   name: '仓库',       cost: 7000,  dailyIncome: 22 },
         { code: 'farmland',    name: '农用地',     cost: 3000,  dailyIncome: 8 },
-        { code: 'mine_land',   name: '采矿权',     cost: 8000,  dailyIncome: 20 },
         { code: 'factory_land',name: '工业用地', cost: 6000,  dailyIncome: 15 },
         { code: 'industrial_park', name: '产业园', cost: 35000, dailyIncome: 100 },
         { code: 'logistics_park',  name: '物流产业园', cost: 12000, dailyIncome: 40 }
@@ -163,6 +200,10 @@ const DATA = {
       name: '物流',
       icon: '🚛',
       unit: '站',
+      description: {
+        title: '物流规则系统',
+        content: '物流站提供自动买卖规则，管理仓库库存。\n\n• 基础物流站：仅自动卖出\n• 区域/智能/跨境物流站：支持自动买入\n• 冷链物流站：仅管理成品\n\n每条规则占用1个槽位，物流站等级越高槽位越多、手续费越低。设置阈值和比例，系统每日自动执行。'
+      },
       categories: [
         { code: 'basic_logistics',       name: '基础物流站',   cost: 8000,  dailyIncome: 30,  slots: 5,  feeRate: 0.02 },
         { code: 'regional_logistics',    name: '区域物流站',   cost: 15000, dailyIncome: 60,  slots: 10, feeRate: 0.015, canBuy: true },
@@ -200,7 +241,7 @@ const DATA = {
     brew: ['factory', 'brew', 'wheat'], feed: ['factory', 'feed', 'corn'],
     // 地产
     residential: ['estate', 'residential'], warehouse: ['estate', 'warehouse'],
-    farmland: ['estate', 'farmland'], mine_land: ['estate', 'mine_land'],
+    farmland: ['estate', 'farmland'],
     factory_land: ['estate', 'factory_land'],
     industrial_park: ['estate', 'industrial_park']
   },
@@ -221,23 +262,18 @@ const DATA = {
   },
 
   /* ===== 员工等级配置（按类分组，工资扁平化） ===== */
-  employeeLevels: {
-    L1: { name: '初级员工', color: '#9a9a9f', multiplier: 1.6, salary: 168 },
-    L2: { name: '中级员工', color: '#185fa5', multiplier: 2.4, salary: 256 },
-    L3: { name: '高级员工', color: '#ba7517', multiplier: 3.6, salary: 384 },
-    L4: { name: '专家级员工', color: '#e24b4a', multiplier: 4.8, salary: 600 }
-  },
-
-  /* ===== 招聘配置（一次招 5 个） ===== */
+  /* ===== 招聘配置 ===== */
   recruit: {
-    batchCount: 5,   // 基准批量人数
-    costPerPerson: function(mode) { return Math.ceil((DATA.recruit[mode] ? DATA.recruit[mode].cost : 0) / this.batchCount); },
-    // 免费招聘：以初级为主
-    free:  { cost: 0,     prob: [0.72, 0.20, 0.06, 0.02] },
-    // 付费招聘 ¥3000：中级为主
-    paid:  { cost: 3000,  prob: [0.25, 0.45, 0.22, 0.08] },
-    // 猎头招聘 ¥15000：必出 5 个专家
-    expert:{ cost: 15000, prob: [0, 0, 0, 1.0] }
+    free: {
+      cost: 0,
+      tiers: [
+        { min: 1.6, max: 2.5 },
+        { min: 2.5, max: 3.5 },
+        { min: 3.5, max: 4.5 },
+        { min: 4.5, max: 6.0 }
+      ]
+    },
+    paid: { cost: 600, minMult: 3.0, maxMult: 6.0 }
   },
 
   /* ===== 冶金配方：消耗仓库矿石原料 ===== */
@@ -257,7 +293,6 @@ const DATA = {
   /* ===== 土地前置需求：产业→所需土地类型 ===== */
   landPrereqs: {
     farm:      { code: 'farmland',        name: '农用地' },
-    mining:    { code: 'mine_land',       name: '采矿权' },
     factory:   { code: 'industrial_park', name: '产业园' },
     metall:    { code: 'factory_land',    name: '工业用地' },
     logistics: { code: 'logistics_park',  name: '物流产业园' }
@@ -283,18 +318,26 @@ const DATA = {
     { code: 'phos_ore',    name: '磷矿石',   price: 55,  unit: '吨', from: '磷矿' },
     { code: 'quartz_ore',  name: '石英石',   price: 70,  unit: '吨', from: '石英矿' },
     // 农产品（农业产出 / 工厂消耗）
-    { code: 'wheat',       name: '小麦',     price: 50,  unit: '吨', from: '小麦' },
-    { code: 'rice',        name: '稻谷',     price: 55,  unit: '吨', from: '水稻' },
-    { code: 'soy',         name: '大豆',     price: 65,  unit: '吨', from: '大豆' },
-    { code: 'corn',        name: '玉米',     price: 48,  unit: '吨', from: '玉米' },
-    { code: 'cotton',      name: '棉花',     price: 90,  unit: '吨', from: '棉花' },
-    { code: 'rape',        name: '油菜籽',   price: 70,  unit: '吨', from: '油菜' },
-    { code: 'sugarc',      name: '甘蔗',     price: 40,  unit: '吨', from: '甘蔗' },
+    { code: 'wheat',       name: '小麦',     price: 80,  unit: '吨', from: '小麦' },
+    { code: 'rice',        name: '稻谷',     price: 85,  unit: '吨', from: '水稻' },
+    { code: 'soy',         name: '大豆',     price: 100,  unit: '吨', from: '大豆' },
+    { code: 'corn',        name: '玉米',     price: 75,  unit: '吨', from: '玉米' },
+    { code: 'cotton',      name: '棉花',     price: 120,  unit: '吨', from: '棉花' },
+    { code: 'rape',        name: '油菜籽',   price: 90,  unit: '吨', from: '油菜' },
+    { code: 'sugarc',      name: '甘蔗',     price: 60,  unit: '吨', from: '甘蔗' },
     { code: 'tea',         name: '茶叶',     price: 200, unit: '吨', from: '茶园' },
-    { code: 'veg',         name: '蔬菜',     price: 35,  unit: '吨', from: '蔬菜' },
-    { code: 'fruit',       name: '水果',     price: 120, unit: '吨', from: '果树' },
+    { code: 'veg',         name: '蔬菜',     price: 50,  unit: '吨', from: '蔬菜' },
+    { code: 'fruit',       name: '水果',     price: 150, unit: '吨', from: '果树' },
     { code: 'rubber',      name: '橡胶',     price: 150, unit: '吨', from: '橡胶' },
     { code: 'tobacco',     name: '烟叶',     price: 180, unit: '吨', from: '烟叶' },
+    { code: 'wood_bamboo',   name: '竹子',     price: 15,  unit: '吨', from: '竹林' },
+    { code: 'wood_pine',     name: '松木',     price: 30,  unit: '吨', from: '松林' },
+    { code: 'wood_cedar',    name: '杉木',     price: 50,  unit: '吨', from: '杉木林' },
+    { code: 'wood_walnut',   name: '胡桃木',   price: 120, unit: '吨', from: '胡桃林' },
+    { code: 'wood_rosewood', name: '紫檀木',   price: 300, unit: '吨', from: '紫檀林' },
+    { code: 'wood_nanmu',    name: '金丝楠木', price: 500, unit: '吨', from: '楠木林' },
+    { code: 'limestone',     name: '石灰石',   price: 25,  unit: '吨', from: '石灰矿' },
+    { code: 'sorghum',       name: '高粱',     price: 40,  unit: '吨', from: '高粱' },
     // 金属（冶金产出 / 工厂消耗）
     { code: 'steel',       name: '钢材',     price: 180, unit: '吨', from: '炼钢' },
     { code: 'ironR',       name: '生铁',     price: 120, unit: '吨', from: '炼铁' },

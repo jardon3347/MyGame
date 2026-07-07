@@ -2,16 +2,19 @@
 
 const TimeManager = {
   intervalId: null,
-  totalSec: 180,       // 一天 = 3 分钟 = 180 秒
-  remaining: 180,      // 当前天剩余秒数
-  userPaused: false,   // 玩家手动暂停
-  autoPaused: false,   // 自动暂停（弹窗/加速中）
-  enabled: false,      // 是否启用（仅 home 页生效）
+  factoryIntervalId: null,
+  FACTORY_TICK_MS: 3000,  // 工厂每 3 秒生产一批
+  totalSec: 180,           // 一天 = 3 分钟 = 180 秒
+  remaining: 180,          // 当前天剩余秒数
+  userPaused: false,       // 玩家手动暂停
+  autoPaused: false,       // 自动暂停（弹窗/加速中）
+  enabled: false,          // 是否启用（仅 home 页生效）
 
   /* 启动计时器 */
   start() {
     if (this.intervalId) return;
     this.intervalId = setInterval(() => this.tick(), 1000);
+    this.startFactoryTimer();
   },
 
   /* 停止计时器（离开主页时） */
@@ -19,6 +22,29 @@ const TimeManager = {
     if (this.intervalId) {
       clearInterval(this.intervalId);
       this.intervalId = null;
+    }
+    this.stopFactoryTimer();
+  },
+
+  /* 工厂独立计时器（每 3 秒生产一批） */
+  startFactoryTimer() {
+    if (this.factoryIntervalId) return;
+    this.factoryIntervalId = setInterval(() => this.factoryTick(), this.FACTORY_TICK_MS);
+  },
+
+  stopFactoryTimer() {
+    if (this.factoryIntervalId) {
+      clearInterval(this.factoryIntervalId);
+      this.factoryIntervalId = null;
+    }
+  },
+
+  /* 工厂 3 秒结算（由工厂计时器调用，独立于游戏日推进） */
+  factoryTick() {
+    if (!this.enabled) return;
+    if (this.isPaused) return;
+    if (window.Engine && window.State && State.data) {
+      Engine.factoryTick();
     }
   },
 

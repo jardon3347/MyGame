@@ -171,7 +171,7 @@ const Stocks = {
     const maxShares = Math.floor(State.data.cash / (price * 1.001));
     if (maxShares <= 0) { UI.toast('\u73B0\u91D1\u4E0D\u8DB3\uFF0C\u81F3\u5C11\u9700\u8981 \u00A5' + Math.round(price*1.001)); return; }
 
-    UI.numberPicker({
+    UI.numberPicker({ noPlusOne: true,
       title: '\u4E70\u5165 ' + stock.name,
       unit: price * 1.001,
       unitName: '\u80A1',
@@ -212,7 +212,7 @@ const Stocks = {
     const price = State.data.stockPrices[code] || 0;
     const unitNet = price * (1 - 0.001 - 0.0005);
 
-    UI.numberPicker({
+    UI.numberPicker({ noPlusOne: true,
       title: '\u5356\u51FA ' + stock.name,
       unit: unitNet,
       unitName: '\u80A1',

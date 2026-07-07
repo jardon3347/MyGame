@@ -1,4 +1,4 @@
-/* overview.js — 集团概览（合并新闻 + 时间推进，单页常驻） */
+﻿/* overview.js — 集团概览（合并新闻 + 时间推进，单页常驻） */
 
 Pages.overview = {
   render(app) {
@@ -28,7 +28,7 @@ Pages.overview = {
           if (ind.type === 'factory' && DATA.factoryRecipes[ind.category]) {
             recipeSat = Employees.recipeSatisfaction(ind.category, qty);
           }
-          industryDaily += cat.dailyIncome * (ind.level || 1) * qty * empMult * recipeSat;
+          industryDaily += cat.dailyIncome * Engine.levelMultiplier(ind.level || 1) * qty * empMult * recipeSat;
         }
         industryCount += qty;
       }
@@ -65,6 +65,10 @@ Pages.overview = {
             <span class="speed-label">×30 快进</span>
           </button>
         </div>
+
+        <button class="btn full" style="margin-top:8px;" onclick="Overview.showManual()">
+          📖 产业说明书
+        </button>
 
         <!-- 顶部统计条 -->
         <div class="topbar">
@@ -106,6 +110,7 @@ Pages.overview = {
               ${this.industryIncomeRow('⛏️ 矿业', 'mining')}
               ${this.industryIncomeRow('🔥 冶金', 'metall')}
               ${this.industryIncomeRow('🏭 工厂', 'factory')}
+              ${this._logisticsIncomeRow()}
               ${this.industryIncomeRow('🏢 地产', 'estate')}
               <div class="list-row">
                 <span class="list-label">👥 员工薪水（${Employees.count()}/${Employees.capacity()}人）</span>
@@ -166,7 +171,7 @@ Pages.overview = {
           if (type === 'factory' && DATA.factoryRecipes[o.category]) {
             recipeSat = Employees.recipeSatisfaction(o.category, qty);
           }
-          daily += cat.dailyIncome * (o.level || 1) * qty * empMult * recipeSat;
+          daily += cat.dailyIncome * Engine.levelMultiplier(o.level || 1) * qty * empMult * recipeSat;
         } else {
           unstaffed += qty;
         }
@@ -180,6 +185,18 @@ Pages.overview = {
         <span class="list-value ${daily > 0 ? 'up' : ''}">${daily > 0 ? '+' : ''}${State.formatMoney(daily)}</span>
       </div>
     `;
+  },
+
+  _logisticsIncomeRow() {
+    const income = State.data.lastLogisticsIncome || 0;
+    const expense = State.data.lastLogisticsExpense || 0;
+    const net = income - expense;
+    const usedSlots = window.LogisticsSystem ? LogisticsSystem.getUsedSlots() : 0;
+    const totalSlots = window.LogisticsSystem ? LogisticsSystem.getTotalSlots() : 0;
+    const feeRate = window.LogisticsSystem ? LogisticsSystem.getBestFeeRate() : 0.02;
+    const canBuy = window.LogisticsSystem ? LogisticsSystem.canAutoBuy() : false;
+    const label = `🚛 物流（${usedSlots}/${totalSlots}槽 · 费率${(feeRate*100).toFixed(1)}%${canBuy ? ' · 自动买入✔' : ''}）`;
+    return `<div class="list-row"><span class="list-label">${label}</span><span class="list-value ${net >= 0 ? 'up' : 'down'}">${net >= 0 ? '+' : ''}${State.formatMoney(net)}/日</span></div>`;
   },
 
   /* ===== 新闻区（内联到概览页，不再单独成页） ===== */
@@ -234,14 +251,23 @@ Pages.overview = {
       `;
     }
 
-    // 3) 新闻历史
+    // 3) 新闻历史（默认折叠，只显示3条）
+    const previewCount = 3;
+    const hasMore = news.length > previewCount;
     html += `
       <div class="section-title">📰 新闻历史（${news.length} 条）</div>
       ${news.length === 0 ? '<div class="empty">暂无新闻，多推进几天试试</div>' :
-        news.slice(0, 20).map(n => this.newsItem(n)).join('')}
+        news.slice(0, previewCount).map(n => this.newsItem(n)).join('')}
+      ${hasMore ? `
+        <div id="news-folded" style="display:none;">
+          ${news.slice(previewCount, 20).map(n => this.newsItem(n)).join('')}
+        </div>
+        <button class="btn sm full" id="news-toggle-btn" onclick="Overview._toggleNewsExpand()" style="margin-top:4px;">
+          展开更多（${news.length - previewCount} 条）
+        </button>
+      ` : ''}
       ${news.length > 20 ? `<div class="text-sm text-muted" style="text-align:center; padding:8px;">仅显示最近 20 条，共 ${news.length} 条</div>` : ''}
     `;
-
     return html;
   },
 
@@ -295,6 +321,53 @@ const Overview = {
     } catch (e) {
       // localStorage unavailable (e.g. file:// protocol)
     }
+  },
+
+
+  showManual() {
+    const types = ['farm', 'mining', 'metall', 'factory', 'estate', 'logistics'];
+    const firstType = types[0];
+    const firstDesc = DATA.industries[firstType].description;
+
+    let tabsHtml = '<div class="tab-container" style="margin-bottom:12px;"><div class="tab-bar">';
+    types.forEach((t, i) => {
+      const ind = DATA.industries[t];
+      tabsHtml += '<div class="tab' + (i === 0 ? ' active' : '') + '" data-mantab="' + t + '" onclick="Overview._switchManualTab(\'' + t + '\')">' + ind.icon + ' ' + ind.name + '</div>';
+    });
+    tabsHtml += '</div></div>';
+
+    tabsHtml += '<div id="manual-tab-content" style="max-height:50vh;overflow-y:auto;-webkit-overflow-scrolling:touch;">';
+    tabsHtml += '<div class="font-medium" style="margin-bottom:8px;">' + firstDesc.title + '</div>';
+    tabsHtml += '<p class="text-sm text-muted" style="line-height:1.7;white-space:pre-line;">' + firstDesc.content + '</p>';
+    tabsHtml += '</div>';
+
+    UI.modal('\ud83d\udcd6 产业说明书', tabsHtml, [
+      { label: '关闭', onclick: 'UI.closeModal()' }
+    ]);
+  },
+
+  _switchManualTab(type) {
+    // Update tab active state
+    document.querySelectorAll('[data-mantab]').forEach(t => {
+      t.classList.toggle('active', t.getAttribute('data-mantab') === type);
+    });
+    // Update content
+    const desc = DATA.industries[type].description;
+    const content = document.getElementById('manual-tab-content');
+    if (content && desc) {
+      content.innerHTML = '<div class="font-medium" style="margin-bottom:8px;">' + desc.title + '</div>' +
+        '<p class="text-sm text-muted" style="line-height:1.7;white-space:pre-line;">' + desc.content + '</p>';
+    }
+  }
+,
+
+  _toggleNewsExpand() {
+    var folded = document.getElementById('news-folded');
+    var btn = document.getElementById('news-toggle-btn');
+    if (!folded || !btn) return;
+    var expanded = folded.style.display !== 'none';
+    folded.style.display = expanded ? 'none' : '';
+    btn.textContent = expanded ? '\u5c55\u5f00\u66f4\u591a' : '\u6536\u8d77';
   }
 };
 

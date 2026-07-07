@@ -5,28 +5,28 @@ const FactoryProducts = {
   /* ===== 产品定义：每个工厂 10 个产品 ===== */
   data: {
     food: [
-      { code: 'bread',    name: '面包',   tier: 'basic', sellPrice: 85,  recipe: [{ code: 'wheat', qty: 1.2 }], output: { code: 'food_bread', qty: 1.0 }, unit: '箱' },
-      { code: 'biscuit',  name: '饼干',   tier: 'basic', sellPrice: 95,  recipe: [{ code: 'wheat', qty: 1.0 }, { code: 'soy', qty: 0.5 }], output: { code: 'food_biscuit', qty: 1.0 }, unit: '箱' },
-      { code: 'noodles',  name: '方便面', tier: 'mid',   sellPrice: 110, recipe: [{ code: 'wheat', qty: 1.5 }, { code: 'rape', qty: 0.3 }], output: { code: 'food_noodles', qty: 1.0 }, unit: '箱' },
-      { code: 'tofu',     name: '豆腐',   tier: 'basic', sellPrice: 70,  recipe: [{ code: 'soy', qty: 1.8 }], output: { code: 'food_tofu', qty: 1.0 }, unit: '箱' },
-      { code: 'food_oil', name: '食用油', tier: 'mid',   sellPrice: 115, recipe: [{ code: 'rape', qty: 1.5 }], output: { code: 'food_oil', qty: 1.0 }, unit: '桶' },
-      { code: 'sugar',    name: '白糖',   tier: 'basic', sellPrice: 90,  recipe: [{ code: 'sugarc', qty: 2.0 }], output: { code: 'food_sugar', qty: 1.0 }, unit: '袋' },
-      { code: 'candy',    name: '糖果',   tier: 'high',  sellPrice: 160, recipe: [{ code: 'sugarc', qty: 1.5 }, { code: 'fruit', qty: 0.4 }], output: { code: 'food_candy', qty: 1.0 }, unit: '箱' },
-      { code: 'jam',      name: '果酱',   tier: 'mid',   sellPrice: 105, recipe: [{ code: 'fruit', qty: 1.8 }], output: { code: 'food_jam', qty: 1.0 }, unit: '箱' },
-      { code: 'chips',    name: '薯片',   tier: 'basic', sellPrice: 80,  recipe: [{ code: 'corn', qty: 1.5 }], output: { code: 'food_chips', qty: 1.0 }, unit: '箱' },
-      { code: 'seasoning',name: '调味品', tier: 'high',  sellPrice: 140, recipe: [{ code: 'wheat', qty: 0.8 }, { code: 'soy', qty: 0.6 }, { code: 'rape', qty: 0.3 }], output: { code: 'food_seasoning', qty: 1.0 }, unit: '箱' }
+      { code: 'bread',    name: '面包',   tier: 'basic', sellPrice: 85,  recipe: [{ code: 'wheat', qty: 0.8 }], output: { code: 'food_bread', qty: 1.0 }, unit: '箱' },
+      { code: 'biscuit',  name: '饼干',   tier: 'basic', sellPrice: 95,  recipe: [{ code: 'wheat', qty: 0.7 }, { code: 'soy', qty: 0.3 }], output: { code: 'food_biscuit', qty: 1.0 }, unit: '箱' },
+      { code: 'noodles',  name: '方便面', tier: 'mid',   sellPrice: 110, recipe: [{ code: 'wheat', qty: 1.0 }, { code: 'rape', qty: 0.2 }], output: { code: 'food_noodles', qty: 1.0 }, unit: '箱' },
+      { code: 'tofu',     name: '豆腐',   tier: 'basic', sellPrice: 70,  recipe: [{ code: 'soy', qty: 0.5 }], output: { code: 'food_tofu', qty: 1.0 }, unit: '箱' },
+      { code: 'food_oil', name: '食用油', tier: 'mid',   sellPrice: 115, recipe: [{ code: 'rape', qty: 1.0 }], output: { code: 'food_oil', qty: 1.0 }, unit: '桶' },
+      { code: 'sugar',    name: '白糖',   tier: 'basic', sellPrice: 90,  recipe: [{ code: 'sugarc', qty: 1.2 }], output: { code: 'food_sugar', qty: 1.0 }, unit: '袋' },
+      { code: 'candy',    name: '糖果',   tier: 'high',  sellPrice: 160, recipe: [{ code: 'sugarc', qty: 1.0 }, { code: 'fruit', qty: 0.25 }], output: { code: 'food_candy', qty: 1.0 }, unit: '箱' },
+      { code: 'jam',      name: '果酱',   tier: 'mid',   sellPrice: 105, recipe: [{ code: 'fruit', qty: 0.6 }], output: { code: 'food_jam', qty: 1.0 }, unit: '箱' },
+      { code: 'chips',    name: '薯片',   tier: 'basic', sellPrice: 80,  recipe: [{ code: 'corn', qty: 0.9 }], output: { code: 'food_chips', qty: 1.0 }, unit: '箱' },
+      { code: 'seasoning',name: '调味品', tier: 'high',  sellPrice: 140, recipe: [{ code: 'wheat', qty: 0.5 }, { code: 'soy', qty: 0.4 }, { code: 'rape', qty: 0.2 }], output: { code: 'food_seasoning', qty: 1.0 }, unit: '箱' }
     ],
     textile: [
-      { code: 'cloth',    name: '棉布',   tier: 'basic', sellPrice: 65,  recipe: [{ code: 'cotton', qty: 1.6 }], output: { code: 'txt_cloth', qty: 1.0 }, unit: '匹' },
-      { code: 'silk',     name: '丝绸',   tier: 'high',  sellPrice: 140, recipe: [{ code: 'cotton', qty: 2.0 }, { code: 'fruit', qty: 0.2 }], output: { code: 'txt_silk', qty: 1.0 }, unit: '匹' },
-      { code: 'fiber',    name: '化纤',   tier: 'basic', sellPrice: 60,  recipe: [{ code: 'cotton', qty: 1.2 }], output: { code: 'txt_fiber', qty: 1.0 }, unit: '吨' },
-      { code: 'denim',    name: '牛仔布', tier: 'mid',   sellPrice: 90,  recipe: [{ code: 'cotton', qty: 1.8 }], output: { code: 'txt_denim', qty: 1.0 }, unit: '匹' },
-      { code: 'wool',     name: '毛料',   tier: 'high',  sellPrice: 130, recipe: [{ code: 'cotton', qty: 2.2 }, { code: 'fruit', qty: 0.3 }], output: { code: 'txt_wool', qty: 1.0 }, unit: '匹' },
-      { code: 'knit',     name: '针织品', tier: 'basic', sellPrice: 55,  recipe: [{ code: 'cotton', qty: 1.4 }], output: { code: 'txt_knit', qty: 1.0 }, unit: '件' },
-      { code: 'socks',    name: '袜子',   tier: 'basic', sellPrice: 50,  recipe: [{ code: 'cotton', qty: 1.0 }], output: { code: 'txt_socks', qty: 1.0 }, unit: '箱' },
-      { code: 'towel',    name: '毛巾',   tier: 'mid',   sellPrice: 80,  recipe: [{ code: 'cotton', qty: 1.6 }], output: { code: 'txt_towel', qty: 1.0 }, unit: '箱' },
-      { code: 'sheet',    name: '床单',   tier: 'mid',   sellPrice: 95,  recipe: [{ code: 'cotton', qty: 2.0 }], output: { code: 'txt_sheet', qty: 1.0 }, unit: '套' },
-      { code: 'curtain',  name: '窗帘',   tier: 'high',  sellPrice: 120, recipe: [{ code: 'cotton', qty: 2.5 }, { code: 'rubber', qty: 0.2 }], output: { code: 'txt_curtain', qty: 1.0 }, unit: '套' }
+      { code: 'cloth',    name: '棉布',   tier: 'basic', sellPrice: 65,  recipe: [{ code: 'cotton', qty: 0.8 }], output: { code: 'txt_cloth', qty: 1.0 }, unit: '匹' },
+      { code: 'silk',     name: '丝绸',   tier: 'high',  sellPrice: 140, recipe: [{ code: 'cotton', qty: 0.75 }], output: { code: 'txt_silk', qty: 1.0 }, unit: '匹' },
+      { code: 'fiber',    name: '化纤',   tier: 'basic', sellPrice: 60,  recipe: [{ code: 'coal', qty: 0.6 }], output: { code: 'txt_fiber', qty: 1.0 }, unit: '吨' },
+      { code: 'denim',    name: '牛仔布', tier: 'mid',   sellPrice: 90,  recipe: [{ code: 'cotton', qty: 0.9 }], output: { code: 'txt_denim', qty: 1.0 }, unit: '匹' },
+      { code: 'wool',     name: '毛料',   tier: 'high',  sellPrice: 130, recipe: [{ code: 'cotton', qty: 1.0 }], output: { code: 'txt_wool', qty: 1.0 }, unit: '匹' },
+      { code: 'knit',     name: '针织品', tier: 'basic', sellPrice: 55,  recipe: [{ code: 'cotton', qty: 0.7 }], output: { code: 'txt_knit', qty: 1.0 }, unit: '件' },
+      { code: 'socks',    name: '袜子',   tier: 'basic', sellPrice: 50,  recipe: [{ code: 'cotton', qty: 0.5 }], output: { code: 'txt_socks', qty: 1.0 }, unit: '箱' },
+      { code: 'towel',    name: '毛巾',   tier: 'mid',   sellPrice: 80,  recipe: [{ code: 'cotton', qty: 0.8 }], output: { code: 'txt_towel', qty: 1.0 }, unit: '箱' },
+      { code: 'sheet',    name: '床单',   tier: 'mid',   sellPrice: 95,  recipe: [{ code: 'cotton', qty: 1.0 }], output: { code: 'txt_sheet', qty: 1.0 }, unit: '套' },
+      { code: 'curtain',  name: '窗帘',   tier: 'high',  sellPrice: 120, recipe: [{ code: 'cotton', qty: 1.0 }], output: { code: 'txt_curtain', qty: 1.0 }, unit: '套' }
     ],
     machine: [
       { code: 'farm',      name: '农机',     tier: 'basic', sellPrice: 120, recipe: [{ code: 'steel', qty: 0.8 }], output: { code: 'mac_farm', qty: 1.0 }, unit: '台' },
@@ -41,11 +41,11 @@ const FactoryProducts = {
       { code: 'tools',     name: '工具',     tier: 'mid',   sellPrice: 165, recipe: [{ code: 'steel', qty: 0.8 }, { code: 'ironR', qty: 0.3 }], output: { code: 'mac_tools', qty: 1.0 }, unit: '套' }
     ],
     electr: [
-      { code: 'phone',     name: '手机',   tier: 'high',  sellPrice: 420, recipe: [{ code: 'copperR', qty: 0.6 }, { code: 'alum', qty: 0.4 }, { code: 'rare_earth', qty: 0.10 }], output: { code: 'ele_phone', qty: 1.0 }, unit: '台' },
+      { code: 'phone',     name: '手机',   tier: 'high',  sellPrice: 420, recipe: [{ code: 'copperR', qty: 0.6 }, { code: 'alum', qty: 0.4 }, { code: 'rare_earth', qty: 0.015 }], output: { code: 'ele_phone', qty: 1.0 }, unit: '台' },
       { code: 'pc',        name: '电脑',   tier: 'high',  sellPrice: 380, recipe: [{ code: 'copperR', qty: 0.8 }, { code: 'alum', qty: 0.5 }], output: { code: 'ele_pc', qty: 1.0 }, unit: '台' },
       { code: 'tv',        name: '电视',   tier: 'mid',   sellPrice: 250, recipe: [{ code: 'copperR', qty: 0.5 }, { code: 'alum', qty: 0.3 }], output: { code: 'ele_tv', qty: 1.0 }, unit: '台' },
       { code: 'speaker',   name: '音响',   tier: 'mid',   sellPrice: 200, recipe: [{ code: 'copperR', qty: 0.4 }, { code: 'alum', qty: 0.2 }], output: { code: 'ele_speaker', qty: 1.0 }, unit: '台' },
-      { code: 'ac',        name: '空调',   tier: 'high',  sellPrice: 350, recipe: [{ code: 'copperR', qty: 0.7 }, { code: 'alum', qty: 0.4 }, { code: 'rare_earth', qty: 0.05 }], output: { code: 'ele_ac', qty: 1.0 }, unit: '台' },
+      { code: 'ac',        name: '空调',   tier: 'high',  sellPrice: 350, recipe: [{ code: 'copperR', qty: 0.7 }, { code: 'alum', qty: 0.4 }, { code: 'rare_earth', qty: 0.005 }], output: { code: 'ele_ac', qty: 1.0 }, unit: '台' },
       { code: 'fridge',    name: '冰箱',   tier: 'mid',   sellPrice: 280, recipe: [{ code: 'copperR', qty: 0.6 }, { code: 'alum', qty: 0.3 }], output: { code: 'ele_fridge', qty: 1.0 }, unit: '台' },
       { code: 'washer',    name: '洗衣机', tier: 'mid',   sellPrice: 260, recipe: [{ code: 'copperR', qty: 0.5 }, { code: 'alum', qty: 0.3 }], output: { code: 'ele_washer', qty: 1.0 }, unit: '台' },
       { code: 'fan',       name: '电风扇', tier: 'basic', sellPrice: 120, recipe: [{ code: 'copperR', qty: 0.3 }], output: { code: 'ele_fan', qty: 1.0 }, unit: '台' },
@@ -55,74 +55,74 @@ const FactoryProducts = {
     fert: [
       { code: 'nitro',    name: '氮肥',       tier: 'basic', sellPrice: 85,  recipe: [{ code: 'phos_ore', qty: 0.8 }, { code: 'coal', qty: 0.4 }], output: { code: 'fert_nitro', qty: 1.0 }, unit: '袋' },
       { code: 'phos_f',   name: '磷肥',       tier: 'basic', sellPrice: 90,  recipe: [{ code: 'phos_ore', qty: 1.0 }], output: { code: 'fert_phos', qty: 1.0 }, unit: '袋' },
-      { code: 'potass',   name: '钾肥',       tier: 'basic', sellPrice: 88,  recipe: [{ code: 'phos_ore', qty: 0.9 }, { code: 'coal', qty: 0.5 }], output: { code: 'fert_pot', qty: 1.0 }, unit: '袋' },
+      { code: 'potass',   name: '钾肥',       tier: 'basic', sellPrice: 88,  recipe: [{ code: 'limestone', qty: 1.0 }, { code: 'coal', qty: 0.5 }], output: { code: 'fert_pot', qty: 1.0 }, unit: '袋' },
       { code: 'compound', name: '复合肥',     tier: 'mid',   sellPrice: 145, recipe: [{ code: 'phos_ore', qty: 1.2 }, { code: 'coal', qty: 0.6 }], output: { code: 'fert_comp', qty: 1.0 }, unit: '袋' },
-      { code: 'organic',  name: '有机肥',     tier: 'mid',   sellPrice: 135, recipe: [{ code: 'phos_ore', qty: 1.5 }], output: { code: 'fert_org', qty: 1.0 }, unit: '袋' },
+      { code: 'organic',  name: '有机肥',     tier: 'mid',   sellPrice: 135, recipe: [{ code: 'veg', qty: 1.5 }], output: { code: 'fert_org', qty: 1.0 }, unit: '袋' },
       { code: 'foliar',   name: '叶面肥',     tier: 'high',  sellPrice: 200, recipe: [{ code: 'phos_ore', qty: 1.8 }, { code: 'coal', qty: 0.3 }], output: { code: 'fert_foliar', qty: 1.0 }, unit: '瓶' },
       { code: 'slow_r',   name: '缓释肥',     tier: 'high',  sellPrice: 220, recipe: [{ code: 'phos_ore', qty: 2.0 }, { code: 'coal', qty: 0.8 }], output: { code: 'fert_slow', qty: 1.0 }, unit: '袋' },
       { code: 'water_f',  name: '水溶肥',     tier: 'mid',   sellPrice: 150, recipe: [{ code: 'phos_ore', qty: 1.3 }], output: { code: 'fert_water', qty: 1.0 }, unit: '桶' },
-      { code: 'bio_f',    name: '生物肥',     tier: 'high',  sellPrice: 240, recipe: [{ code: 'phos_ore', qty: 2.2 }, { code: 'coal', qty: 0.5 }, { code: 'fruit', qty: 0.2 }], output: { code: 'fert_bio', qty: 1.0 }, unit: '袋' },
-      { code: 'trace',    name: '微量元素肥', tier: 'high',  sellPrice: 230, recipe: [{ code: 'phos_ore', qty: 1.8 }, { code: 'coal', qty: 0.4 }, { code: 'rare_earth', qty: 0.05 }], output: { code: 'fert_trace', qty: 1.0 }, unit: '袋' }
+      { code: 'bio_f',    name: '生物肥',     tier: 'high',  sellPrice: 240, recipe: [{ code: 'phos_ore', qty: 1.0 }, { code: 'fruit', qty: 0.3 }], output: { code: 'fert_bio', qty: 1.0 }, unit: '袋' },
+      { code: 'trace',    name: '微量元素肥', tier: 'high',  sellPrice: 230, recipe: [{ code: 'phos_ore', qty: 1.5 }, { code: 'iron', qty: 0.3 }], output: { code: 'fert_trace', qty: 1.0 }, unit: '袋' }
     ],
     paper: [
-      { code: 'news',    name: '新闻纸', tier: 'basic', sellPrice: 75,  recipe: [{ code: 'veg', qty: 1.2 }, { code: 'corn', qty: 0.6 }], output: { code: 'pap_news', qty: 1.0 }, unit: '令' },
-      { code: 'print_p', name: '打印纸', tier: 'basic', sellPrice: 80,  recipe: [{ code: 'veg', qty: 1.0 }, { code: 'corn', qty: 0.5 }], output: { code: 'pap_print', qty: 1.0 }, unit: '令' },
-      { code: 'pack_p',  name: '包装纸', tier: 'basic', sellPrice: 70,  recipe: [{ code: 'veg', qty: 0.8 }, { code: 'corn', qty: 0.4 }], output: { code: 'pap_pack', qty: 1.0 }, unit: '令' },
-      { code: 'toilet',  name: '卫生纸', tier: 'basic', sellPrice: 65,  recipe: [{ code: 'veg', qty: 0.9 }, { code: 'corn', qty: 0.3 }], output: { code: 'pap_toilet', qty: 1.0 }, unit: '提' },
-      { code: 'box_p',   name: '纸箱',   tier: 'mid',   sellPrice: 140, recipe: [{ code: 'veg', qty: 1.5 }, { code: 'corn', qty: 0.8 }], output: { code: 'pap_box', qty: 1.0 }, unit: '个' },
-      { code: 'cup_p',   name: '纸杯',   tier: 'mid',   sellPrice: 130, recipe: [{ code: 'veg', qty: 1.2 }, { code: 'corn', qty: 0.6 }], output: { code: 'pap_cup', qty: 1.0 }, unit: '箱' },
-      { code: 'tissue',  name: '纸巾',   tier: 'basic', sellPrice: 75,  recipe: [{ code: 'veg', qty: 1.0 }, { code: 'corn', qty: 0.4 }], output: { code: 'pap_tissue', qty: 1.0 }, unit: '提' },
-      { code: 'bag_p',   name: '纸袋',   tier: 'mid',   sellPrice: 135, recipe: [{ code: 'veg', qty: 1.3 }, { code: 'corn', qty: 0.7 }], output: { code: 'pap_bag', qty: 1.0 }, unit: '个' },
-      { code: 'board',   name: '纸板',   tier: 'high',  sellPrice: 190, recipe: [{ code: 'veg', qty: 2.0 }, { code: 'corn', qty: 1.0 }], output: { code: 'pap_board', qty: 1.0 }, unit: '张' },
-      { code: 'carton',  name: '纸盒',   tier: 'high',  sellPrice: 180, recipe: [{ code: 'veg', qty: 1.8 }, { code: 'corn', qty: 0.9 }], output: { code: 'pap_carton', qty: 1.0 }, unit: '个' }
+      { code: 'news',    name: '新闻纸', tier: 'basic', sellPrice: 75,  recipe: [{ code: 'wood_bamboo', qty: 1.5 }, { code: 'coal', qty: 0.3 }], output: { code: 'pap_news', qty: 1.0 }, unit: '令' },
+      { code: 'print_p', name: '打印纸', tier: 'basic', sellPrice: 80,  recipe: [{ code: 'wood_pine', qty: 1.2 }, { code: 'coal', qty: 0.3 }], output: { code: 'pap_print', qty: 1.0 }, unit: '令' },
+      { code: 'pack_p',  name: '包装纸', tier: 'basic', sellPrice: 70,  recipe: [{ code: 'wood_bamboo', qty: 1.0 }, { code: 'coal', qty: 0.2 }], output: { code: 'pap_pack', qty: 1.0 }, unit: '令' },
+      { code: 'toilet',  name: '卫生纸', tier: 'basic', sellPrice: 65,  recipe: [{ code: 'wood_pine', qty: 0.8 }, { code: 'coal', qty: 0.2 }], output: { code: 'pap_toilet', qty: 1.0 }, unit: '提' },
+      { code: 'box_p',   name: '纸箱',   tier: 'mid',   sellPrice: 140, recipe: [{ code: 'wood_bamboo', qty: 1.2 }, { code: 'wood_pine', qty: 0.5 }, { code: 'coal', qty: 0.3 }], output: { code: 'pap_box', qty: 1.0 }, unit: '个' },
+      { code: 'cup_p',   name: '纸杯',   tier: 'mid',   sellPrice: 130, recipe: [{ code: 'wood_pine', qty: 1.0 }, { code: 'coal', qty: 0.3 }], output: { code: 'pap_cup', qty: 1.0 }, unit: '箱' },
+      { code: 'tissue',  name: '纸巾',   tier: 'basic', sellPrice: 75,  recipe: [{ code: 'wood_pine', qty: 0.8 }, { code: 'coal', qty: 0.2 }], output: { code: 'pap_tissue', qty: 1.0 }, unit: '提' },
+      { code: 'bag_p',   name: '纸袋',   tier: 'mid',   sellPrice: 135, recipe: [{ code: 'wood_bamboo', qty: 1.0 }, { code: 'coal', qty: 0.2 }], output: { code: 'pap_bag', qty: 1.0 }, unit: '个' },
+      { code: 'board',   name: '纸板',   tier: 'high',  sellPrice: 190, recipe: [{ code: 'wood_bamboo', qty: 1.5 }, { code: 'wood_pine', qty: 0.8 }, { code: 'coal', qty: 0.4 }], output: { code: 'pap_board', qty: 1.0 }, unit: '张' },
+      { code: 'carton',  name: '纸盒',   tier: 'high',  sellPrice: 180, recipe: [{ code: 'wood_pine', qty: 1.2 }, { code: 'coal', qty: 0.3 }], output: { code: 'pap_carton', qty: 1.0 }, unit: '个' }
     ],
     cement: [
-      { code: 'ordinary', name: '普通水泥', tier: 'basic', sellPrice: 130, recipe: [{ code: 'coal', qty: 1.0 }, { code: 'iron', qty: 0.2 }], output: { code: 'cem_ordinary', qty: 1.0 }, unit: '吨' },
-      { code: 'special',  name: '特种水泥', tier: 'high',  sellPrice: 280, recipe: [{ code: 'coal', qty: 1.5 }, { code: 'iron', qty: 0.5 }], output: { code: 'cem_special', qty: 1.0 }, unit: '吨' },
-      { code: 'pipe_c',   name: '水泥管',   tier: 'mid',   sellPrice: 180, recipe: [{ code: 'coal', qty: 1.2 }, { code: 'iron', qty: 0.3 }], output: { code: 'cem_pipe', qty: 1.0 }, unit: '根' },
-      { code: 'slab',     name: '水泥板',   tier: 'mid',   sellPrice: 170, recipe: [{ code: 'coal', qty: 1.1 }, { code: 'iron', qty: 0.25 }], output: { code: 'cem_slab', qty: 1.0 }, unit: '块' },
-      { code: 'pile',     name: '水泥桩',   tier: 'high',  sellPrice: 300, recipe: [{ code: 'coal', qty: 1.8 }, { code: 'iron', qty: 0.6 }], output: { code: 'cem_pile', qty: 1.0 }, unit: '根' },
-      { code: 'brick',    name: '水泥砖',   tier: 'basic', sellPrice: 120, recipe: [{ code: 'coal', qty: 0.8 }, { code: 'iron', qty: 0.15 }], output: { code: 'cem_brick', qty: 1.0 }, unit: '块' },
-      { code: 'tile_c',   name: '水泥瓦',   tier: 'basic', sellPrice: 125, recipe: [{ code: 'coal', qty: 0.9 }, { code: 'iron', qty: 0.18 }], output: { code: 'cem_tile', qty: 1.0 }, unit: '块' },
-      { code: 'column',   name: '水泥柱',   tier: 'mid',   sellPrice: 190, recipe: [{ code: 'coal', qty: 1.3 }, { code: 'iron', qty: 0.35 }], output: { code: 'cem_column', qty: 1.0 }, unit: '根' },
-      { code: 'beam',     name: '水泥梁',   tier: 'high',  sellPrice: 290, recipe: [{ code: 'coal', qty: 1.6 }, { code: 'iron', qty: 0.55 }], output: { code: 'cem_beam', qty: 1.0 }, unit: '根' },
-      { code: 'block',    name: '水泥块',   tier: 'basic', sellPrice: 115, recipe: [{ code: 'coal', qty: 0.7 }, { code: 'iron', qty: 0.12 }], output: { code: 'cem_block', qty: 1.0 }, unit: '块' }
+      { code: 'ordinary', name: '普通水泥', tier: 'basic', sellPrice: 130, recipe: [{ code: 'limestone', qty: 2.0 }, { code: 'coal', qty: 0.5 }], output: { code: 'cem_ordinary', qty: 1.0 }, unit: '吨' },
+      { code: 'special',  name: '特种水泥', tier: 'high',  sellPrice: 280, recipe: [{ code: 'limestone', qty: 3.0 }, { code: 'coal', qty: 0.8 }, { code: 'iron', qty: 0.3 }], output: { code: 'cem_special', qty: 1.0 }, unit: '吨' },
+      { code: 'pipe_c',   name: '水泥管',   tier: 'mid',   sellPrice: 180, recipe: [{ code: 'limestone', qty: 2.2 }, { code: 'coal', qty: 0.5 }], output: { code: 'cem_pipe', qty: 1.0 }, unit: '根' },
+      { code: 'slab',     name: '水泥板',   tier: 'mid',   sellPrice: 170, recipe: [{ code: 'limestone', qty: 2.0 }, { code: 'coal', qty: 0.5 }], output: { code: 'cem_slab', qty: 1.0 }, unit: '块' },
+      { code: 'pile',     name: '水泥桩',   tier: 'high',  sellPrice: 300, recipe: [{ code: 'limestone', qty: 3.0 }, { code: 'coal', qty: 0.8 }, { code: 'iron', qty: 0.3 }], output: { code: 'cem_pile', qty: 1.0 }, unit: '根' },
+      { code: 'brick',    name: '水泥砖',   tier: 'basic', sellPrice: 120, recipe: [{ code: 'limestone', qty: 1.5 }, { code: 'coal', qty: 0.3 }], output: { code: 'cem_brick', qty: 1.0 }, unit: '块' },
+      { code: 'tile_c',   name: '水泥瓦',   tier: 'basic', sellPrice: 125, recipe: [{ code: 'limestone', qty: 1.8 }, { code: 'coal', qty: 0.4 }], output: { code: 'cem_tile', qty: 1.0 }, unit: '块' },
+      { code: 'column',   name: '水泥柱',   tier: 'mid',   sellPrice: 190, recipe: [{ code: 'limestone', qty: 2.5 }, { code: 'coal', qty: 0.6 }], output: { code: 'cem_column', qty: 1.0 }, unit: '根' },
+      { code: 'beam',     name: '水泥梁',   tier: 'high',  sellPrice: 290, recipe: [{ code: 'limestone', qty: 2.8 }, { code: 'coal', qty: 0.7 }, { code: 'iron', qty: 0.2 }], output: { code: 'cem_beam', qty: 1.0 }, unit: '根' },
+      { code: 'block',    name: '水泥块',   tier: 'basic', sellPrice: 115, recipe: [{ code: 'limestone', qty: 1.5 }, { code: 'coal', qty: 0.3 }], output: { code: 'cem_block', qty: 1.0 }, unit: '块' }
     ],
     furn: [
-      { code: 'table',    name: '木桌',   tier: 'basic', sellPrice: 90,  recipe: [{ code: 'rubber', qty: 0.6 }, { code: 'cotton', qty: 0.4 }], output: { code: 'fur_table', qty: 1.0 }, unit: '张' },
-      { code: 'chair',    name: '木椅',   tier: 'basic', sellPrice: 80,  recipe: [{ code: 'rubber', qty: 0.5 }, { code: 'cotton', qty: 0.3 }], output: { code: 'fur_chair', qty: 1.0 }, unit: '把' },
-      { code: 'bed',      name: '木床',   tier: 'high',  sellPrice: 210, recipe: [{ code: 'rubber', qty: 1.2 }, { code: 'cotton', qty: 0.8 }], output: { code: 'fur_bed', qty: 1.0 }, unit: '张' },
-      { code: 'cabinet',  name: '木柜',   tier: 'mid',   sellPrice: 150, recipe: [{ code: 'rubber', qty: 0.9 }, { code: 'cotton', qty: 0.6 }], output: { code: 'fur_cabinet', qty: 1.0 }, unit: '个' },
-      { code: 'shelf',    name: '木架',   tier: 'basic', sellPrice: 70,  recipe: [{ code: 'rubber', qty: 0.4 }, { code: 'cotton', qty: 0.2 }], output: { code: 'fur_shelf', qty: 1.0 }, unit: '个' },
-      { code: 'box_f',    name: '木箱',   tier: 'basic', sellPrice: 75,  recipe: [{ code: 'rubber', qty: 0.5 }, { code: 'cotton', qty: 0.25 }], output: { code: 'fur_box', qty: 1.0 }, unit: '个' },
-      { code: 'stool',    name: '木凳',   tier: 'basic', sellPrice: 60,  recipe: [{ code: 'rubber', qty: 0.3 }, { code: 'cotton', qty: 0.15 }], output: { code: 'fur_stool', qty: 1.0 }, unit: '张' },
-      { code: 'coffee',   name: '木几',   tier: 'mid',   sellPrice: 140, recipe: [{ code: 'rubber', qty: 0.7 }, { code: 'cotton', qty: 0.45 }], output: { code: 'fur_coffee', qty: 1.0 }, unit: '张' },
-      { code: 'screen',   name: '木屏风', tier: 'high',  sellPrice: 190, recipe: [{ code: 'rubber', qty: 1.0 }, { code: 'cotton', qty: 0.7 }], output: { code: 'fur_screen', qty: 1.0 }, unit: '扇' },
-      { code: 'cabinet2', name: '电视柜', tier: 'mid',   sellPrice: 145, recipe: [{ code: 'rubber', qty: 0.8 }, { code: 'cotton', qty: 0.55 }], output: { code: 'fur_cabinet2', qty: 1.0 }, unit: '个' }
+      { code: 'table',    name: '木桌',   tier: 'basic', sellPrice: 90,  recipe: [{ code: 'wood_cedar', qty: 0.7 }, { code: 'rubber', qty: 0.1 }], output: { code: 'fur_table', qty: 1.0 }, unit: '张' },
+      { code: 'chair',    name: '木椅',   tier: 'basic', sellPrice: 80,  recipe: [{ code: 'wood_pine', qty: 0.6 }, { code: 'rubber', qty: 0.1 }], output: { code: 'fur_chair', qty: 1.0 }, unit: '把' },
+      { code: 'bed',      name: '木床',   tier: 'high',  sellPrice: 210, recipe: [{ code: 'wood_rosewood', qty: 0.6 }, { code: 'cotton', qty: 0.3 }], output: { code: 'fur_bed', qty: 1.0 }, unit: '张' },
+      { code: 'cabinet',  name: '木柜',   tier: 'mid',   sellPrice: 150, recipe: [{ code: 'wood_walnut', qty: 0.8 }, { code: 'rubber', qty: 0.15 }], output: { code: 'fur_cabinet', qty: 1.0 }, unit: '个' },
+      { code: 'shelf',    name: '木架',   tier: 'basic', sellPrice: 70,  recipe: [{ code: 'wood_pine', qty: 0.5 }], output: { code: 'fur_shelf', qty: 1.0 }, unit: '个' },
+      { code: 'box_f',    name: '木箱',   tier: 'basic', sellPrice: 75,  recipe: [{ code: 'wood_pine', qty: 0.5 }], output: { code: 'fur_box', qty: 1.0 }, unit: '个' },
+      { code: 'stool',    name: '木凳',   tier: 'basic', sellPrice: 60,  recipe: [{ code: 'wood_pine', qty: 0.4 }], output: { code: 'fur_stool', qty: 1.0 }, unit: '张' },
+      { code: 'coffee',   name: '木几',   tier: 'mid',   sellPrice: 140, recipe: [{ code: 'wood_cedar', qty: 0.7 }, { code: 'rubber', qty: 0.1 }], output: { code: 'fur_coffee', qty: 1.0 }, unit: '张' },
+      { code: 'screen',   name: '木屏风', tier: 'high',  sellPrice: 190, recipe: [{ code: 'wood_walnut', qty: 1.0 }, { code: 'cotton', qty: 0.2 }], output: { code: 'fur_screen', qty: 1.0 }, unit: '扇' },
+      { code: 'cabinet2', name: '电视柜', tier: 'mid',   sellPrice: 145, recipe: [{ code: 'wood_cedar', qty: 0.9 }, { code: 'rubber', qty: 0.15 }], output: { code: 'fur_cabinet2', qty: 1.0 }, unit: '个' }
     ],
     brew: [
-      { code: 'baijiu',   name: '白酒',   tier: 'high',  sellPrice: 280, recipe: [{ code: 'wheat', qty: 2.4 }, { code: 'fruit', qty: 0.4 }], output: { code: 'brew_baijiu', qty: 1.0 }, unit: '箱' },
-      { code: 'beer',     name: '啤酒',   tier: 'basic', sellPrice: 120, recipe: [{ code: 'wheat', qty: 1.5 }, { code: 'fruit', qty: 0.2 }], output: { code: 'brew_beer', qty: 1.0 }, unit: '箱' },
-      { code: 'red_w',    name: '红酒',   tier: 'high',  sellPrice: 260, recipe: [{ code: 'wheat', qty: 1.8 }, { code: 'fruit', qty: 0.6 }], output: { code: 'brew_red', qty: 1.0 }, unit: '箱' },
-      { code: 'rice_w',   name: '黄酒',   tier: 'mid',   sellPrice: 170, recipe: [{ code: 'wheat', qty: 2.0 }, { code: 'fruit', qty: 0.3 }], output: { code: 'brew_rice', qty: 1.0 }, unit: '箱' },
-      { code: 'mijiu',    name: '米酒',   tier: 'basic', sellPrice: 100, recipe: [{ code: 'wheat', qty: 1.2 }, { code: 'fruit', qty: 0.1 }], output: { code: 'brew_mijiu', qty: 1.0 }, unit: '箱' },
-      { code: 'fruit_w',  name: '果酒',   tier: 'mid',   sellPrice: 180, recipe: [{ code: 'wheat', qty: 1.0 }, { code: 'fruit', qty: 0.8 }], output: { code: 'brew_fruit', qty: 1.0 }, unit: '箱' },
-      { code: 'med_w',    name: '药酒',   tier: 'high',  sellPrice: 270, recipe: [{ code: 'wheat', qty: 2.2 }, { code: 'fruit', qty: 0.5 }], output: { code: 'brew_med', qty: 1.0 }, unit: '箱' },
-      { code: 'cooking',  name: '料酒',   tier: 'basic', sellPrice: 90,  recipe: [{ code: 'wheat', qty: 1.0 }, { code: 'fruit', qty: 0.15 }], output: { code: 'brew_cooking', qty: 1.0 }, unit: '箱' },
-      { code: 'cocktail', name: '鸡尾酒', tier: 'high',  sellPrice: 250, recipe: [{ code: 'wheat', qty: 1.5 }, { code: 'fruit', qty: 0.7 }], output: { code: 'brew_cocktail', qty: 1.0 }, unit: '箱' },
-      { code: 'sparkle',  name: '汽酒',   tier: 'mid',   sellPrice: 160, recipe: [{ code: 'wheat', qty: 1.3 }, { code: 'fruit', qty: 0.4 }], output: { code: 'brew_sparkle', qty: 1.0 }, unit: '箱' }
+      { code: 'baijiu',   name: '白酒',   tier: 'high',  sellPrice: 280, recipe: [{ code: 'sorghum', qty: 1.2 }, { code: 'wheat', qty: 0.3 }], output: { code: 'brew_baijiu', qty: 1.0 }, unit: '箱' },
+      { code: 'beer',     name: '啤酒',   tier: 'basic', sellPrice: 120, recipe: [{ code: 'wheat', qty: 0.9 }, { code: 'fruit', qty: 0.06 }], output: { code: 'brew_beer', qty: 1.0 }, unit: '箱' },
+      { code: 'red_w',    name: '红酒',   tier: 'high',  sellPrice: 260, recipe: [{ code: 'fruit', qty: 1.5 }], output: { code: 'brew_red', qty: 1.0 }, unit: '箱' },
+      { code: 'rice_w',   name: '黄酒',   tier: 'mid',   sellPrice: 170, recipe: [{ code: 'rice', qty: 1.2 }, { code: 'wheat', qty: 0.2 }], output: { code: 'brew_rice', qty: 1.0 }, unit: '箱' },
+      { code: 'mijiu',    name: '米酒',   tier: 'basic', sellPrice: 100, recipe: [{ code: 'rice', qty: 1.1 }], output: { code: 'brew_mijiu', qty: 1.0 }, unit: '箱' },
+      { code: 'fruit_w',  name: '果酒',   tier: 'mid',   sellPrice: 180, recipe: [{ code: 'fruit', qty: 1.2 }], output: { code: 'brew_fruit', qty: 1.0 }, unit: '箱' },
+      { code: 'med_w',    name: '药酒',   tier: 'high',  sellPrice: 270, recipe: [{ code: 'sorghum', qty: 0.9 }, { code: 'fruit', qty: 0.2 }], output: { code: 'brew_med', qty: 1.0 }, unit: '箱' },
+      { code: 'cooking',  name: '料酒',   tier: 'basic', sellPrice: 90,  recipe: [{ code: 'rice', qty: 0.7 }, { code: 'wheat', qty: 0.12 }], output: { code: 'brew_cooking', qty: 1.0 }, unit: '箱' },
+      { code: 'cocktail', name: '鸡尾酒', tier: 'high',  sellPrice: 250, recipe: [{ code: 'sorghum', qty: 0.6 }, { code: 'fruit', qty: 0.6 }], output: { code: 'brew_cocktail', qty: 1.0 }, unit: '箱' },
+      { code: 'sparkle',  name: '汽酒',   tier: 'mid',   sellPrice: 160, recipe: [{ code: 'wheat', qty: 0.6 }, { code: 'fruit', qty: 0.5 }], output: { code: 'brew_sparkle', qty: 1.0 }, unit: '箱' }
     ],
     feed: [
-      { code: 'pig',      name: '猪饲料', tier: 'basic', sellPrice: 85,  recipe: [{ code: 'corn', qty: 2.0 }, { code: 'soy', qty: 1.0 }], output: { code: 'feed_pig', qty: 1.0 }, unit: '袋' },
-      { code: 'chicken',  name: '鸡饲料', tier: 'basic', sellPrice: 80,  recipe: [{ code: 'corn', qty: 1.8 }, { code: 'soy', qty: 0.8 }], output: { code: 'feed_chicken', qty: 1.0 }, unit: '袋' },
-      { code: 'duck',     name: '鸭饲料', tier: 'basic', sellPrice: 78,  recipe: [{ code: 'corn', qty: 1.7 }, { code: 'soy', qty: 0.7 }], output: { code: 'feed_duck', qty: 1.0 }, unit: '袋' },
-      { code: 'goose',    name: '鹅饲料', tier: 'basic', sellPrice: 75,  recipe: [{ code: 'corn', qty: 1.6 }, { code: 'soy', qty: 0.6 }], output: { code: 'feed_goose', qty: 1.0 }, unit: '袋' },
-      { code: 'cattle',   name: '牛饲料', tier: 'mid',   sellPrice: 130, recipe: [{ code: 'corn', qty: 2.5 }, { code: 'soy', qty: 1.2 }], output: { code: 'feed_cattle', qty: 1.0 }, unit: '袋' },
-      { code: 'sheep',    name: '羊饲料', tier: 'mid',   sellPrice: 120, recipe: [{ code: 'corn', qty: 2.2 }, { code: 'soy', qty: 1.1 }], output: { code: 'feed_sheep', qty: 1.0 }, unit: '袋' },
-      { code: 'rabbit',   name: '兔饲料', tier: 'basic', sellPrice: 70,  recipe: [{ code: 'corn', qty: 1.5 }, { code: 'soy', qty: 0.5 }], output: { code: 'feed_rabbit', qty: 1.0 }, unit: '袋' },
-      { code: 'fish_f',   name: '鱼饲料', tier: 'high',  sellPrice: 150, recipe: [{ code: 'corn', qty: 2.8 }, { code: 'soy', qty: 1.5 }], output: { code: 'feed_fish', qty: 1.0 }, unit: '袋' },
-      { code: 'shrimp_f', name: '虾饲料', tier: 'high',  sellPrice: 160, recipe: [{ code: 'corn', qty: 3.0 }, { code: 'soy', qty: 1.8 }], output: { code: 'feed_shrimp', qty: 1.0 }, unit: '袋' },
-      { code: 'crab_f',   name: '蟹饲料', tier: 'high',  sellPrice: 170, recipe: [{ code: 'corn', qty: 3.2 }, { code: 'soy', qty: 2.0 }], output: { code: 'feed_crab', qty: 1.0 }, unit: '袋' }
+      { code: 'pig',      name: '猪饲料', tier: 'basic', sellPrice: 85,  recipe: [{ code: 'corn', qty: 1.2 }, { code: 'soy', qty: 0.6 }], output: { code: 'feed_pig', qty: 1.0 }, unit: '袋' },
+      { code: 'chicken',  name: '鸡饲料', tier: 'basic', sellPrice: 80,  recipe: [{ code: 'corn', qty: 1.1 }, { code: 'soy', qty: 0.5 }], output: { code: 'feed_chicken', qty: 1.0 }, unit: '袋' },
+      { code: 'duck',     name: '鸭饲料', tier: 'basic', sellPrice: 78,  recipe: [{ code: 'corn', qty: 1.0 }, { code: 'soy', qty: 0.4 }], output: { code: 'feed_duck', qty: 1.0 }, unit: '袋' },
+      { code: 'goose',    name: '鹅饲料', tier: 'basic', sellPrice: 75,  recipe: [{ code: 'corn', qty: 1.0 }, { code: 'soy', qty: 0.4 }], output: { code: 'feed_goose', qty: 1.0 }, unit: '袋' },
+      { code: 'cattle',   name: '牛饲料', tier: 'mid',   sellPrice: 130, recipe: [{ code: 'corn', qty: 1.5 }, { code: 'soy', qty: 0.7 }], output: { code: 'feed_cattle', qty: 1.0 }, unit: '袋' },
+      { code: 'sheep',    name: '羊饲料', tier: 'mid',   sellPrice: 120, recipe: [{ code: 'corn', qty: 1.3 }, { code: 'soy', qty: 0.7 }], output: { code: 'feed_sheep', qty: 1.0 }, unit: '袋' },
+      { code: 'rabbit',   name: '兔饲料', tier: 'basic', sellPrice: 70,  recipe: [{ code: 'corn', qty: 0.9 }, { code: 'soy', qty: 0.3 }], output: { code: 'feed_rabbit', qty: 1.0 }, unit: '袋' },
+      { code: 'fish_f',   name: '鱼饲料', tier: 'high',  sellPrice: 150, recipe: [{ code: 'corn', qty: 1.7 }, { code: 'soy', qty: 0.9 }], output: { code: 'feed_fish', qty: 1.0 }, unit: '袋' },
+      { code: 'shrimp_f', name: '虾饲料', tier: 'high',  sellPrice: 160, recipe: [{ code: 'corn', qty: 1.8 }, { code: 'soy', qty: 1.1 }], output: { code: 'feed_shrimp', qty: 1.0 }, unit: '袋' },
+      { code: 'crab_f',   name: '蟹饲料', tier: 'high',  sellPrice: 170, recipe: [{ code: 'corn', qty: 1.9 }, { code: 'soy', qty: 1.2 }], output: { code: 'feed_crab', qty: 1.0 }, unit: '袋' }
     ]
   },
 
@@ -267,6 +267,27 @@ const FactoryProducts = {
       const mat = DATA.rawMaterials.find(m => m.code === r.code);
       return (mat ? mat.name : r.code) + ' x' + r.qty;
     }).join(' + ');
+  },
+
+  /* 单批生产（3 秒一批，用于工厂实时结算） */
+  produceBatch(ind, empMult, levelMult) {
+    if (!ind || !ind.products) return 0;
+    const factoryCode = ind.category;
+    let totalIncome = 0;
+    Object.entries(ind.products).forEach(([prodCode, lineCount]) => {
+      if (lineCount <= 0) return;
+      const product = this.getProduct(factoryCode, prodCode);
+      if (!product) return;
+      const satisfaction = this.productSatisfaction(factoryCode, prodCode, lineCount);
+      // 消耗原材料
+      this.consumeProductMaterials(factoryCode, prodCode, lineCount, satisfaction);
+      // 产出成品到仓库
+      this.produceProductOutput(factoryCode, prodCode, lineCount, satisfaction);
+      // 单批产量 = lineCount × empMult × levelMult × satisfaction × 0.05
+      const batchIncome = product.sellPrice * lineCount * (empMult || 0) * (levelMult || 1) * satisfaction * 0.05;
+      totalIncome += batchIncome;
+    });
+    return totalIncome;
   },
 
   /* 获取工厂总日收入（基于产品分配） */
