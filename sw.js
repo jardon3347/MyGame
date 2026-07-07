@@ -1,6 +1,6 @@
 ﻿/* sw.js — Service Worker：离线缓存 */
 
-const CACHE_NAME = 'shengshi-v25';
+const CACHE_NAME = 'shengshi-v26';
 const ASSETS = [
   './',
   './index.html',
@@ -23,6 +23,7 @@ const ASSETS = [
   './js/pages/staff.js',
   './js/pages/warehouse.js',
   './js/pages/overview.js',
+  './js/pages/industryDetail.js',
   './manifest.json'
 ];
 
