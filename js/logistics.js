@@ -1,4 +1,4 @@
-/* logistics.js — 物流系统：自动买卖规则管理、结算 */
+﻿/* logistics.js — 物流系统：自动买卖规则管理、结算 */
 
 const LogisticsSystem = {
 
@@ -148,7 +148,7 @@ const LogisticsSystem = {
         const sellQty = excess * (rule.percentage / 100);
         const actualQty = Math.min(sellQty, current);
         if (actualQty > 0.5) {
-          const sellPrice = mat.price * (1 - feeRate);
+          const sellPrice = Employees.materialPrice(rule.materialCode) * (1 - feeRate);
           const cash = Math.floor(sellPrice * actualQty);
           inv[rule.materialCode] -= actualQty;
           if (inv[rule.materialCode] <= 0.01) delete inv[rule.materialCode];

@@ -1,4 +1,4 @@
-/* ui.js — UI 渲染工具：路由、卡片、弹窗、Toast */
+﻿/* ui.js — UI 渲染工具：路由、卡片、弹窗、Toast */
 
 const Router = {
   current: null,
@@ -417,9 +417,25 @@ const UI = {
             daily += FactoryProducts.factoryDailyIncome(o.category);
           } else if (type === 'factory' && DATA.factoryRecipes[o.category]) {
             recipeSat = Employees.recipeSatisfaction(o.category, qty);
-            daily += (cat.dailyIncome || 0) * (o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+            // 有产出的产业使用 产出量×市场价，无产出的使用 dailyIncome
+            if (cat.produces) {
+              const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
+                ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
+              const produceQty = cat.produces.qty * qty * (empMult || 0) * licenseMult;
+              const matPrice = Employees.materialPrice(cat.produces.code);
+              daily += produceQty * matPrice;
+            } else {
+              daily += (cat.dailyIncome || 0) * Engine.levelMultiplier(o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+            }
           } else {
-            daily += (cat.dailyIncome || 0) * (o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+            // 有产出的产业使用 产出量×市场价，无产出的使用 dailyIncome
+            if (cat.produces) {
+              const produceQty = cat.produces.qty * qty * (empMult || 0) * (recipeSat || 1);
+              const matPrice = Employees.materialPrice(cat.produces.code);
+              daily += produceQty * matPrice;
+            } else {
+              daily += (cat.dailyIncome || 0) * Engine.levelMultiplier(o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+            }
           }
         }
       }

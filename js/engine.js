@@ -164,7 +164,9 @@ const Engine = {
       if (ind.type === 'mining' && (!ind.licenseLevel || ind.licenseLevel <= 0)) return;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
-      Employees.produceMaterials(ind, empMult, log);
+      const licenseMult1 = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
+        ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
+        Employees.produceMaterials(ind, empMult, log, licenseMult1);
     });
 
     // 阶段2：冶金消耗矿石→产出金属进仓库 + 现金收入
@@ -181,8 +183,11 @@ const Engine = {
         recipeSat = Employees.smelterSatisfaction(ind.category, qty);
         Employees.consumeSmelterMaterials(ind.category, qty, recipeSat);
       }
-      // 现金收入
-      let daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+      // 现金收入 = 产出量 × 市场价
+      const produceCode = cat.produces ? cat.produces.code : null;
+      const produceQty = cat.produces ? cat.produces.qty * qty * empMult * (recipeSat || 1) : 0;
+      const matPrice = produceCode ? Employees.materialPrice(produceCode) : 0;
+      let daily = produceQty * matPrice;
       if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
       State.data.cash += daily;
       log.income += daily;
@@ -204,10 +209,16 @@ const Engine = {
       const qty = ind.quantity || 1;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
-      let daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * (empMult || 0);
-      // 矿业：许可证等级加成 — 每级 +20%
-      if (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1) {
-        daily *= (1 + (ind.licenseLevel - 1) * 0.2);
+      // 现金收入：有产出的按产出×市场价，无产出的按dailyIncome
+      let daily = 0;
+      if (cat.produces) {
+        const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
+          ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
+        const produceQty = cat.produces.qty * qty * empMult * licenseMult;
+        const matPrice = Employees.materialPrice(cat.produces.code);
+        daily = produceQty * matPrice;
+      } else {
+        daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * empMult;
       }
       if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
       State.data.cash += daily;

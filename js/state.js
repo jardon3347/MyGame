@@ -1,4 +1,4 @@
-/* state.js — 游戏状态管理：初始化、存档、读档 */
+﻿/* state.js — 游戏状态管理：初始化、存档、读档 */
 
 const State = {
   data: null,
@@ -120,7 +120,7 @@ const State = {
     }
 
     // 强制同步农产品市场价（确保旧存档价格与 data.js 一致）
-    const priceResets = { wheat:80, rice:85, soy:100, corn:75, cotton:120, rape:90, sugarc:60, veg:50, fruit:150, rare_earth:2000 };
+    const priceResets = { wheat:2800, rice:3000, soy:5000, corn:2600, cotton:18000, rape:7000, sugarc:500, tea:40000, veg:3000, fruit:8000, rubber:12000, tobacco:25000, sorghum:2800, wood_bamboo:500, wood_pine:1000, wood_cedar:1200, wood_walnut:15000, wood_rosewood:100000, wood_nanmu:200000, coal:1000, iron:1000, copper:55000, baux:500, zinc_ore:2500, lead_ore:1800, tin:175000, tung:120000, silver_ore:5000, gold_ore:350000, rare_earth:65000, phos_ore:500, quartz_ore:300, limestone:80, steel:4500, ironR:3800, copperR:67000, alum:19000, zincR:23000, leadR:16000, tinR:220000, tungR:175000, alloy:22000, precious_m:450000 };
     Object.entries(priceResets).forEach(([code, newPrice]) => {
       if (d.materialPrices) {
         d.materialPrices[code] = newPrice;
@@ -233,6 +233,7 @@ const State = {
       metalPrices: {},
       industries: [],
       employees: [],
+      _initEmployees: true,  // Flag to generate initial employees after game start
       inventory: {},       // 仓库原料库存：{ code: 数量 }
       materialPrices: {},   // 原料市场价格（每日波动）
       marketSentiment: 0,   // 大盘情绪 -0.02 ~ 0.02
@@ -254,7 +255,22 @@ const State = {
     DATA.metals.forEach(m => { this.data.metalPrices[m.code] = m.basePrice; });
     // 初始化原料市场价格
     DATA.rawMaterials.forEach(m => { this.data.materialPrices[m.code] = m.price; });
-    // 重置时间
+    // 初始员工：12名免费员工
+    if (this.data._initEmployees) {
+      const newNames = Employees._randomName ? null : null;
+      for (let i = 0; i < 12; i++) {
+        const mult = Math.round((1.0 + Math.random() * 1.0) * 10) / 10;
+        this.data.employees.push({
+          id: 'emp_' + Date.now() + '_' + i,
+          name: typeof Employees !== 'undefined' && Employees._randomName ? Employees._randomName() : ('员工' + (i+1)),
+          multiplier: mult,
+          assign: null
+        });
+      }
+      delete this.data._initEmployees;
+    }
+
+    
     if (window.TimeManager) TimeManager.reset();
     this.save();
     Router.goRoot('overview');
@@ -380,7 +396,17 @@ const State = {
         if (ind.type === 'metall' && window.DATA && DATA.smelterRecipes[ind.category]) {
           recipeSat = Employees.smelterSatisfaction(ind.category, qty);
         }
-        let daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
+        let daily = 0;
+        if (cat.produces) {
+          const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
+            ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
+          const produceQty = cat.produces.qty * qty * (empMult || 0) * licenseMult;
+          const matPrice = window.Employees ? Employees.materialPrice(cat.produces.code) : 0;
+          daily = produceQty * matPrice;
+        } else {
+          const levelMult = (ind.type === 'farm' || ind.type === 'mining' || ind.type === 'metall') ? 1 : Engine.levelMultiplier(ind.level || 1);
+          daily = (cat.dailyIncome || 0) * levelMult * qty * (empMult || 0) * (recipeSat || 1);
+        }
         // 周末减半
         if (this.data.date.dayOfWeek === 0 || this.data.date.dayOfWeek === 6) {
           daily *= 0.5;
@@ -401,7 +427,7 @@ const State = {
         if (rule.type === 'sell_above' && current > rule.threshold) {
           const excess = current - rule.threshold;
           const sellQty = Math.min(excess * (rule.percentage / 100), current);
-          if (sellQty > 0.5) income += Math.floor(mat.price * (1 - feeRate) * sellQty);
+          if (sellQty > 0.5) income += Math.floor(Employees.materialPrice(rule.materialCode) * (1 - feeRate) * sellQty);
         }
         if (rule.type === 'buy_below' && current < rule.threshold && LogisticsSystem.canAutoBuy()) {
           const shortage = rule.threshold - current;

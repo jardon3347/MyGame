@@ -1,4 +1,4 @@
-/* staff.js — 员工管理页：独立员工模型 { id, name, multiplier, assign } */
+﻿/* staff.js — 员工管理页：独立员工模型 { id, name, multiplier, assign } */
 
 Pages.staff = {
   render(app) {
@@ -205,41 +205,95 @@ const Staff = {
     ]);
   },
 
+
+  // 当前弹窗跟踪
+  _currentModal: null,
+
+  // 构建弹窗 HTML 内容
+  _buildEmpModalHtml(type, category) {
+    const unassigned = (State.data.employees || []).filter(e => !e.assign).sort((a, b) => b.multiplier - a.multiplier);
+    const current = Employees.getAssigned(type, category);
+    const totalMult = Employees.multiplier(type, category);
+    let h = '';
+    if (current.length > 0) {
+      h += '<div class="text-sm text-muted" style="margin-bottom:6px;">\u5f53\u524d\u5458\u5de5\uff1a' + current.length + '\u4eba \u00b7 \u52a0\u6210 \u00d7' + totalMult.toFixed(1) + '\uff1a</div>';
+      current.sort((a, b) => b.multiplier - a.multiplier).forEach(e => {
+        h += '<div class="list-row" style="padding:4px 0;"><span class="text-sm">' + e.name + ' \u00d7' + e.multiplier + '</span>' +
+          '<button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.unassign(\x27' + e.id + '\x27, true);Staff._refreshEmpModal()">\u64a4\u56de</button></div>';
+      });
+      h += '<div style="margin:6px 0;"><button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;color:var(--down);border-color:var(--down);" onclick="Staff._unassignAll(\x27' + type + '\x27,\x27' + category + '\x27);Staff._refreshEmpModal()" title="\u5168\u90e8\u64a4\u56de">\u5168\u64a4</button></div>';
+      h += '<div style="margin:8px 0;border-top:0.5px solid var(--border);"></div>';
+    }
+    if (unassigned.length > 0) {
+      h += '<div style="margin-bottom:8px;"><button class="btn primary full" onclick="Staff._bulkAssign(\x27' + type + '\x27, \x27' + category + '\x27, ' + unassigned.length + ')">\ud83d\udce5 \u6279\u91cf\u8c03\u5165\uff08\u5171 ' + unassigned.length + ' \u4eba\u53ef\u7528\uff09</button></div>';
+      h += '<div class="text-sm text-muted" style="margin-bottom:6px;">\u6216\u5355\u4e2a\u8c03\u5165\uff08\u6309\u52a0\u6210\u964d\u5e8f\uff09</div>';
+      unassigned.forEach(e => {
+        h += '<div class="list-row" style="padding:4px 0;"><span class="text-sm">' + e.name + ' \u00d7' + e.multiplier + ' \u00b7 \u00a5' + Math.round(e.multiplier*100) + '/\u65e5</span>' +
+          '<button class="btn sm primary" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.assign(\x27' + e.id + '\x27,\x27' + type + '\x27,\x27' + category + '\x27, true);Staff._refreshEmpModal()">\u8c03\u5165</button></div>';
+      });
+    } else {
+      h += '<div class="empty">\u6682\u65e0\u53ef\u5206\u914d\u5458\u5de5</div>';
+    }
+    return h;
+  },
+
+  // 原地刷新弹窗内容
+  _refreshEmpModal() {
+    const { type, category } = this._currentModal || {};
+    if (!type || !category) return;
+    const body = document.querySelector('.modal-body');
+    if (!body) return;
+    body.innerHTML = this._buildEmpModalHtml(type, category);
+  },
+
+  // 弹窗关闭后刷新背景页面
+  _onEmpModalClose() {
+    const { type, category } = this._currentModal || {};
+    document.querySelectorAll('.modal-mask').forEach(m => m.remove());
+    TimeManager.autoResume();
+    if (!type || !category) return;
+    if (typeof Router !== 'undefined' && Router.current === 'industryDetail') {
+      Pages.industryDetail._refreshCapacity(type);
+    } else if (typeof Router !== 'undefined' && Router.current === 'staff') {
+      this._refreshSingleCard(type, category);
+      this._refreshTopStats();
+      this._refreshAssignedSection();
+    }
+    this._currentModal = null;
+  },
+
+  // 刷新「已分配员工」折叠区域
+  _refreshAssignedSection() {
+    const el = document.getElementById('collapse-assigned');
+    if (!el) return;
+    const scrollY = window.scrollY;
+    const summary = el.querySelector('.collapsible-summary');
+    if (summary) summary.textContent = this._assignedSummary() || '';
+    const body = el.querySelector('.collapsible-body');
+    if (body) body.innerHTML = this.assignedList();
+    window.scrollTo(0, scrollY);
+  },
+
+  // 打开弹窗（或已有弹窗时原地刷新）
   showAssignPickerByIndustry(type, category) {
     const cat = State.findIndustryCategory(type, category);
     if (!cat) return;
     const ind = DATA.industries[type];
-    const unassigned = (State.data.employees || []).filter(e => !e.assign).sort((a, b) => b.multiplier - a.multiplier);
-    const current = Employees.getAssigned(type, category);
-    const totalMult = Employees.multiplier(type, category);
+    this._currentModal = { type, category };
 
-    let html = '';
-    if (current.length > 0) {
-      html += '<div class="text-sm text-muted" style="margin-bottom:6px;">当前员工（' + current.length + '人 · 加成 ×' + totalMult.toFixed(1) + '）</div>';
-      current.sort((a, b) => b.multiplier - a.multiplier).forEach(e => {
-        html += '<div class="list-row" style="padding:4px 0;">' +
-          '<span class="text-sm">' + e.name + ' ×' + e.multiplier + '</span>' +
-          '<button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.unassign(\'' + e.id + '\', true);Staff.showAssignPickerByIndustry(\'' + type + '\',\'' + category + '\')">撤回</button></div>';
-      });
-      html += '<div style="margin:6px 0;"><button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;color:var(--down);border-color:var(--down);" onclick="Staff._unassignAll(\'' + type + '\',\'' + category + '\');Staff.showAssignPickerByIndustry(\'' + type + '\',\'' + category + '\')" title="全部撤回">全撤</button></div>';
-      html += '<div style="margin:8px 0;border-top:0.5px solid var(--border);"></div>';
+    const existing = document.querySelector('.modal-mask');
+    if (existing) {
+      const body = existing.querySelector('.modal-body');
+      if (body) body.innerHTML = this._buildEmpModalHtml(type, category);
+      const title = existing.querySelector('h2');
+      if (title) title.textContent = ind.icon + ' ' + cat.name + ' \u00b7 \u5458\u5de5\u7ba1\u7406';
+      return;
     }
 
-    if (unassigned.length > 0) {
-      html += '<div style="margin-bottom:8px;"><button class="btn primary full" onclick="Staff._bulkAssign(\'' + type + '\', \'' + category + '\', ' + unassigned.length + ')">📥 批量调入（共 ' + unassigned.length + ' 人可用）</button></div>';
-      html += '<div class="text-sm text-muted" style="margin-bottom:6px;">或单个调入（按加成降序）</div>';
-      unassigned.forEach(e => {
-        html += '<div class="list-row" style="padding:4px 0;">' +
-          '<span class="text-sm">' + e.name + ' ×' + e.multiplier + ' · ¥' + Math.round(e.multiplier*100) + '/日</span>' +
-          '<button class="btn sm primary" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.assign(\'' + e.id + '\',\'' + type + '\',\'' + category + '\', true);Staff.showAssignPickerByIndustry(\'' + type + '\',\'' + category + '\')">调入</button></div>';
-      });
-    } else {
-      html += '<div class="empty">暂无可分配员工</div>';
-    }
-
-    UI.modal(ind.icon + ' ' + cat.name + ' · 员工管理', html, [
-      { label: '关闭', onclick: 'UI.closeModal()' }
+    const mask = UI.modal(ind.icon + ' ' + cat.name + ' \u00b7 \u5458\u5de5\u7ba1\u7406', this._buildEmpModalHtml(type, category), [
+      { label: '\u5173\u95ed', onclick: 'Staff._onEmpModalClose()' }
     ]);
+    mask.onclick = function(e) { if (e.target === mask) Staff._onEmpModalClose(); };
   },
 
   _bulkAssign(type, category, maxQty) {
@@ -257,7 +311,9 @@ const Staff = {
         toAssign.forEach(e => { e.assign = { type, category }; });
         State.save();
         UI.toast('已调入 ' + toAssign.length + ' 人');
-        Router.refresh();
+        Staff._refreshEmpModal();
+        Staff._refreshTopStats();
+        Staff._refreshSingleCard(type, category);
       }
     });
   },
@@ -375,6 +431,7 @@ const Staff = {
       UI.toast('已撤回 ' + assigned.length + ' 人');
       Staff._refreshSingleCard(type, category);
       Staff._refreshTopStats();
+      Staff._refreshEmpModal();
     });
   },
 
@@ -439,6 +496,7 @@ const Staff = {
     State.save();
     UI.toast('已调入 ' + unassigned.length + ' 人');
     Staff.switchAssignTab('current');
+    Staff._refreshSingleCard(type, category);
   },
 
   _quickAssignLevel(type, category, level, count) {
@@ -449,6 +507,7 @@ const Staff = {
     State.save();
     UI.toast('已调入 ' + toAssign.length + ' 人');
     Staff.switchAssignTab('current');
+    Staff._refreshSingleCard(type, category);
   },
 
   _assignRecommended(type, category) {
@@ -461,6 +520,7 @@ const Staff = {
     State.save();
     UI.toast('已按推荐分配 ' + toAssign.length + ' 人');
     Staff.switchAssignTab('current');
+    Staff._refreshSingleCard(type, category);
   },
 
   recruitWithPicker(mode) {

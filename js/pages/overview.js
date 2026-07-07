@@ -28,7 +28,18 @@ Pages.overview = {
           if (ind.type === 'factory' && DATA.factoryRecipes[ind.category]) {
             recipeSat = Employees.recipeSatisfaction(ind.category, qty);
           }
-          industryDaily += cat.dailyIncome * Engine.levelMultiplier(ind.level || 1) * qty * empMult * recipeSat;
+          if (ind.type === 'factory' && window.FactoryProducts && ind.products !== undefined) {
+            const prodIncome = FactoryProducts.factoryDailyIncome(ind.category);
+            if (!isNaN(prodIncome)) industryDaily += prodIncome;
+          } else if (cat.produces) {
+            const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
+              ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
+            const produceQty = cat.produces.qty * qty * empMult * licenseMult;
+            const matPrice = Employees.materialPrice(cat.produces.code);
+            industryDaily += produceQty * matPrice;
+          } else {
+            industryDaily += (cat.dailyIncome || 0) * qty * empMult;
+          }
         }
         industryCount += qty;
       }
@@ -171,7 +182,19 @@ Pages.overview = {
           if (type === 'factory' && DATA.factoryRecipes[o.category]) {
             recipeSat = Employees.recipeSatisfaction(o.category, qty);
           }
-          daily += cat.dailyIncome * Engine.levelMultiplier(o.level || 1) * qty * empMult * recipeSat;
+          if (type === 'factory' && window.FactoryProducts && o.products !== undefined) {
+            const prodIncome = FactoryProducts.factoryDailyIncome(o.category);
+            if (!isNaN(prodIncome)) daily += prodIncome;
+          } else if (cat.produces) {
+            const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
+              ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
+            const produceQty = cat.produces.qty * qty * empMult * licenseMult;
+            const matPrice = Employees.materialPrice(cat.produces.code);
+            daily += produceQty * matPrice;
+          } else {
+            const levelMult = (type === 'farm' || type === 'mining' || type === 'metall') ? 1 : Engine.levelMultiplier(o.level || 1);
+            daily += (cat.dailyIncome || 0) * levelMult * qty * empMult * (recipeSat || 1);
+          }
         } else {
           unstaffed += qty;
         }

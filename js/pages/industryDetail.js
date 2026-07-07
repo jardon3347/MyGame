@@ -1,4 +1,4 @@
-/* industry.js — 通用产业页（支持农业/矿业/冶金/工厂/地产） */
+﻿/* industry.js — 通用产业页（支持农业/矿业/冶金/工厂/地产） */
 
 
 
@@ -49,7 +49,16 @@ Pages.industryDetail = {
             if (type === 'factory' && DATA.factoryRecipes[o.category]) {
               recipeSat = Employees.recipeSatisfaction(o.category, qty);
             }
-            daily = cat.dailyIncome * Engine.levelMultiplier(o.level || 1) * qty * empMult * recipeSat;
+            // 有产出的产业使用 产出量×市场价，无产出的使用 dailyIncome
+            if (cat.produces) {
+              const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
+              ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
+              const produceQty = cat.produces.qty * qty * empMult * recipeSat * licenseMult;
+              const matPrice = Employees.materialPrice(cat.produces.code);
+              daily = produceQty * matPrice;
+            } else {
+              daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(o.level || 1) * qty * empMult * recipeSat;
+            }
           }
           dailyTotal += daily;
 
@@ -638,7 +647,7 @@ Pages.industryDetail = {
     }
     h += '</div>';
     h += '<div class="text-muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
-    h += '配方: ' + recipeStr + ' · ¥' + product.sellPrice + '/条';
+    h += '配方: ' + recipeStr + ' · ¥' + product.sellPrice + '/' + (product.unit || '条');
     h += '</div>';
     h += '</div>';
     // 产能数量
@@ -695,7 +704,9 @@ Pages.industryDetail = {
 
       const matName = mat ? mat.name : cat.produces.code;
 
-      const dailyProduce = hasStaff ? cat.produces.qty * qty * empMult * Engine.levelMultiplier(o.level || 1) : 0;
+      const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
+        ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
+      const dailyProduce = hasStaff ? cat.produces.qty * qty * empMult * licenseMult : 0;
 
       const have = inv[cat.produces.code] || 0;
 
@@ -737,7 +748,7 @@ Pages.industryDetail = {
 
         const matName = mat ? mat.name : cat.produces.code;
 
-        const dailyProduce = hasStaff ? cat.produces.qty * qty * empMult * Engine.levelMultiplier(o.level || 1) : 0;
+        const dailyProduce = hasStaff ? cat.produces.qty * qty * empMult : 0;
 
         recipeInfo += `<div class="text-sm text-muted">📤 产出 ${matName} +${dailyProduce.toFixed(1)}/日</div>`;
 
@@ -785,7 +796,19 @@ Pages.industryDetail = {
 
 
 
-    const daily = hasStaff ? cat.dailyIncome * Engine.levelMultiplier(o.level || 1) * qty * empMult * recipeSat : 0;
+    // 有产出的产业使用 产出量×市场价，无产出的使用 dailyIncome
+    let daily = 0;
+    if (hasStaff) {
+      if (cat.produces) {
+        const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
+              ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
+              const produceQty = cat.produces.qty * qty * empMult * recipeSat * licenseMult;
+        const matPrice = Employees.materialPrice(cat.produces.code);
+        daily = produceQty * matPrice;
+      } else {
+        daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(o.level || 1) * qty * empMult * recipeSat;
+      }
+    }
 
     // 采矿许可证信息
     let licenseInfo = '';
@@ -810,7 +833,7 @@ Pages.industryDetail = {
 
               ${hasStaff
 
-                ? `员工 ${empCnt}人 · 加成 ×${empMult.toFixed(1)} · 日入 ${State.formatMoney(daily)}`
+                ? `员工 ${empCnt}人 · 加成 ×${empMult.toFixed(1)} · 日入 <span id="ind_daily_${type}_${o.category}">${State.formatMoney(daily)}</span>`
 
                 : '⚠️ 无员工 · 无产出'}
 
@@ -861,7 +884,14 @@ Pages.industryDetail = {
     const maxQty = totalCost ? Math.floor(State.data.cash / totalCost) : 0;
     const canAfford = maxQty > 0;
 
-    const payback = cat.cost && cat.dailyIncome > 0 ? (cat.cost / cat.dailyIncome).toFixed(0) : '—';
+    let estDaily = cat.produces ? cat.produces.qty * Employees.materialPrice(cat.produces.code) : (cat.dailyIncome || 0);
+    const payback = cat.cost && estDaily > 0 ? (cat.cost / estDaily).toFixed(0) : '—';
+
+    // 日产量相关变量
+    const estDailyProduce = cat.produces ? cat.produces.qty : 0;
+    const produceMat = cat.produces ? DATA.rawMaterials.find(m => m.code === cat.produces.code) : null;
+    const produceUnit = produceMat ? produceMat.unit : '';
+    const produceName = produceMat ? produceMat.name : '';
 
     // check land prereq
     const _prereq = DATA.landPrereqs ? DATA.landPrereqs[type] : null;
@@ -902,7 +932,8 @@ Pages.industryDetail = {
         <div class="list-row">
           <div>
             <div class="font-medium">${cat.name}</div>
-            <div class="text-sm text-muted">日入 ${State.formatMoney(cat.dailyIncome)}/${ind.unit} · 回本 ${payback} 天${cat.cycle ? ' · ' + cat.cycle : ''}${cat.reserve ? ' · 储量 ' + cat.reserve + ' 天' : ''}${type === 'mining' && cat.licenseCost && !hasMining ? ' · 含采矿许可证 ' + State.formatMoney(cat.licenseCost) : ''}${type === 'factory' && cat.products && cat.products.length > 0 ? ' · ' + cat.products.length + '种产品可分配' : ''}${type === 'factory' && !cat.products && DATA.factoryRecipes[cat.code] ? ' · 需: ' + DATA.factoryRecipes[cat.code].map(r => { const m = DATA.rawMaterials.find(m2 => m2.code === r.code); return (m ? m.name : r.code) + '×' + r.qty; }).join('+') : ''}${type === 'metall' && DATA.smelterRecipes[cat.code] ? ' · 需: ' + DATA.smelterRecipes[cat.code].map(r => { const m = DATA.rawMaterials.find(m2 => m2.code === r.code); return (m ? m.name : r.code) + '×' + r.qty; }).join('+') : ''}</div>
+            <div class="text-sm text-muted">日入 ${State.formatMoney(cat.produces ? cat.produces.qty * Employees.materialPrice(cat.produces.code) : cat.dailyIncome)}/${ind.unit} · 回本 ${payback} 天${cat.cycle ? ' · ' + cat.cycle : ''}${cat.reserve ? ' · 储量 ' + cat.reserve + ' 天' : ''}${type === 'mining' && cat.licenseCost && !hasMining ? ' · 含采矿许可证 ' + State.formatMoney(cat.licenseCost) : ''}${type === 'factory' && cat.products && cat.products.length > 0 ? ' · ' + cat.products.length + '种产品可分配' : ''}${type === 'factory' && !cat.products && DATA.factoryRecipes[cat.code] ? ' · 需: ' + DATA.factoryRecipes[cat.code].map(r => { const m = DATA.rawMaterials.find(m2 => m2.code === r.code); return (m ? m.name : r.code) + '×' + r.qty; }).join('+') : ''}${type === 'metall' && DATA.smelterRecipes[cat.code] ? ' · 需: ' + DATA.smelterRecipes[cat.code].map(r => { const m = DATA.rawMaterials.find(m2 => m2.code === r.code); return (m ? m.name : r.code) + '×' + r.qty; }).join('+') : ''}</div>
+    ${estDailyProduce > 0 ? `<div class="text-sm text-muted">📦 日产量 ${estDailyProduce}${produceUnit}${produceName ? '(' + produceName + ')' : ''}/${ind.unit}</div>` : ''}
           </div>
           <div style="text-align:right;">
             <div class="font-medium">${totalCost ? State.formatMoney(totalCost) : '—'}</div>
@@ -1172,7 +1203,7 @@ const Industry = {
 
     }
 
-    const baseCost = cat.cost || (cat.dailyIncome * 30);
+    const baseCost = cat.cost || ((cat.produces ? cat.produces.qty * Employees.materialPrice(cat.produces.code) : (cat.dailyIncome || 0)) * 30);
     const upgradeCost = baseCost * 0.8 * (owned.level || 1) * qty;
 
     if (State.data.cash < upgradeCost) { UI.toast('现金不足，需要 ' + State.formatMoney(upgradeCost)); return; }
@@ -1239,7 +1270,7 @@ const Industry = {
 
     const qty = owned.quantity || 1;
 
-    const baseCost = cat.cost || (cat.dailyIncome * 30);
+    const baseCost = cat.cost || ((cat.produces ? cat.produces.qty * Employees.materialPrice(cat.produces.code) : (cat.dailyIncome || 0)) * 30);
     const refundPer = baseCost * 0.8;
     // 矿业：退款基数加入许可证费用（按持有量均摊，80%回收）
     let licenseRefund = 0;
@@ -1365,6 +1396,12 @@ Industry._updateProdAllocUI = function(type, categoryCode) {
     headEl.textContent = allocLines > 0
       ? '(' + allocLines + '条, ' + (hasStaff ? State.formatMoney(totalIncome) : '¥0') + '/日)'
       : '(未分配)';
+  }
+
+  // 更新详情页头部的日入显示
+  const headerDailyEl = document.getElementById('ind_daily_' + type + '_' + categoryCode);
+  if (headerDailyEl) {
+    headerDailyEl.textContent = hasStaff ? State.formatMoney(totalIncome) : '¥0';
   }
 
   // 更新缺料提示

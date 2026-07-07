@@ -1,4 +1,4 @@
-/* employees.js — 员工系统：每人独立，有名字有加成 */
+﻿/* employees.js — 员工系统：每人独立，有名字有加成 */
 
 const Employees = {
 
@@ -220,13 +220,13 @@ const Employees = {
     });
   },
 
-  produceMaterials(ind, empMult, log) {
+  produceMaterials(ind, empMult, log, licenseMult) {
     const cat = State.findIndustryCategory(ind.type, ind.category);
     if (!cat || !cat.produces) return;
     if (empMult <= 0) return;
     const qty = ind.quantity || 1;
     const free = this.warehouseFree();
-    const produce = cat.produces.qty * qty * empMult * Engine.levelMultiplier(ind.level || 1);
+    const produce = cat.produces.qty * qty * empMult * (licenseMult || 1);
     const stored = Math.min(produce, free);
     const overflow = produce - stored;
     if (!State.data.inventory) State.data.inventory = {};
@@ -235,7 +235,7 @@ const Employees = {
     }
     if (overflow > 0.01) {
       const mat = DATA.rawMaterials.find(m => m.code === cat.produces.code);
-      const price = mat ? mat.price : 0;
+      const price = this.materialPrice(cat.produces.code);
       State.data.cash += Math.floor(price * 0.98 * overflow);
     }
     if (log) {
@@ -243,7 +243,7 @@ const Employees = {
       const matName = mat ? mat.name : cat.produces.code;
       if (stored > 0) log.details.push({ label: `${cat.name}产出 ${matName} +${stored.toFixed(1)}`, amount: 0, type: 'info' });
       if (overflow > 0.01) {
-        const price = mat ? mat.price : 0;
+        const price = this.materialPrice(cat.produces.code);
         const cashIn = Math.floor(price * 0.98 * overflow);
         log.details.push({ label: `${cat.name}溢出 ${matName} ${overflow.toFixed(1)} 自动卖出 +¥${cashIn.toLocaleString('zh-CN')}`, amount: cashIn, type: 'income' });
         log.income += cashIn;

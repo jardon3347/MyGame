@@ -1,4 +1,4 @@
-/* warehouse.js — 仓库页：容量管理、原料买卖（选项卡版） */
+﻿/* warehouse.js — 仓库页：容量管理、原料买卖（选项卡版） */
 
 Pages.warehouse = {
   currentTab: 'inventory', // 默认选中库存选项卡
@@ -6,8 +6,8 @@ Pages.warehouse = {
   
   /* 材料分类定义 */
   _categories: {
-    farm:     { label: '🌾 农产品', codes: ['wheat','rice','soy','corn','cotton','rape','sugarc','tea','veg','fruit','rubber','tobacco'] },
-    ore:      { label: '⛏️ 矿石',  codes: ['iron','copper','baux','coal','zinc_ore','lead_ore','tin','tung','gold_ore','silver_ore','rare_earth','phos_ore','quartz_ore'] },
+    farm:     { label: '🌾 农产品', codes: ['wheat','rice','soy','corn','cotton','rape','sugarc','tea','veg','fruit','rubber','tobacco','sorghum','wood_bamboo','wood_pine','wood_cedar','wood_walnut','wood_rosewood','wood_nanmu'] },
+    ore:      { label: '⛏️ 矿石',  codes: ['iron','copper','baux','coal','zinc_ore','lead_ore','tin','tung','gold_ore','silver_ore','rare_earth','phos_ore','quartz_ore','limestone'] },
     metal:    { label: '🔥 金属',  codes: ['steel','ironR','copperR','alum','zincR','leadR','tinR','tungR','alloy','precious_m'] },
     finished: { label: '🏭 成品',  codes: [] }  // 动态填充
   },
