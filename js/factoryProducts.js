@@ -238,7 +238,8 @@ const FactoryProducts = {
     const product = this.getProduct(factoryCode, productCode);
     if (!product) return 0;
     const satisfaction = this.productSatisfaction(factoryCode, productCode, lineCount);
-    return product.sellPrice * lineCount * (empMult || 0) * (levelMult || 1) * satisfaction;
+    const demandMult = (State.data.productPriceMultipliers || {})[productCode] || 1;
+    return product.sellPrice * demandMult * lineCount * (empMult || 0) * (levelMult || 1) * satisfaction;
   },
 
   /* 获取某工厂已分配的总生产线数 */
@@ -284,7 +285,8 @@ const FactoryProducts = {
       // 产出成品到仓库
       this.produceProductOutput(factoryCode, prodCode, lineCount, satisfaction);
       // 单批产量 = lineCount × empMult × levelMult × satisfaction × 0.05
-      const batchIncome = product.sellPrice * lineCount * (empMult || 0) * (levelMult || 1) * satisfaction * 0.05;
+      const demandMult = (State.data.productPriceMultipliers || {})[prodCode] || 1;
+      const batchIncome = product.sellPrice * demandMult * lineCount * (empMult || 0) * (levelMult || 1) * satisfaction * 0.05;
       totalIncome += batchIncome;
     });
     return totalIncome;

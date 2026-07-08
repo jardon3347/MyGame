@@ -118,7 +118,7 @@ Pages.industryDetail = {
 
               ⚠️ 有 ${unstaffedCount} ${ind.unit}产业未派员工，无产出。<br>
 
-              <a onclick="Router.go('staff')" style="color:var(--info);text-decoration:underline;">前往员工管理 →</a>
+              <a onclick="Pages.industry.switchToStaff()" style="color:var(--info);text-decoration:underline;">前往员工管理 →</a>
 
             </p>
 
@@ -168,7 +168,7 @@ Pages.industryDetail = {
 
     (State.data.industries || []).forEach(i => {
 
-      if (i.type === 'estate' && i.category === lp.code) t += (i.quantity || 1) * cpl * Engine.levelMultiplier(i.level || 1);
+      if (i.type === 'estate' && i.category === lp.code) t += (i.quantity || 1) * cpl;
 
     });
 
@@ -309,7 +309,10 @@ Pages.industryDetail = {
         h += ' <span style="color:' + typeColor + ';font-size:12px;">' + arrow + typeLabel + '</span>';
         h += ' <span class="text-sm text-muted">' + rule.threshold.toLocaleString('zh-CN') + matUnit + ' / ' + rule.percentage + '%</span>';
         h += '</div>';
-        h += '<button class="btn sm" style="min-height:26px;font-size:11px;min-width:40px;" onclick="LogisticsSystem.removeRule(' + ri + ');Pages.industryDetail._refreshLogisticsPanel();">\u5220\u9664</button>';
+        h += '<div style="display:flex;gap:4px;">';
+        h += '<button class="btn sm" style="min-height:26px;font-size:11px;min-width:40px;border-color:var(--info);color:var(--info);" onclick="Pages.industryDetail._showEditRuleModal(' + ri + ')">\u7f16\u8f91</button>';
+        h += '<button class="btn sm danger" style="min-height:26px;font-size:11px;min-width:40px;" onclick="LogisticsSystem.removeRule(' + ri + ');Pages.industryDetail._refreshLogisticsPanel();">\u5220\u9664</button>';
+        h += '</div>';
         h += '</div></div>';
       }
     }
@@ -645,6 +648,12 @@ Pages.industryDetail = {
     if (shortage) {
       h += '<span style="font-size:10px;color:var(--warning);margin-left:4px;">⚠</span>';
     }
+    const demandMult = (State.data.productPriceMultipliers || {})[product.code] || 1;
+    if (demandMult !== 1) {
+      const demandColor = demandMult > 1 ? 'var(--up)' : 'var(--down)';
+      const demandLabel = demandMult > 1 ? '🔥需求+' + Math.round((demandMult - 1) * 100) + '%' : '📉需求' + Math.round((demandMult - 1) * 100) + '%';
+      h += '<span style="color:' + demandColor + ';font-size:10px;margin-left:4px;">' + demandLabel + '</span>';
+    }
     h += '</div>';
     h += '<div class="text-muted" style="font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">';
     h += '配方: ' + recipeStr + ' · ¥' + product.sellPrice + '/' + (product.unit || '条');
@@ -681,7 +690,95 @@ Pages.industryDetail = {
 
     const hasStaff = empCnt > 0;
 
-    const inv = State.data.inventory || {};
+    const inv = State.data.inventory || {
+  _showEditRuleModal(ruleIndex) {
+    var rules = State.data.logisticsRules || [];
+    var rule = rules[ruleIndex];
+    if (!rule) return;
+
+    var mat = DATA.rawMaterials.find(function(m) { return m.code === rule.materialCode; });
+    var matName = mat ? mat.name : rule.materialCode;
+    var typeLabel = rule.type === 'sell_above' ? '\u5356\u51fa' : '\u4e70\u5165';
+    var canBuy = LogisticsSystem.canAutoBuy();
+    var id = 'lr_edit_' + Date.now();
+
+    var content = '';
+    content += '<div style="padding:8px;background:var(--bg-soft);border-radius:var(--radius-md);margin-bottom:12px;">';
+    content += '<div class="text-sm font-medium">\u7f16\u8f91\u89c4\u5219: ' + matName + ' \u00b7 ' + typeLabel + '</div>';
+    content += '</div>';
+
+    content += '<div style="display:flex;gap:6px;margin-bottom:12px;">';
+    content += '<button class="btn sm ' + (rule.type === 'sell_above' ? 'primary' : '') + '" style="flex:1;" onclick="Pages.industryDetail._editSetType(\'' + id + '\', \'sell_above\')">\ud83d\udce4 \u5356\u51fa\u8fc7\u5269</button>';
+    content += '<button class="btn sm ' + (rule.type === 'buy_below' ? 'primary' : '') + '" style="flex:1;" onclick="Pages.industryDetail._editSetType(\'' + id + '\', \'buy_below\')" ' + (!canBuy ? 'disabled style="opacity:0.4;flex:1;"' : '') + '>\ud83d\udce5 \u4e70\u5165\u7d27\u7f3a</button>';
+    content += '</div>';
+
+    var maxThresh = Math.max(1000, Math.round(rule.threshold * 3));
+    content += '<div style="margin-bottom:10px;">';
+    content += '<div class="text-sm" id="' + id + '_thresh_label">\u9608\u503c: ' + rule.threshold.toLocaleString('zh-CN') + (mat ? mat.unit : '') + '</div>';
+    content += '<input type="range" id="' + id + '_thresh_slider" min="0" max="' + maxThresh + '" value="' + rule.threshold + '" step="1" style="width:100%;" oninput="Pages.industryDetail._editUpdateThresh(\'' + id + '\')">';
+    content += '</div>';
+
+    content += '<div style="margin-bottom:8px;">';
+    content += '<div class="text-sm" id="' + id + '_pct_label">\u6267\u884c\u6bd4\u4f8b: ' + rule.percentage + '%</div>';
+    content += '<input type="range" id="' + id + '_pct_slider" min="1" max="100" value="' + rule.percentage + '" step="1" style="width:100%;" oninput="Pages.industryDetail._editUpdatePct(\'' + id + '\')">';
+    content += '</div>';
+
+    content += '<input type="hidden" id="' + id + '_mat" value="' + rule.materialCode + '">';
+    content += '<input type="hidden" id="' + id + '_type" value="' + rule.type + '">';
+    content += '<input type="hidden" id="' + id + '_threshold" value="' + rule.threshold + '">';
+    content += '<input type="hidden" id="' + id + '_pct" value="' + rule.percentage + '">';
+
+    window._lrEditState = { id: id, ruleIndex: ruleIndex };
+
+    UI.modal('\u7f16\u8f91\u7269\u6d41\u89c4\u5219', content, [
+      { label: '\u53d6\u6d88', onclick: 'UI.closeModal()' },
+      { label: '\u786e\u8ba4\u4fee\u6539', class: 'primary', onclick: 'Pages.industryDetail._editConfirmRule()' }
+    ]);
+  },
+
+  _editSetType(id, type) {
+    document.getElementById(id + '_type').value = type;
+  },
+
+  _editUpdateThresh(id) {
+    var slider = document.getElementById(id + '_thresh_slider');
+    var val = parseInt(slider.value) || 0;
+    document.getElementById(id + '_threshold').value = val;
+    var mat = DATA.rawMaterials.find(function(m) { return m.code === document.getElementById(id + '_mat').value; });
+    var unit = mat ? mat.unit : '';
+    document.getElementById(id + '_thresh_label').textContent = '\u9608\u503c: ' + val.toLocaleString('zh-CN') + unit;
+  },
+
+  _editUpdatePct(id) {
+    var slider = document.getElementById(id + '_pct_slider');
+    var val = parseInt(slider.value) || 50;
+    document.getElementById(id + '_pct').value = val;
+    document.getElementById(id + '_pct_label').textContent = '\u6267\u884c\u6bd4\u4f8b: ' + val + '%';
+  },
+
+  _editConfirmRule() {
+    var st = window._lrEditState;
+    if (!st) return;
+    var id = st.id;
+    var mat = document.getElementById(id + '_mat').value;
+    var type = document.getElementById(id + '_type').value;
+    var threshold = parseFloat(document.getElementById(id + '_threshold').value) || 0;
+    var pct = parseFloat(document.getElementById(id + '_pct').value) || 0;
+    if (!mat) { UI.toast('\u8bf7\u9009\u62e9\u7269\u6599'); return; }
+    if (!type) { UI.toast('\u8bf7\u9009\u62e9\u7c7b\u578b'); return; }
+    LogisticsSystem.editRule(st.ruleIndex, {
+      materialCode: mat,
+      type: type,
+      threshold: threshold,
+      percentage: pct
+    });
+    UI.closeModal();
+    delete window._lrEditState;
+    Pages.industryDetail._refreshLogisticsPanel();
+    UI.toast('\u89c4\u5219\u5df2\u4fee\u6539');
+  },
+
+};
 
     // ★ 工厂产品分配视图：如果该工厂有产品定义，使用全新的产品卡片布局
     if (type === 'factory' && window.FactoryProducts && cat.products && cat.products.length > 0) {
@@ -1204,7 +1301,7 @@ const Industry = {
     }
 
     const baseCost = cat.cost || ((cat.produces ? cat.produces.qty * Employees.materialPrice(cat.produces.code) : (cat.dailyIncome || 0)) * 30);
-    const upgradeCost = baseCost * 0.8 * (owned.level || 1) * qty;
+    const upgradeCost = baseCost * 0.5 * qty;
 
     if (State.data.cash < upgradeCost) { UI.toast('现金不足，需要 ' + State.formatMoney(upgradeCost)); return; }
 
@@ -1239,7 +1336,7 @@ const Industry = {
       return;
     }
     const baseLicenseCost = cat.licenseCost || 0;
-    const upgradeCost = Math.floor(baseLicenseCost * 0.8 * curLevel * qty);
+    const upgradeCost = Math.floor(baseLicenseCost * 0.5 * qty);
     if (State.data.cash < upgradeCost) { UI.toast('\u73b0\u91d1\u4e0d\u8db3\uff0c\u9700\u8981 ' + State.formatMoney(upgradeCost)); return; }
     UI.confirm('\u5347\u7ea7\u8bb8\u53ef\u8bc1 - ' + cat.name, 'Lv' + curLevel + ' \u2192 Lv' + (curLevel + 1) + '\uff08\u5168\u90e8 ' + qty.toLocaleString('zh-CN') + ' \u4e2a\uff09<br>\u82b1\u8d39 ' + State.formatMoney(upgradeCost) + '<br>\u65e5\u6536\u63d0\u5347 20%\uff0c\u6210\u672c\u964d\u4f4e 10%\uff08\u6bcf\u7ea7\u00d71.2\uff0c\u4e0a\u9650Lv' + maxLevel + '\uff09', () => {
       State.data.cash -= upgradeCost;

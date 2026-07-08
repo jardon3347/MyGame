@@ -21,22 +21,28 @@ Pages.overview = {
       const cat = State.findIndustryCategory(ind.type, ind.category);
       if (cat) {
         const qty = ind.quantity || 1;
-        if (cat.cost) industryValue += cat.cost * 0.8 * qty;
+        if (cat.cost) {
+          industryValue += cat.cost * 0.8 * qty;
+        } else if (cat.produces) {
+          const empM = Employees.multiplier(ind.type, ind.category);
+          const licenseM = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
+            ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
+          const dailyP = cat.produces.qty * (ind.quantity || 1) * (empM || 0) * licenseM;
+          const matP = Employees.materialPrice(cat.produces.code);
+          industryValue += dailyP * matP * 30 * 0.3;
+        }
         const empMult = Employees.multiplier(ind.type, ind.category);
         if (empMult > 0) {
-          let recipeSat = 1.0;
-          if (ind.type === 'factory' && DATA.factoryRecipes[ind.category]) {
-            recipeSat = Employees.recipeSatisfaction(ind.category, qty);
-          }
-          if (ind.type === 'factory' && window.FactoryProducts && ind.products !== undefined) {
-            const prodIncome = FactoryProducts.factoryDailyIncome(ind.category);
-            if (!isNaN(prodIncome)) industryDaily += prodIncome;
-          } else if (cat.produces) {
+          if (cat.produces) {
             const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
               ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
             const produceQty = cat.produces.qty * qty * empMult * licenseMult;
-            const matPrice = Employees.materialPrice(cat.produces.code);
-            industryDaily += produceQty * matPrice;
+            const warehouseFree = Employees.warehouseFree();
+            const overflow = Math.max(0, produceQty - warehouseFree);
+            if (overflow > 0) {
+              const matPrice = Employees.materialPrice(cat.produces.code);
+              industryDaily += Math.floor(matPrice * 0.98 * overflow);
+            }
           } else {
             industryDaily += (cat.dailyIncome || 0) * qty * empMult;
           }

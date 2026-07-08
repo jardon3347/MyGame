@@ -119,6 +119,14 @@ const LogisticsSystem = {
     State.save();
   },
 
+  /* 编辑规则（替换指定索引的规则） */
+  editRule(index, newRule) {
+    if (!State.data.logisticsRules) return;
+    if (index < 0 || index >= State.data.logisticsRules.length) return;
+    State.data.logisticsRules[index] = newRule;
+    State.save();
+  },
+
   /* 手续费后卖出价 */
   getSellPrice(materialCode) {
     const mat = DATA.rawMaterials.find(m => m.code === materialCode);

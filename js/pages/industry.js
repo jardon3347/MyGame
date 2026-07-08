@@ -164,9 +164,11 @@ window.Pages.industry = {
       <div class="section-title">未分配员工（${unassigned}）</div>
       <div class="list-item">${unassignedHtml}</div>
 
-      <!-- 产业人力分布 -->
-      <div class="section-title">产业分配概览</div>
-      <div class="list-item">${industryRows}</div>
+      <!-- 已分配员工（折叠） -->
+      ${Staff._collapsibleSection('assigned', '已分配员工', Staff._collapse.assigned, Staff._assignedSummary(), Pages.staff.assignedList())}
+
+      <!-- 产业分配概览（折叠） -->
+      ${Staff._collapsibleSection('overview', '产业分配概览', Staff._collapse.overview, Staff._overviewSummary(), Pages.staff.assignmentOverview())}
     `;
   },
   _renderWarehouseFull() {
@@ -239,16 +241,20 @@ window.Pages.industry = {
         </div>
       ` : `
         <!-- 无仓库提示 -->
-        <div class="section-title">仓库尚未建造</div>
-        <div class="list-item">
-          <p class="text-sm text-muted" style="line-height:1.5;">
-            ⚠ 尚无仓库地产，无法存放原料。<br>
-            请先购入仓库（每套可存 ${DATA.warehouseCapacityPerUnit.toLocaleString('zh-CN')} 单位原料）。
-          </p>
-          <button class="btn primary sm full" style="margin-top:8px;"
-                  onclick="Industry.buy('estate', 'warehouse')">
-            购买仓库 ›
-          </button>
+        <div class="list-item" style="border-left:4px solid var(--warning);background:rgba(186,117,23,0.1);padding:14px 16px;">
+          <div style="display:flex;align-items:flex-start;gap:10px;">
+            <span style="font-size:28px;line-height:1;">⚠️</span>
+            <div style="flex:1;">
+              <div style="font-size:14px;font-weight:600;color:var(--warning);margin-bottom:6px;">仓库尚未建造</div>
+              <p class="text-sm" style="line-height:1.6;color:var(--text-secondary);margin:0 0 10px 0;">
+                尚无仓库地产，产出的原料无法存放，将自动以98折价卖出。<br>
+                请先在 <span style="color:var(--info);">实业 → 地产 → 仓库</span> 购入仓库（每套可存 ${DATA.warehouseCapacityPerUnit.toLocaleString('zh-CN')} 单位原料）。
+              </p>
+              <button class="btn primary sm full" onclick="Industry.buy('estate', 'warehouse')">
+                购买仓库 ›
+              </button>
+            </div>
+          </div>
         </div>
       `}
 
@@ -292,6 +298,27 @@ window.Pages.industry = {
       t.classList.toggle('active', t.getAttribute('data-indtab') === tab);
     });
     // 刷新内容区
+    const content = document.getElementById('industry-tab-content');
+    if (content) content.innerHTML = this._renderTabContent();
+  },
+
+  switchToStaff() {
+    if (Router.current !== 'industry') {
+      Router.go('industry');
+      setTimeout(() => {
+        this._tab = 'staff';
+        document.querySelectorAll('[data-indtab]').forEach(t => {
+          t.classList.toggle('active', t.getAttribute('data-indtab') === 'staff');
+        });
+        const content = document.getElementById('industry-tab-content');
+        if (content) content.innerHTML = this._renderTabContent();
+      }, 50);
+      return;
+    }
+    this._tab = 'staff';
+    document.querySelectorAll('[data-indtab]').forEach(t => {
+      t.classList.toggle('active', t.getAttribute('data-indtab') === 'staff');
+    });
     const content = document.getElementById('industry-tab-content');
     if (content) content.innerHTML = this._renderTabContent();
   }

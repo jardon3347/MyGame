@@ -40,11 +40,17 @@ Pages.warehouse = {
         </div>
 
         ${cap === 0 ? `
-          <div class="list-item" style="border-left:3px solid var(--warning);">
-            <p class="text-sm" style="line-height:1.6;color:var(--warning);">
-              ⚠ 尚无仓库地产，无法存放原料。<br>
-              请先在【实业 → 地产 → 仓库】购入仓库（每套可存 ${DATA.warehouseCapacityPerUnit.toLocaleString('zh-CN')} 单位原料）。
-            </p>
+          <div class="list-item" style="border-left:4px solid var(--warning);background:rgba(186,117,23,0.1);padding:14px 16px;">
+            <div style="display:flex;align-items:flex-start;gap:10px;">
+              <span style="font-size:28px;line-height:1;">⚠️</span>
+              <div>
+                <div style="font-size:14px;font-weight:600;color:var(--warning);margin-bottom:6px;">仓库尚未建造</div>
+                <p class="text-sm" style="line-height:1.6;color:var(--text-secondary);margin:0;">
+                  尚无仓库地产，产出的原料无法存放，将自动以98折价卖出。<br>
+                  请先在 <span style="color:var(--info);">实业 → 地产 → 仓库</span> 购入仓库（每套可存 ${DATA.warehouseCapacityPerUnit.toLocaleString('zh-CN')} 单位原料）。
+                </p>
+              </div>
+            </div>
           </div>
         ` : ''}
 

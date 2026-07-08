@@ -129,6 +129,7 @@ const State = {
 
     // 物流规则系统迁移
     if (!d.logisticsRules || !Array.isArray(d.logisticsRules)) d.logisticsRules = [];
+    if (!d.productPriceMultipliers) d.productPriceMultipliers = {};
 
     // 采矿许可证迁移：mine_land → 对应矿种的 licenseLevel
     if (d.industries) {
@@ -231,7 +232,9 @@ const State = {
       fundHistory: {},
       metals: [],
       metalPrices: {},
-      industries: [],
+      industries: [
+        { type: 'estate', category: 'residential', level: 1, quantity: 1, purchaseDay: 0 }
+      ],
       employees: [],
       _initEmployees: true,  // Flag to generate initial employees after game start
       inventory: {},       // 仓库原料库存：{ code: 数量 }
@@ -242,6 +245,7 @@ const State = {
       news: [],             // 新闻历史
       logs: []
       ,logisticsRules: [],      // 物流自动买卖规则（数组）
+      productPriceMultipliers: {},  // { productCode: multiplier }
       creditRating: DATA.bank.defaultCredit,  // 信用评级
       creditDaysWithoutLoan: 0   // 连续无贷款天数
     };
@@ -358,13 +362,23 @@ const State = {
     this.data.metals.forEach(m => {
       total += m.grams * (this.data.metalPrices[m.code] || 0);
     });
-    // 实业估值（按购入价折旧 80%，乘以数量）
+    // 实业估值
     this.data.industries.forEach(ind => {
       const cat = this.findIndustryCategory(ind.type, ind.category);
-      if (cat && cat.cost) {
+      if (!cat) return;
+      if (cat.cost) {
         let val = cat.cost * 0.8 * (ind.quantity || 1);
         if (ind.type === 'mining' && cat.licenseCost && ind.licenseLevel) val += cat.licenseCost * 0.3 * (ind.licenseLevel || 1);
         total += val;
+      } else if (cat.produces) {
+        const empMult = window.Employees ? Employees.multiplier(ind.type, ind.category) : 1;
+        const qty = ind.quantity || 1;
+        const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
+          ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
+        const dailyProduce = cat.produces.qty * qty * (empMult || 0) * licenseMult;
+        const matPrice = window.Employees ? Employees.materialPrice(cat.produces.code) : 0;
+        const monthlyValue = dailyProduce * matPrice * 30 * 0.3;
+        total += monthlyValue;
       }
     });
     // 仓库库存市值
@@ -398,18 +412,19 @@ const State = {
         }
         let daily = 0;
         if (cat.produces) {
+          // 有产出产业：计算溢出自动卖出的现金收入（与引擎produceMaterials一致）
           const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
             ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
           const produceQty = cat.produces.qty * qty * (empMult || 0) * licenseMult;
-          const matPrice = window.Employees ? Employees.materialPrice(cat.produces.code) : 0;
-          daily = produceQty * matPrice;
+          const warehouseFree = window.Employees ? Employees.warehouseFree() : 0;
+          const overflow = Math.max(0, produceQty - warehouseFree);
+          if (overflow > 0) {
+            const matPrice = window.Employees ? Employees.materialPrice(cat.produces.code) : 0;
+            daily += Math.floor(matPrice * 0.98 * overflow);
+          }
         } else {
-          const levelMult = (ind.type === 'farm' || ind.type === 'mining' || ind.type === 'metall') ? 1 : Engine.levelMultiplier(ind.level || 1);
-          daily = (cat.dailyIncome || 0) * levelMult * qty * (empMult || 0) * (recipeSat || 1);
-        }
-        // 周末减半
-        if (this.data.date.dayOfWeek === 0 || this.data.date.dayOfWeek === 6) {
-          daily *= 0.5;
+          // 无产出产业（地产/物流）：使用 dailyIncome
+          daily = (cat.dailyIncome || 0) * qty * (empMult || 0) * (recipeSat || 1);
         }
         if (!isNaN(daily)) income += daily;
       }

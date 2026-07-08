@@ -442,7 +442,28 @@ const RANDOM_EVENT_TEMPLATES = [
   { id: 'c002', type: 'combo', title: '通货膨胀预期升温', desc: 'CPI数据超预期，通胀预期升温，贵金属受益，消费承压。',
     effects: { interestRate: 0.012, metals: { 'gold': 0.08, 'silver': 0.06 }, sectors: { 'food': -0.04, 'textile': -0.03 }, marketSentiment: -0.01 }, minDay: 45 },
   { id: 'c003', type: 'combo', title: '全球经济衰退担忧', desc: '主要经济体数据疲软，衰退担忧蔓延，避险资产受追捧。',
-    effects: { marketSentiment: -0.03, interestRate: -0.01, metals: { 'gold': 0.06 } }, minDay: 65 }
+    effects: { marketSentiment: -0.03, interestRate: -0.01, metals: { 'gold': 0.06 } }, minDay: 65 },
+  // ---- 产品需求事件 ----
+  { id: 'p101', type: 'product', title: '食品安全事件爆发', desc: '某知名品牌被曝质量问题，消费者转向小品牌食品，食品类产品需求激增。',
+    effects: { products: { bread: 2.0, biscuit: 1.8, noodles: 1.5, tofu: 1.6, food_oil: 1.4, seasoning: 1.3 } }, minDay: 20 },
+  { id: 'p102', type: 'product', title: '智能手机换代潮', desc: '某科技巨头发布革命性新机，带动整个手机产业链需求暴涨。',
+    effects: { products: { phone: 2.0, pc: 1.3, router: 1.5, charger: 1.8 } }, minDay: 30 },
+  { id: 'p103', type: 'product', title: '纺织出口订单暴增', desc: '海外电商平台大促，中国纺织品出口订单激增。',
+    effects: { products: { cloth: 1.8, silk: 2.0, denim: 1.6, wool: 1.5, knit: 1.4 } }, minDay: 25 },
+  { id: 'p104', type: 'product', title: '白酒消费旺季', desc: '中秋国庆双节临近，白酒需求进入年度高峰。',
+    effects: { products: { baijiu: 2.0, red_w: 1.8, fruit_w: 1.5 } }, minDay: 40 },
+  { id: 'p105', type: 'product', title: '基建项目集中开工', desc: '多地公布大型基建计划，建材需求激增。',
+    effects: { products: { ordinary: 1.8, special: 1.6, pipe_c: 1.4 } }, minDay: 15 },
+  { id: 'p106', type: 'product', title: '家电以旧换新补贴', desc: '政府推出家电以旧换新补贴政策，白色家电销量暴涨。',
+    effects: { products: { fridge: 2.0, washer: 1.8, ac: 1.6, fan: 1.5 } }, minDay: 35 },
+  { id: 'p107', type: 'product', title: '宠物经济爆发', desc: '宠物食品和用品市场快速增长，饲料需求结构变化。',
+    effects: { products: { pig: 1.3, chicken: 1.2, fish_f: 2.0, shrimp_f: 2.0, crab_f: 1.8 } }, minDay: 45 },
+  { id: 'p108', type: 'product', title: '高端家具需求回暖', desc: '房地产市场回暖带动高端家具消费。',
+    effects: { products: { bed: 2.0, cabinet: 1.6, screen: 1.8, table: 1.4 } }, minDay: 50 },
+  { id: 'p109', type: 'product', title: '化肥出口受限', desc: '国际化肥供应紧张，国内化肥价格预期上涨。',
+    effects: { products: { nitro: 1.8, compound: 1.6, organic: 2.0, slow_r: 1.5 } }, minDay: 55 },
+  { id: 'p110', type: 'product', title: '造纸原料涨价', desc: '木材供应收紧，纸制品价格上调。',
+    effects: { products: { news_p: 1.5, print_p: 1.4, board: 1.8, carton: 1.6 } }, minDay: 60 }
 ];
 
 /* ===== 真实历史事件（2018—2025，按游戏天数触发） ===== */

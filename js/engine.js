@@ -209,22 +209,16 @@ const Engine = {
       const qty = ind.quantity || 1;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
-      // 现金收入：有产出的按产出×市场价，无产出的按dailyIncome
-      let daily = 0;
-      if (cat.produces) {
-        const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
-          ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
-        const produceQty = cat.produces.qty * qty * empMult * licenseMult;
-        const matPrice = Employees.materialPrice(cat.produces.code);
-        daily = produceQty * matPrice;
-      } else {
-        daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * empMult;
+      // 产出类产业已通过 produceMaterials 处理（进仓库+溢出卖现）
+      // 此处只保留无产出产业的 dailyIncome
+      if (!cat.produces) {
+        let daily = (cat.dailyIncome || 0) * Engine.levelMultiplier(ind.level || 1) * qty * empMult;
+        if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
+        State.data.cash += daily;
+        log.income += daily;
+        const empCnt = Employees.assignedCount(ind.type, ind.category);
+        log.details.push({ label: `${cat.name}×${qty} 员工×${empCnt}`, amount: daily, type: 'income' });
       }
-      if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
-      State.data.cash += daily;
-      log.income += daily;
-      const empCnt = Employees.assignedCount(ind.type, ind.category);
-      log.details.push({ label: `${cat.name}×${qty} 员工×${empCnt}`, amount: daily, type: 'income' });
     });
 
     // 1b. 员工薪水（每日支出）
@@ -498,6 +492,16 @@ const Engine = {
     if (e.materials) {
       Object.entries(e.materials).forEach(([code, pct]) => { this._applyMaterialEffect(code, pct); });
     }
+    if (e.products) {
+      const origMults = {};
+      Object.entries(e.products).forEach(([prodCode, mult]) => {
+        const current = (State.data.productPriceMultipliers || {})[prodCode] || 1;
+        origMults[prodCode] = current;
+        if (!State.data.productPriceMultipliers) State.data.productPriceMultipliers = {};
+        State.data.productPriceMultipliers[prodCode] = Math.round(current * mult * 100) / 100;
+      });
+      e._origProductMults = origMults;
+    }
     if (e.marketSentiment != null) {
       State.data.marketSentiment = (State.data.marketSentiment || 0) + e.marketSentiment;
       State.data.marketSentiment = Math.max(-0.05, Math.min(0.05, State.data.marketSentiment));
@@ -534,6 +538,16 @@ const Engine = {
         if (e.interestRate != null) {
           State.data.interestRate = (State.data.interestRate || DATA.bank.baseRate) - e.interestRate;
           State.data.interestRate = Math.max(DATA.bank.rateMin, Math.min(DATA.bank.rateMax, State.data.interestRate));
+        }
+        if (e._origProductMults) {
+          Object.entries(e._origProductMults).forEach(([prodCode, origMult]) => {
+            if (State.data.productPriceMultipliers) {
+              State.data.productPriceMultipliers[prodCode] = origMult;
+              if (State.data.productPriceMultipliers[prodCode] === 1) {
+                delete State.data.productPriceMultipliers[prodCode];
+              }
+            }
+          });
         }
         return false;
       }
