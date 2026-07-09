@@ -342,15 +342,19 @@ if (window.Industry) {
   /* 精确招聘弹窗 */
   Industry._recruitPicker = function() {
     if (Employees.count() >= Employees.capacity()) { UI.toast('宿舍已满'); return; }
+    const freeCfg = DATA.recruit.free;
+    const paidCfg = DATA.recruit.paid;
+    const freeMin = freeCfg.tiers[0].min;
+    const freeMax = freeCfg.tiers[freeCfg.tiers.length - 1].max;
     UI.modal('选择招聘模式', `
       <div class="text-sm text-muted" style="margin-bottom:12px;">选择招聘模式后，可设定招聘数量</div>
       <div class="card-grid">
         <button class="card full" style="margin-bottom:10px;" onclick="UI.closeModal();Staff.recruitWithPicker('free')">
           <div class="card-title">免费招聘</div>
-          <div class="card-sub">加成 1.6 ~ 3.5</div></button>
+          <div class="card-sub">加成 ${freeMin} ~ ${freeMax}</div></button>
         <button class="card full" onclick="UI.closeModal();Staff.recruitWithPicker('paid')">
           <div class="card-title">付费招聘</div>
-          <div class="card-sub">¥600/人 · 加成 3.0 ~ 6.0</div></button></div>
+          <div class="card-sub">¥${paidCfg.cost}/人 · 加成 ${paidCfg.minMult} ~ ${paidCfg.maxMult}</div></button></div>
     `, [{ label: '取消', onclick: 'UI.closeModal()' }]);
   };
 }

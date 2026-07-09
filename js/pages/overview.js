@@ -13,7 +13,6 @@ Pages.overview = {
     (s.fundHoldings||[]).forEach(h => { fundValue += h.shares * (s.fundPrices[h.code] || 0); });
     let metalValue = 0;
     s.metals.forEach(m => { metalValue += m.grams * (s.metalPrices[m.code] || 0); });
-    let warehouseValue = window.Employees ? Employees.warehouseValue() : 0;
     let industryValue = 0;
     let industryDaily = 0;
     let industryCount = 0;
@@ -23,7 +22,7 @@ Pages.overview = {
         const qty = ind.quantity || 1;
         const empM = Employees.multiplier(ind.type, ind.category);
 
-        // 有 cost 的产业：购买成本 + 许可证价值
+        // 实业估值 = 购入成本 + 已实现利润
         if (cat.cost) {
           let val = cat.cost * qty;
           if (ind.type === 'mining' && cat.licenseCost && ind.licenseLevel) {
@@ -31,33 +30,7 @@ Pages.overview = {
           }
           industryValue += val;
         }
-
-        // 矿业产能：按剩余储量估值
-        if (ind.type === 'mining' && cat.produces && cat.reserve) {
-          const licenseM = (ind.licenseLevel && ind.licenseLevel > 1)
-            ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
-          const dailyP = cat.produces.qty * qty * (empM || 0) * licenseM;
-          const matP = Employees.materialPrice(cat.produces.code);
-          const remainingDays = ind.remainingReserve != null ? ind.remainingReserve : cat.reserve;
-          industryValue += remainingDays * dailyP * matP * 0.3;
-        }
-
-        // 农业/冶金产能：按年化产出估值
-        if ((ind.type === 'farm' || ind.type === 'metall') && cat.produces) {
-          const recipeSat = (ind.type === 'metall' && DATA.smelterRecipes[ind.category])
-            ? Employees.smelterSatisfaction(ind.category, qty) : 1;
-          const dailyP = cat.produces.qty * qty * (empM || 0) * recipeSat;
-          const matP = Employees.materialPrice(cat.produces.code);
-          industryValue += dailyP * matP * 365 * 0.15;
-        }
-
-        // 工厂：按已分配产品日收入估值
-        if (ind.type === 'factory' && window.FactoryProducts && ind.products) {
-          const factoryIncome = FactoryProducts.factoryDailyIncome(ind.category);
-          if (factoryIncome > 0) {
-            industryValue += factoryIncome * 365 * 0.15;
-          }
-        }
+        industryValue += (ind.cumulativeProfit || 0);
         industryDaily += State.IndustryDailyIncome(ind.type, ind.category, qty, ind);
         industryCount += qty;
       }
@@ -139,7 +112,6 @@ Pages.overview = {
               ${this.assetRow('股票', stockValue, total)}
               ${this.assetRow('基金', fundValue, total)}
               ${this.assetRow('贵金属', metalValue, total)}
-              ${this.assetRow('仓库库存', warehouseValue, total)}
               ${this.assetRow('实业', industryValue, total)}
             </div>
           </div>

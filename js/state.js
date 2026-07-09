@@ -111,6 +111,8 @@ const State = {
         if (ind.type === 'factory' && !ind.products) {
           ind.products = {};
         }
+        // 累计利润字段
+        if (ind.cumulativeProfit === undefined) ind.cumulativeProfit = 0;
       });
     }
     // 补全缺失的原料市场价格（只初始化缺失项，保留已波动的价格）
@@ -393,51 +395,28 @@ const State = {
     this.data.metals.forEach(m => {
       total += m.grams * (this.data.metalPrices[m.code] || 0);
     });
-    // 实业估值
+    // 实业估值 = 购入成本 + 已实现利润
     this.data.industries.forEach(ind => {
       const cat = this.findIndustryCategory(ind.type, ind.category);
       if (!cat) return;
       const qty = ind.quantity || 1;
-      const empMult = window.Employees ? Employees.multiplier(ind.type, ind.category) : 1;
+      let val = 0;
 
-      // 有 cost 的产业（矿业矿场、地产、物流）：购买成本 + 许可证价值
+      // 购入成本：有 cost 的产业（矿业、地产、物流）加上已投入本金
       if (cat.cost) {
-        let val = cat.cost * qty;
+        val += cat.cost * qty;
+        // 矿业许可证投入
         if (ind.type === 'mining' && cat.licenseCost && ind.licenseLevel) {
           val += cat.licenseCost * (ind.licenseLevel || 1);
         }
-        total += val;
       }
 
-      // 矿业产能：按剩余储量估值
-      if (ind.type === 'mining' && cat.produces && cat.reserve) {
-        const licenseMult = (ind.licenseLevel && ind.licenseLevel > 1)
-          ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
-        const dailyProduce = cat.produces.qty * qty * (empMult || 0) * licenseMult;
-        const matPrice = Employees.materialPrice(cat.produces.code);
-        const remainingDays = ind.remainingReserve != null ? ind.remainingReserve : cat.reserve;
-        total += remainingDays * dailyProduce * matPrice * 0.3;
-      }
+      // 已实现利润 = 累计日产收入（不含任何预测成分）
+      val += (ind.cumulativeProfit || 0);
 
-      // 农业/冶金产能：按年化产出估值
-      if ((ind.type === 'farm' || ind.type === 'metall') && cat.produces) {
-        const recipeSat = (ind.type === 'metall' && DATA.smelterRecipes[ind.category])
-          ? Employees.smelterSatisfaction(ind.category, qty) : 1;
-        const dailyProduce = cat.produces.qty * qty * (empMult || 0) * recipeSat;
-        const matPrice = Employees.materialPrice(cat.produces.code);
-        total += dailyProduce * matPrice * 365 * 0.15;
-      }
-
-      // 工厂：按已分配产品日收入估值
-      if (ind.type === 'factory' && window.FactoryProducts && ind.products) {
-        const factoryIncome = FactoryProducts.factoryDailyIncome(ind.category);
-        if (factoryIncome > 0) {
-          total += factoryIncome * 365 * 0.15;
-        }
-      }
+      total += val;
     });
-    // 仓库库存市值
-    if (window.Employees) { const wv = Employees.warehouseValue(); if (!isNaN(wv)) total += wv; }
+    // 仓库库存不并入净资产（已在产业累计利润中体现，避免重复计算）
     return total;
   },
   /* 计算日收入（含员工加成，扣员工薪水） */

@@ -4,9 +4,9 @@ const DATA = {
   maxIndustryLevel: 5,
   /* ===== 难度配置 ===== */
   difficulties: {
-    easy:   { name: '简单', cash: 500000,  desc: '资金充足，适合熟悉玩法' },
-    normal: { name: '中等', cash: 500000,  desc: '标准体验，推荐首次玩家' },
-    hard:   { name: '困难', cash: 250000,  desc: '白手起家，精打细算' }
+    easy:   { name: '简单', cash: 200000,  desc: '起步轻松，选择多样' },
+    normal: { name: '中等', cash: 120000,  desc: '精打细算，步步为营' },
+    hard:   { name: '困难', cash: 60000,   desc: '白手起家，极致挑战' }
   },
 
   /* ===== 金融板块 ===== */
@@ -296,17 +296,18 @@ const DATA = {
   },
 
   /* ===== 冶金配方：消耗仓库矿石原料 ===== */
+  /* 配方基于真实工业投入产出比 + 20-50% 利润率 */
   smelterRecipes: {
-    steel:    [ { code: 'iron', qty: 4.0 }, { code: 'coal', qty: 2.0 } ],
-    ironR:    [ { code: 'iron', qty: 5.0 } ],
-    copperR:  [ { code: 'copper', qty: 4.0 } ],
-    alum:     [ { code: 'baux', qty: 5.0 } ],
-    zincR:    [ { code: 'zinc_ore', qty: 4.0 } ],
-    leadR:    [ { code: 'lead_ore', qty: 4.0 } ],
-    tinR:     [ { code: 'tin', qty: 4.0 } ],
-    tungR:    [ { code: 'tung', qty: 3.0 } ],
+    steel:    [ { code: 'iron', qty: 1.6 }, { code: 'coal', qty: 0.8 } ],
+    ironR:    [ { code: 'iron', qty: 1.8 } ],
+    copperR:  [ { code: 'copper', qty: 1.8 } ],
+    alum:     [ { code: 'baux', qty: 4.0 } ],
+    zincR:    [ { code: 'zinc_ore', qty: 1.0 } ],
+    leadR:    [ { code: 'lead_ore', qty: 0.9 } ],
+    tinR:     [ { code: 'tin', qty: 0.6 } ],
+    tungR:    [ { code: 'tung', qty: 0.55 } ],
     precious: [ { code: 'gold_ore', qty: 1.0 }, { code: 'silver_ore', qty: 2.0 } ],
-    alloy:    [ { code: 'baux', qty: 3.0 }, { code: 'copper', qty: 1.0 } ]
+    alloy:    [ { code: 'alum', qty: 0.5 } ]  /* 铝合金：纯铝+微量合金元素 */
   },
 
   /* ===== 土地前置需求：产业→所需土地类型 ===== */
@@ -367,7 +368,7 @@ const DATA = {
     { code: 'leadR',       name: '铅锭',     price: 16000, unit: '吨', from: '炼铅', volatility: 0.018 },
     { code: 'tinR',        name: '锡锭',     price: 411000, unit: '吨', from: '炼锡', volatility: 0.022 },
     { code: 'tungR',       name: '钨锭',     price: 550000, unit: '吨', from: '炼钨', volatility: 0.020 },
-    { code: 'alloy',       name: '铝合金材', price: 24000, unit: '吨', from: '铝合金', volatility: 0.014 },
+    { code: 'alloy',       name: '铝合金材', price: 26000, unit: '吨', from: '铝合金', volatility: 0.014 },
     { code: 'precious_m',  name: '贵金属锭', price: 550000, unit: '吨', from: '贵金属冶炼', volatility: 0.022 }
   ],
 

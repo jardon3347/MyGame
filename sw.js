@@ -1,6 +1,6 @@
 ﻿/* sw.js — Service Worker：离线缓存 */
 
-const CACHE_NAME = 'shengshi-v26';
+const CACHE_NAME = 'shengshi-v27';
 const ASSETS = [
   './',
   './index.html',
@@ -9,21 +9,29 @@ const ASSETS = [
   './js/factoryProducts.js',
   './js/logistics.js',
   './js/state.js',
+  './js/events.js',
   './js/engine.js',
   './js/time.js',
   './js/employees.js',
   './js/ui.js',
+  './js/charts.js',
+  './js/futures.js',
+  './js/competitors.js',
+  './js/achievements.js',
   './js/pages/home.js',
   './js/pages/deposit.js',
   './js/pages/stocks.js',
   './js/pages/stockDetail.js',
   './js/pages/funds.js',
   './js/pages/metals.js',
+  './js/pages/finance.js',
+  './js/pages/futures.js',
   './js/pages/industry.js',
+  './js/pages/industryDetail.js',
   './js/pages/staff.js',
   './js/pages/warehouse.js',
   './js/pages/overview.js',
-  './js/pages/industryDetail.js',
+  './js/pages/competitors.js',
   './manifest.json'
 ];
 

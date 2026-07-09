@@ -458,7 +458,7 @@ const Engine = {
     });
     if (s.dailyStats.length > 30) s.dailyStats.shift();
 
-    // 按产业类型拆分收入
+    // 按产业类型拆分收入 + 累计每个产业的利润
     if (!s.industryDailyStats) s.industryDailyStats = {};
     const types = ['farm', 'mining', 'metall', 'factory', 'estate', 'logistics'];
     types.forEach(type => {
@@ -469,6 +469,9 @@ const Engine = {
         const qty = ind.quantity || 1;
         const inc = State.IndustryDailyIncome(type, ind.category, qty, ind);
         typeIncome += inc;
+        // 累计利润追踪
+        if (ind.cumulativeProfit === undefined) ind.cumulativeProfit = 0;
+        ind.cumulativeProfit += inc;
       });
       s.industryDailyStats[type].push({ day: s.date.totalDays, income: Math.round(typeIncome) });
       if (s.industryDailyStats[type].length > 7) s.industryDailyStats[type].shift();
