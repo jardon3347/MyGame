@@ -93,6 +93,8 @@ const Router = {
     else if (page === 'industryDetail') Pages.industryDetail.render(app, this.params);
     else if (page === 'staff') Pages.staff.render(app);
     else if (page === 'warehouse') Pages.warehouse.render(app);
+    else if (page === 'futures') Pages.futures.render(app);
+    else if (page === 'competitors') Pages.competitors.render(app);
     else if (page === 'news') Router.goRoot('overview');
 
     // 更新底部栏选中态
@@ -412,31 +414,7 @@ const UI = {
         if (empMult <= 0 && !['farmland', 'factory_land'].includes(o.category)) {
           unstaffed += qty;
         } else {
-          let recipeSat = 1.0;
-          if (type === 'factory' && window.FactoryProducts && o.products !== undefined) {
-            daily += FactoryProducts.factoryDailyIncome(o.category);
-          } else if (type === 'factory' && DATA.factoryRecipes[o.category]) {
-            recipeSat = Employees.recipeSatisfaction(o.category, qty);
-            // 有产出的产业使用 产出量×市场价，无产出的使用 dailyIncome
-            if (cat.produces) {
-              const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
-                ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
-              const produceQty = cat.produces.qty * qty * (empMult || 0) * licenseMult;
-              const matPrice = Employees.materialPrice(cat.produces.code);
-              daily += produceQty * matPrice;
-            } else {
-              daily += (cat.dailyIncome || 0) * Engine.levelMultiplier(o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
-            }
-          } else {
-            // 有产出的产业使用 产出量×市场价，无产出的使用 dailyIncome
-            if (cat.produces) {
-              const produceQty = cat.produces.qty * qty * (empMult || 0) * (recipeSat || 1);
-              const matPrice = Employees.materialPrice(cat.produces.code);
-              daily += produceQty * matPrice;
-            } else {
-              daily += (cat.dailyIncome || 0) * Engine.levelMultiplier(o.level || 1) * qty * (empMult || 0) * (recipeSat || 1);
-            }
-          }
+          daily += State.IndustryDailyIncome(type, o.category, qty, o);
         }
       }
     });

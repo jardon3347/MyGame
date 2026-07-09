@@ -82,20 +82,20 @@ const Employees = {
       const rest = sorted.slice(3, -2);
       const worst = sorted.slice(-2);
       const avgMult = (hired.reduce((s, e) => s + e.multiplier, 0) / hired.length);
-      const totalSalary = hired.reduce((s, e) => s + Math.round(e.multiplier * 100), 0);
+      const totalSalary = hired.reduce((s, e) => s + Math.round(e.multiplier * 120), 0);
       rowsHtml = `
         <p style="font-size:12px;color:var(--text-secondary);margin-bottom:6px;">${modeLabel} · 共花费 ${State.formatMoney(totalCost)}</p>
         <div style="border-bottom:0.5px solid var(--border);margin-bottom:6px;"></div>
-        ${best.map(e => `<div class="list-row"><span class="list-label" style="color:var(--up);">最佳</span><span>${e.name} ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 100)}</span></div>`).join('')}
+        ${best.map(e => `<div class="list-row"><span class="list-label" style="color:var(--up);">最佳</span><span>${e.name} ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 120)}</span></div>`).join('')}
         <div class="text-sm text-muted" style="padding:4px 8px;">...还有 ${rest.length} 人</div>
-        ${worst.map(e => `<div class="list-row"><span class="list-label" style="color:var(--down);">最差</span><span>${e.name} ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 100)}</span></div>`).join('')}
+        ${worst.map(e => `<div class="list-row"><span class="list-label" style="color:var(--down);">最差</span><span>${e.name} ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 120)}</span></div>`).join('')}
         <div style="border-bottom:0.5px solid var(--border);margin:6px 0;"></div>
         <div class="list-row"><span class="text-sm text-muted">平均加成 ×${avgMult.toFixed(1)}</span><span class="text-sm text-muted">总日薪 ¥${totalSalary.toLocaleString('zh-CN')}/天</span></div>
       `;
     } else {
       rowsHtml = `
         <p style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">${modeLabel} · 共花费 ${State.formatMoney(totalCost)}</p>
-        ${hired.map(e => `<div class="list-row"><span class="list-label">${e.name}</span><span class="list-value">加成 ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 100)}</span></div>`).join('')}
+        ${hired.map(e => `<div class="list-row"><span class="list-label">${e.name}</span><span class="list-value">加成 ×${e.multiplier} · 日薪 ¥${Math.round(e.multiplier * 120)}</span></div>`).join('')}
       `;
     }
     UI.modal('🎉 招聘成功（' + actual + '人）· ' + modeLabel, rowsHtml,
@@ -175,8 +175,77 @@ const Employees = {
   /* 每日员工薪水总额 */
   totalSalary() {
     let s = 0;
-    (State.data.employees || []).forEach(e => { s += Math.round(e.multiplier * 100); });
+    (State.data.employees || []).forEach(e => { s += Math.round(e.multiplier * 120); });
     return s;
+  },
+
+  /* 更新全体员工士气（每日调用） */
+  updateMorale(dayLog) {
+    const emps = State.data.employees || [];
+    if (emps.length === 0) return;
+    const phase = State.data.economicPhase || 'stable';
+    const phaseCfg = DATA.economicCycle.phases.find(p => p.id === phase);
+
+    emps.forEach(e => {
+      if (e.morale == null) e.morale = 100;
+      let change = 0;
+
+      // 经济周期影响
+      if (phase === 'recession') change -= 1;
+      else if (phase === 'depression') change -= 2;
+
+      // 发生天敌事件且无钱应对（由 engine.js 在事件触发时标记）
+      if (e._noMoneyEvent) {
+        change -= 5;
+        e._noMoneyEvent = false;
+      }
+
+      // 士气低于 30：每天 10% 概率自动离职
+      if (e.morale < 30 && Math.random() < 0.10) {
+        e._willResign = true;
+      }
+
+      e.morale = Math.max(0, Math.min(100, (e.morale || 100) + change));
+    });
+
+    // 士气为 0 → 次日必然离职
+    emps.forEach(e => {
+      if (e.morale <= 0) e._willResign = true;
+    });
+
+    // 执行离职
+    const resigned = emps.filter(e => e._willResign);
+    resigned.forEach(e => {
+      delete e._willResign;
+      State.data.employees = State.data.employees.filter(x => x.id !== e.id);
+      if (dayLog) dayLog.details.push({ label: `😢 ${e.name} 因士气过低离职`, amount: 0, type: 'expense' });
+    });
+  },
+
+  /* 发放奖金：每人 +20 士气，花费 = 月薪 × 2 */
+  giveBonus() {
+    const emps = State.data.employees || [];
+    if (emps.length === 0) { UI.toast('没有员工'); return; }
+    const monthlySalary = this.totalSalary() * 30;
+    const totalCost = monthlySalary * 2;
+    if (State.data.cash < totalCost) { UI.toast('现金不足，需要 ¥' + totalCost.toLocaleString('zh-CN')); return; }
+    State.data.cash -= totalCost;
+    emps.forEach(e => { e.morale = Math.min(100, (e.morale || 100) + 20); });
+    State.save();
+    UI.toast('💖 发放奖金 ¥' + totalCost.toLocaleString('zh-CN') + '，全体员工士气 +20');
+    Router.refresh();
+  },
+
+  /* 获取平均士气 */
+  averageMorale() {
+    const emps = State.data.employees || [];
+    if (emps.length === 0) return 100;
+    return emps.reduce((s, e) => s + (e.morale || 100), 0) / emps.length;
+  },
+
+  /* 获取士气极低（<30）的员工数 */
+  lowMoraleCount() {
+    return (State.data.employees || []).filter(e => (e.morale || 100) < 30).length;
   },
 
   /* 获取加成最高的未分配员工 */
@@ -241,14 +310,20 @@ const Employees = {
     if (log) {
       const mat = DATA.rawMaterials.find(m => m.code === cat.produces.code);
       const matName = mat ? mat.name : cat.produces.code;
-      if (stored > 0) log.details.push({ label: `${cat.name}产出 ${matName} +${stored.toFixed(1)}`, amount: 0, type: 'info' });
+      // 产量波动标签
+      let yieldTag = '';
+      if (ind.type === 'mining' && ind._yieldFactor !== undefined && ind._yieldFactor !== 100) {
+        const diff = ind._yieldFactor - 100;
+        yieldTag = diff > 0 ? ` 📈+${diff}%` : ` 📉${diff}%`;
+      }
+      if (stored > 0) log.details.push({ label: `${cat.name}${yieldTag} 产出 ${matName} +${stored.toFixed(1)}`, amount: 0, type: 'info' });
       if (overflow > 0.01) {
         const price = this.materialPrice(cat.produces.code);
         const cashIn = Math.floor(price * 0.98 * overflow);
-        log.details.push({ label: `${cat.name}溢出 ${matName} ${overflow.toFixed(1)} 自动卖出 +¥${cashIn.toLocaleString('zh-CN')}`, amount: cashIn, type: 'income' });
+        log.details.push({ label: `${cat.name}${yieldTag} 溢出 ${matName} ${overflow.toFixed(1)} 自动卖出 +¥${cashIn.toLocaleString('zh-CN')}`, amount: cashIn, type: 'income' });
         log.income += cashIn;
       }
-      if (stored <= 0 && overflow <= 0.01) log.details.push({ label: `${cat.name}产出→无法产出`, amount: 0, type: 'warn' });
+      if (stored <= 0 && overflow <= 0.01) log.details.push({ label: `${cat.name}${yieldTag} 产出→无法产出`, amount: 0, type: 'warn' });
     }
   },
 
@@ -363,14 +438,47 @@ const Employees = {
     Router.refresh();
   },
 
+
+  /**
+   * 获取协同加成系数（上下游产业同时持有时减少原料消耗）
+   * @param {string} industryType - 产业类型
+   * @returns {number} 原料消耗倍率 (0.85 = 消耗减少15%)
+   */
+  getSynergyBonus(industryType) {
+    const industries = State.data.industries || [];
+    const hasMining = industries.some(i => i.type === 'mining');
+    const hasMetall = industries.some(i => i.type === 'metall');
+    const hasFarm = industries.some(i => i.type === 'farm');
+    const hasFactory = industries.some(i => i.type === 'factory');
+
+    // 完整产业链：矿业+冶金+工厂 → 15% 加成
+    if (hasMining && hasMetall && hasFactory && (industryType === 'metall' || industryType === 'factory')) {
+      return 0.85;
+    }
+    // 矿业+冶金 → 冶金消耗减少 10%
+    if (hasMining && hasMetall && industryType === 'metall') {
+      return 0.9;
+    }
+    // 农业+工厂 → 工厂农产品消耗减少 10%
+    if (hasFarm && hasFactory && industryType === 'factory') {
+      return 0.9;
+    }
+    // 冶金+工厂 → 工厂金属消耗减少 10%
+    if (hasMetall && hasFactory && industryType === 'factory') {
+      return 0.9;
+    }
+    return 1.0; // 无加成
+  },
+
   smelterSatisfaction(smelterCode, smelterQty) {
     const recipe = DATA.smelterRecipes[smelterCode];
     if (!recipe) return 1.0;
     const inv = State.data.inventory || {};
+    const synergy = this.getSynergyBonus('metall');
     let minSat = 1.0;
     recipe.forEach(req => {
       const have = inv[req.code] || 0;
-      const need = req.qty * smelterQty;
+      const need = req.qty * smelterQty * synergy;
       const sat = need > 0 ? Math.min(1, have / need) : 1;
       minSat = Math.min(minSat, sat);
     });

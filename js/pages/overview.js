@@ -21,37 +21,50 @@ Pages.overview = {
       const cat = State.findIndustryCategory(ind.type, ind.category);
       if (cat) {
         const qty = ind.quantity || 1;
+        const empM = Employees.multiplier(ind.type, ind.category);
+
+        // 有 cost 的产业：购买成本 + 许可证价值
         if (cat.cost) {
-          industryValue += cat.cost * 0.8 * qty;
-        } else if (cat.produces) {
-          const empM = Employees.multiplier(ind.type, ind.category);
-          const licenseM = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
-            ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
-          const dailyP = cat.produces.qty * (ind.quantity || 1) * (empM || 0) * licenseM;
-          const matP = Employees.materialPrice(cat.produces.code);
-          industryValue += dailyP * matP * 30 * 0.3;
+          let val = cat.cost * qty;
+          if (ind.type === 'mining' && cat.licenseCost && ind.licenseLevel) {
+            val += cat.licenseCost * (ind.licenseLevel || 1);
+          }
+          industryValue += val;
         }
-        const empMult = Employees.multiplier(ind.type, ind.category);
-        if (empMult > 0) {
-          if (cat.produces) {
-            const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
-              ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
-            const produceQty = cat.produces.qty * qty * empMult * licenseMult;
-            const warehouseFree = Employees.warehouseFree();
-            const overflow = Math.max(0, produceQty - warehouseFree);
-            if (overflow > 0) {
-              const matPrice = Employees.materialPrice(cat.produces.code);
-              industryDaily += Math.floor(matPrice * 0.98 * overflow);
-            }
-          } else {
-            industryDaily += (cat.dailyIncome || 0) * qty * empMult;
+
+        // 矿业产能：按剩余储量估值
+        if (ind.type === 'mining' && cat.produces && cat.reserve) {
+          const licenseM = (ind.licenseLevel && ind.licenseLevel > 1)
+            ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
+          const dailyP = cat.produces.qty * qty * (empM || 0) * licenseM;
+          const matP = Employees.materialPrice(cat.produces.code);
+          const remainingDays = ind.remainingReserve != null ? ind.remainingReserve : cat.reserve;
+          industryValue += remainingDays * dailyP * matP * 0.3;
+        }
+
+        // 农业/冶金产能：按年化产出估值
+        if ((ind.type === 'farm' || ind.type === 'metall') && cat.produces) {
+          const recipeSat = (ind.type === 'metall' && DATA.smelterRecipes[ind.category])
+            ? Employees.smelterSatisfaction(ind.category, qty) : 1;
+          const dailyP = cat.produces.qty * qty * (empM || 0) * recipeSat;
+          const matP = Employees.materialPrice(cat.produces.code);
+          industryValue += dailyP * matP * 365 * 0.15;
+        }
+
+        // 工厂：按已分配产品日收入估值
+        if (ind.type === 'factory' && window.FactoryProducts && ind.products) {
+          const factoryIncome = FactoryProducts.factoryDailyIncome(ind.category);
+          if (factoryIncome > 0) {
+            industryValue += factoryIncome * 365 * 0.15;
           }
         }
+        industryDaily += State.IndustryDailyIncome(ind.type, ind.category, qty, ind);
         industryCount += qty;
       }
     });
     const empSalary = Employees.totalSalary();
-
+    // 30日趋势统计
+    const trendStats = this._computeTrendStats(s.dailyStats || []);
     app.innerHTML = `
       <div class="page">
         ${UI.navbar('盛世集团 · 概览', false)}
@@ -105,6 +118,16 @@ Pages.overview = {
           </div>
         </div>
 
+                <!-- 近30日净收入趋势 -->
+        <div class="section-title">📈 近30日净收入趋势</div>
+        <div class="list-item" style="padding:8px 12px;">
+          <canvas id="overview-trend-canvas" style="width:100%;height:80px;display:block;"></canvas>
+          <div class="flex between text-sm text-muted" style="margin-top:6px;">
+            <span>最高 <span class="up">${State.formatMoney(trendStats.max)}</span></span>
+            <span>最低 <span class="down">${State.formatMoney(trendStats.min)}</span></span>
+            <span>平均 ${State.formatMoney(trendStats.avg)}</span>
+          </div>
+        </div>
         <!-- 资产分布 + 产业收入 双栏并排 -->
         <div class="overview-duo">
           <div class="overview-duo-col">
@@ -144,7 +167,18 @@ Pages.overview = {
         <!-- 新闻区（原 renderNews 内联） -->
         ${this._renderNewsSection()}
 
-        <!-- 操作 -->
+        <!-- 排行榜概要 -->
+        <div class="section-title">🏆 竞争排行榜</div>
+        <div class="list-item" style="margin-bottom:12px;">
+          <div class="list-row">
+            <span class="list-label">你的集团排名</span>
+            <span class="list-value" id="overview-rank-text"></span>
+          </div>
+          <div id="overview-rank-list"></div>
+          <button class="btn full" style="margin-top:8px;" onclick="Router.go('competitors')">查看完整排行榜</button>
+        </div>
+
+                <!-- 操作 -->
         <div class="section-title">操作</div>
         <div class="card-grid">
           <button class="card" onclick="Overview.toggleTheme()" id="theme-toggle-btn">
@@ -160,6 +194,8 @@ Pages.overview = {
         ${UI.bottombar()}
       </div>
     `;
+    Pages.overview._renderTrendChart();
+    Pages.overview._renderRankingPreview();
   },
 
   assetRow(name, value, total) {
@@ -315,7 +351,42 @@ Pages.overview = {
         ${tags.length ? `<div class="news-tags">${tags.map(t => `<span class="news-tag ${t.type}">${t.label}</span>`).join('')}</div>` : ''}
       </div>
     `;
-  }
+  },
+  _computeTrendStats(stats) {
+    if (!stats || stats.length === 0) return { max: 0, min: 0, avg: 0 };
+    const values = stats.map(s => s.netIncome || 0);
+    return {
+      max: Math.max(...values),
+      min: Math.min(...values),
+      avg: Math.round(values.reduce((a, b) => a + b, 0) / values.length)
+    };
+  },
+  _renderRankingPreview() {
+    if (!window.Competitors) return;
+    Competitors.init();
+    const ranking = Competitors.getRanking();
+    const playerRank = ranking.findIndex(r => r.isPlayer) + 1;
+    const rankText = document.getElementById('overview-rank-text');
+    const rankList = document.getElementById('overview-rank-list');
+    if (rankText) rankText.textContent = '第 ' + playerRank + ' / ' + ranking.length + ' 名';
+    if (rankList) {
+      rankList.innerHTML = ranking.map((r, i) => {
+        return '<div class="list-row" style="padding:4px 0;">' +
+          '<span class="list-label">' + (i + 1) + '. ' + r.name + (r.isPlayer ? ' (你)' : '') + '</span>' +
+          '<span class="list-value' + (r.isPlayer ? ' up' : '') + '">' + State.formatMoney(r.assets) + '</span>' +
+        '</div>';
+      }).join('');
+    }
+  },
+
+    _renderTrendChart() {
+    const canvas = document.getElementById('overview-trend-canvas');
+    if (!canvas || !window.Charts) return;
+    const stats = State.data.dailyStats || [];
+    const w = canvas.clientWidth || canvas.parentElement.clientWidth - 24 || 320;
+    Charts.lineChart(canvas, stats, { width: w, height: 80 });
+  },
+
 };
 
 window.Pages = window.Pages || {};

@@ -1,4 +1,4 @@
-/* engine.js — 核心引擎：每日结算、价格波动、新闻触发 */
+﻿/* engine.js — 核心引擎：每日结算、价格波动、新闻触发 */
 
 const Engine = {
   /* 等级倍率：每级 1.2x（上限 5 级） */
@@ -12,6 +12,8 @@ const Engine = {
     if (!State.data) return;
     State.data.industries.forEach(ind => {
       if (ind.type !== 'factory') return;
+      // 天敌事件检查：停产则不产出
+      if (window.EventSystem && EventSystem.isShutdown(ind.type, ind.category)) return;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
       // 没有产品分配则跳过
@@ -27,6 +29,34 @@ const Engine = {
       }
     });
     State.save();
+  },
+
+  /* 补产：根据剩余秒数一次性产出当天剩余批次 */
+  produceRemainingBatches(seconds) {
+    if (!State.data) return;
+    const batches = Math.floor(seconds / 3);
+    if (batches <= 0) return;
+    let totalIncome = 0;
+    for (let i = 0; i < batches; i++) {
+      State.data.industries.forEach(ind => {
+        if (ind.type !== 'factory') return;
+        const empMult = Employees.multiplier(ind.type, ind.category);
+        if (empMult <= 0) return;
+        if (!ind.products || Object.keys(ind.products).length === 0) return;
+        const levelMult = Engine.levelMultiplier(ind.level || 1);
+        let hasAlloc = false;
+        Object.values(ind.products).forEach(v => { if (v > 0) hasAlloc = true; });
+        if (!hasAlloc) return;
+        const batchIncome = FactoryProducts.produceBatch(ind, empMult, levelMult);
+        if (batchIncome > 0) {
+          State.data.cash += batchIncome;
+          totalIncome += batchIncome;
+        }
+      });
+    }
+    if (totalIncome > 0) {
+      State.save();
+    }
   },
 
 
@@ -133,6 +163,26 @@ const Engine = {
       this.checkBankruptcy();
       return { summaries, events, completedDays: summaries.length };
     }
+    // 更新竞争对手
+    if (window.Competitors) {
+      Competitors.updateDaily();
+    }
+
+    // 期货到期结算
+    if (window.Futures) {
+      Futures.dailySettle();
+    }
+
+    // 检测成就
+    if (window.Achievements) {
+      const newAchievements = Achievements.checkAchievements();
+      if (newAchievements && newAchievements.length > 0) {
+        newAchievements.forEach(a => {
+          UI.toast('🎉 解锁成就: ' + a.name);
+        });
+      }
+    }
+    
     State.save();
     return { summaries, events, completedDays: summaries.length };
   },
@@ -156,26 +206,54 @@ const Engine = {
     const d = State.data.date;
     const log = { date: this.dateString(), day: d.totalDays, income: 0, expense: 0, details: [] };
 
+    // ===== 阶段0：天敌事件判定（产出之前） =====
+    if (window.DisasterEvents) {
+      const events = DisasterEvents.roll(log);
+      if (events && events.length > 0) {
+        DisasterEvents._pendingEvents = events;
+        events.forEach(e => {
+          if (e.definition) DisasterEvents.apply(e);
+        });
+      }
+    }
+
     // ===== 产业链分阶段结算 =====
-    // 阶段1：矿业+农业产出原料进仓库
+    // 阶段1：矿业+农业产出原料进仓库（受天敌事件 + 产量波动影响）
     State.data.industries.forEach(ind => {
       if (ind.type !== 'mining' && ind.type !== 'farm') return;
       // 采矿许可证检查：无许可证不产出
       if (ind.type === 'mining' && (!ind.licenseLevel || ind.licenseLevel <= 0)) return;
       const empMult = Employees.multiplier(ind.type, ind.category);
       if (empMult <= 0) return;
+      // 天敌事件检查：停产则不产出
+      if (window.EventSystem && EventSystem.isShutdown(ind.type, ind.category)) return;
+      // 天敌事件减产
+      const disasterMult = window.EventSystem ? EventSystem.getOutputReduction(ind.type, ind.category) : 1;
       const licenseMult1 = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
         ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
-        Employees.produceMaterials(ind, empMult, log, licenseMult1);
+      // 产量波动（仅矿业）：每日独立随机掷骰
+      let yieldFactor = 1;
+      if (ind.type === 'mining') {
+        const cat = State.findIndustryCategory(ind.type, ind.category);
+        const vol = (cat && cat.yieldVolatility) ? cat.yieldVolatility : 0.08;
+        yieldFactor = 1 + (Math.random() * 2 - 1) * vol;
+        // 存到产业对象上，供UI读取
+        ind._yieldFactor = Math.round(yieldFactor * 100);
+      }
+      const totalMult = (licenseMult1 || 1) * disasterMult * yieldFactor;
+      Employees.produceMaterials(ind, empMult, log, totalMult);
     });
 
-    // 阶段2：冶金消耗矿石→产出金属进仓库 + 现金收入
+    // 阶段2：冶金消耗矿石→产出金属进仓库 + 现金收入（受天敌事件影响）
     State.data.industries.forEach(ind => {
       if (ind.type !== 'metall') return;
+      // 天敌事件检查
+      if (window.EventSystem && EventSystem.isShutdown(ind.type, ind.category)) return;
+      const disasterMult = window.EventSystem ? EventSystem.getOutputReduction(ind.type, ind.category) : 1;
       const cat = State.findIndustryCategory(ind.type, ind.category);
       if (!cat) return;
       const qty = ind.quantity || 1;
-      const empMult = Employees.multiplier(ind.type, ind.category);
+      const empMult = Employees.multiplier(ind.type, ind.category) * disasterMult;
       if (empMult <= 0) return;
       // 检查仓库矿石原料满足率
       let recipeSat = 1.0;
@@ -183,19 +261,16 @@ const Engine = {
         recipeSat = Employees.smelterSatisfaction(ind.category, qty);
         Employees.consumeSmelterMaterials(ind.category, qty, recipeSat);
       }
-      // 现金收入 = 产出量 × 市场价
-      const produceCode = cat.produces ? cat.produces.code : null;
-      const produceQty = cat.produces ? cat.produces.qty * qty * empMult * (recipeSat || 1) : 0;
-      const matPrice = produceCode ? Employees.materialPrice(produceCode) : 0;
-      let daily = produceQty * matPrice;
-      if (d.dayOfWeek === 0 || d.dayOfWeek === 6) daily *= 0.5;
-      State.data.cash += daily;
-      log.income += daily;
       const empCnt = Employees.assignedCount(ind.type, ind.category);
       const satTag = recipeSat < 1 ? ` (原料${Math.round(recipeSat*100)}%)` : '';
-      log.details.push({ label: `${cat.name}×${qty} 员工×${empCnt}${satTag}`, amount: daily, type: 'income' });
-      // 产出金属进仓库
+      // 产出金属进仓库（溢出自动卖出，统一走 produceMaterials）
       Employees.produceMaterials(ind, empMult, log);
+      // 日志：产出信息（不计入现金，现金由 produceMaterials 溢出卖出产生）
+      const produceCode = cat.produces ? cat.produces.code : null;
+      if (produceCode) {
+        const produceQty = cat.produces ? cat.produces.qty * qty * empMult * (recipeSat || 1) : 0;
+        log.details.push({ label: `${cat.name}×${qty} 员工×${empCnt}${satTag} 产出${produceQty.toFixed(1)}→仓库`, amount: 0, type: 'info' });
+      }
     });
 
     // 阶段3：工厂产品系统（已由 3 秒实时结算替代，此处跳过）
@@ -243,7 +318,12 @@ const Engine = {
       log.details.push({ label: `员工薪水（${Employees.count()}人）`, amount: salary, type: 'expense' });
     }
 
-    // 2. 存款利息（按当前浮动利率）
+    // 2. 员工士气更新 + 离职判定
+    if (window.Employees && Employees.updateMorale) {
+      Employees.updateMorale(log);
+    }
+
+    // 2a. 存款利息（按当前浮动利率）
     const depoRate = State.data.interestRate || DATA.bank.baseRate;
     const interest = State.data.deposit * depoRate / 365;
     State.data.deposit += interest;
@@ -261,11 +341,32 @@ const Engine = {
       log.details.push({ label: `贷款利息 (${(loanRate*100).toFixed(2)}%)`, amount: loanInterest, type: 'expense' });
     }
 
+    // 2b2. 高利贷利息（5%/天）
+    if (State.data._sharkLoanDay != null && (State.data.loan || 0) > 0) {
+      const sharkDays = (State.data.date.totalDays) - State.data._sharkLoanDay;
+      if (sharkDays > 0) {
+        const sharkInterest = 100000 * 0.05;
+        State.data.cash -= sharkInterest;
+        log.expense += sharkInterest;
+        log.details.push({ label: `高利贷利息 (5%/天)`, amount: sharkInterest, type: 'expense' });
+        // 30天不还强制清算
+        if (sharkDays >= 30) {
+          log.details.push({ label: '🚨 高利贷到期！强制清算', amount: 0, type: 'warn' });
+          State.data.cash -= Math.min(0, State.data.cash) + 200000;
+        }
+      }
+    }
+
     // 2b+. 信用评级每日更新
     this.updateCreditRating();
 
     // 2c. 处理活跃效果到期
     this.processActiveEffects();
+
+    // 2c+. 处理天敌事件到期
+    if (window.DisasterEvents) {
+      DisasterEvents.processActiveEvents(log);
+    }
 
     // 2d. 利率自然波动（每日微小随机漂移）
     const drift = (Math.random() - 0.5) * 2 * (DATA.bank.rateDriftPerDay || 0.0003);
@@ -297,19 +398,81 @@ const Engine = {
     // 5b. 原料市场价格波动
     this.updateMaterialPrices();
 
+    // 5c. 工厂产品价格波动
+    this.updateProductPrices();
+
     // 6. 推进日期
     this.advanceDate();
     log.net = log.income - log.expense;
 
-    // 7. 大盘情绪衰减
+    // 7. 经济周期推进（每阶段随机 25-45 天）
+    this.advanceEconomicCycle(log);
+
+    // 8. 大盘情绪衰减
     State.data.marketSentiment *= 0.9;
 
-    // 8. 破产检测
+    // 9. 破产检测 + 破产自救阶段
+    if (State.data.cash < 0 && State.data.bankruptcyDays == null) State.data.bankruptcyDays = 0;
+    if (State.data.cash < 0) {
+      State.data.bankruptcyDays = (State.data.bankruptcyDays || 0) + 1;
+    } else {
+      State.data.bankruptcyDays = 0;
+    }
+
+    if (State.data.cash < 0) {
+      const days = State.data.bankruptcyDays || 0;
+      if (days === 1) {
+        log.details.push({ label: '⚠️ 资金链紧张！现金已为负数', amount: 0, type: 'warn' });
+        log.details.push({ label: '💡 提示：可裁员、出售资产或借高利贷', amount: 0, type: 'info' });
+      }
+      if (days === 5) {
+        log.details.push({ label: '🚨 破产危机！必须采取行动', amount: 0, type: 'warn' });
+      }
+      if (days >= 10) {
+        if (this.checkBankruptcy()) {
+          return log;
+        }
+      }
+    }
+
     if (this.checkBankruptcy()) {
       return log;
     }
 
+    // ===== 阶段8：记录每日统计数据（趋势图表） =====
+    this.recordDailyStats(log);
+
     return log;
+  },
+
+  /* 记录每日统计数据（用于趋势图表） */
+  recordDailyStats(log) {
+    const s = State.data;
+    // 整体统计
+    if (!s.dailyStats) s.dailyStats = [];
+    s.dailyStats.push({
+      day: s.date.totalDays,
+      netIncome: log.net || 0,
+      revenue: log.income || 0,
+      expenses: log.expense || 0
+    });
+    if (s.dailyStats.length > 30) s.dailyStats.shift();
+
+    // 按产业类型拆分收入
+    if (!s.industryDailyStats) s.industryDailyStats = {};
+    const types = ['farm', 'mining', 'metall', 'factory', 'estate', 'logistics'];
+    types.forEach(type => {
+      if (!s.industryDailyStats[type]) s.industryDailyStats[type] = [];
+      let typeIncome = 0;
+      (s.industries || []).forEach(ind => {
+        if (ind.type !== type) return;
+        const qty = ind.quantity || 1;
+        const inc = State.IndustryDailyIncome(type, ind.category, qty, ind);
+        typeIncome += inc;
+      });
+      s.industryDailyStats[type].push({ day: s.date.totalDays, income: Math.round(typeIncome) });
+      if (s.industryDailyStats[type].length > 7) s.industryDailyStats[type].shift();
+    });
   },
 
   /* 更新股票价格 */
@@ -365,16 +528,53 @@ const Engine = {
     });
   },
 
-  /* 更新原料市场价格（每日波动 ±1.5%，受大盘情绪轻微影响） */
+  /* 更新原料市场价格（每日单独波动，各品类波动率不同，受大盘情绪和经济周期影响） */
   updateMaterialPrices() {
     if (!State.data.materialPrices) State.data.materialPrices = {};
+    const cycle = DATA.economicCycle;
+    let cycleMult = 1.0;
+    if (cycle && State.data.economicPhase) {
+      const phase = cycle.phases.find(p => p.id === State.data.economicPhase);
+      if (phase) cycleMult = phase.materialMult || 1.0;
+    }
+    const cycleDrift = (cycleMult - 1.0) * 0.02; // 经济周期每日偏移
     DATA.rawMaterials.forEach(m => {
+      // 跳过工厂成品（成品价格由 updateProductPrices 单独管理）
+      if (m.category === 'finished') return;
       const oldPrice = State.data.materialPrices[m.code] || m.price;
-      let change = (Math.random() - 0.5) * 0.03; // ±1.5% 基础波动
-      change += State.data.marketSentiment * 0.3; // 大盘情绪轻微传导
+      const vol = m.volatility || 0.015; // 每个原料独立波动率
+      let change = (Math.random() - 0.5) * vol * 2; // 按波动率随机
+      change += (State.data.marketSentiment || 0) * 0.3; // 大盘情绪传导
+      change += cycleDrift; // 经济周期方向偏移
       const newPrice = Math.max(0.1, oldPrice * (1 + change));
       State.data.materialPrices[m.code] = Math.round(newPrice * 100) / 100;
     });
+  },
+
+  /* 更新工厂产品市场价格（每日波动 ±0.8%，受经济周期影响） */
+  updateProductPrices() {
+    if (!State.data.productPrices) State.data.productPrices = {};
+    const cycle = DATA.economicCycle;
+    let cycleMult = 1.0;
+    if (cycle && State.data.economicPhase) {
+      const phase = cycle.phases.find(p => p.id === State.data.economicPhase);
+      if (phase) cycleMult = phase.productMult || 1.0;
+    }
+    // 经济周期偏移：每天朝目标方向移动(cycleMult-1)*2.5%
+    const cycleDrift = (cycleMult - 1.0) * 0.025;
+
+    if (window.FactoryProducts && FactoryProducts.data) {
+      Object.values(FactoryProducts.data).forEach(products => {
+        products.forEach(p => {
+          const oldPrice = State.data.productPrices[p.code] || p.sellPrice;
+          let change = (Math.random() - 0.5) * 0.016; // ±0.8% 随机波动
+          change += cycleDrift; // 经济周期方向偏移
+          change += (State.data.marketSentiment || 0) * 0.15; // 大盘情绪微传导
+          const newPrice = Math.max(0.1, oldPrice * (1 + change));
+          State.data.productPrices[p.code] = Math.round(newPrice * 100) / 100;
+        });
+      });
+    }
   },
 
   /* 推进日期 */
@@ -388,6 +588,54 @@ const Engine = {
     d.day = date.getDate();
     d.dayOfWeek = date.getDay();
     State.data.realDate = date.toISOString().slice(0, 10);
+  },
+
+  /* 经济周期推进 */
+  advanceEconomicCycle(log) {
+    const s = State.data;
+    const cycle = DATA.economicCycle;
+    if (!cycle) return;
+
+    s.daysInPhase = (s.daysInPhase || 0) + 1;
+    const phaseCfg = cycle.phases.find(p => p.id === s.economicPhase) || cycle.phases[1];
+
+    // 检查当前阶段是否应该结束
+    if (s.daysInPhase >= phaseCfg.minDays) {
+      const shouldEnd = s.daysInPhase >= phaseCfg.maxDays || Math.random() < 0.15;
+      if (shouldEnd) {
+        const phaseIdx = cycle.phases.findIndex(p => p.id === s.economicPhase);
+        let nextIdx;
+
+        // 30% 概率回退到上一阶段（避免一直萧条）
+        if (Math.random() < cycle.rollbackChance && phaseIdx > 0) {
+          nextIdx = phaseIdx - 1;
+        } else {
+          nextIdx = (phaseIdx + 1) % cycle.phases.length;
+        }
+
+        const nextPhase = cycle.phases[nextIdx];
+        s.economicPhase = nextPhase.id;
+        s.daysInPhase = 0;
+
+        // 触发经济快讯新闻
+        if (log) {
+          log.details.push({ label: `📊 ${nextPhase.newsTitle}`, amount: 0, type: 'info' });
+          log.details.push({ label: `   ${nextPhase.newsDesc}`, amount: 0, type: 'info' });
+        }
+      }
+    }
+
+    // 应用经济周期到原料价格（每日偏移）
+    const materialMult = phaseCfg.materialMult || 1.0;
+    if (materialMult !== 1.0) {
+      const drift = (materialMult - 1.0) * 0.02; // 每日向目标偏移 2%
+      if (State.data.materialPrices) {
+        Object.keys(State.data.materialPrices).forEach(code => {
+          State.data.materialPrices[code] *= (1 + drift);
+          State.data.materialPrices[code] = Math.max(0.1, State.data.materialPrices[code]);
+        });
+      }
+    }
   },
 
   /* 每日更新信用评级 */
@@ -618,6 +866,20 @@ const Engine = {
       Object.entries(news.effects.materials).forEach(([code, pct]) => {
         const mat = DATA.rawMaterials.find(m => m.code === code);
         if (mat) tags.push({ label: `${mat.name} ${State.formatPct(pct)}`, type: pct >= 0 ? 'up' : 'down' });
+      });
+    }
+    if (news.effects.products) {
+      Object.entries(news.effects.products).forEach(([code, mult]) => {
+        let prodName = null;
+        if (window.FactoryProducts) {
+          for (const cat of Object.values(FactoryProducts.data)) {
+            const found = cat.find(p => p.code === code);
+            if (found) { prodName = found.name; break; }
+          }
+        }
+        if (!prodName) prodName = code;
+        const pctStr = typeof mult === 'number' && mult > 0 ? `x${mult}` : mult;
+        tags.push({ label: `${prodName} ${pctStr}`, type: mult >= 1 ? 'up' : 'down' });
       });
     }
     if (news.effects.interestRate) {

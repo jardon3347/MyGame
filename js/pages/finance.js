@@ -1,4 +1,4 @@
-/* finance.js — 金融主页面（股票/基金/贵金属 Tab） */
+﻿/* finance.js — 金融主页面（股票/基金/贵金属 Tab） */
 
 Pages.finance = {
   _activeTab: 'stocks', // 'stocks' | 'funds' | 'metals'
@@ -13,6 +13,7 @@ Pages.finance = {
             <div class="tab${this._activeTab === 'stocks' ? ' active' : ''}" data-fintab="stocks" onclick="Pages.finance.switchTab('stocks')">📈 股票</div>
             <div class="tab${this._activeTab === 'funds' ? ' active' : ''}" data-fintab="funds" onclick="Pages.finance.switchTab('funds')">📊 基金</div>
             <div class="tab${this._activeTab === 'metals' ? ' active' : ''}" data-fintab="metals" onclick="Pages.finance.switchTab('metals')">🥇 贵金属</div>
+            <div class="tab${this._activeTab === 'futures' ? ' active' : ''}" data-fintab="futures" onclick="Pages.finance.switchTab('futures')">🥇 期货</div>
           </div>
         </div>
 
@@ -32,6 +33,8 @@ Pages.finance = {
       return Pages.funds.renderList();
     } else if (this._activeTab === 'metals') {
       return Pages.metals.renderList();
+    } else if (this._activeTab === 'futures') {
+      return Pages.futures.renderList();
     }
     return '';
   },

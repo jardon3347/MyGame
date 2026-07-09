@@ -4,17 +4,17 @@ const DATA = {
   maxIndustryLevel: 5,
   /* ===== 难度配置 ===== */
   difficulties: {
-    easy:   { name: '简单', cash: 500000,  desc: '资金充裕，适合熟悉玩法' },
-    normal: { name: '中等', cash: 250000,  desc: '标准体验，推荐首次玩家' },
-    hard:   { name: '困难', cash: 100000,  desc: '白手起家，精打细算' }
+    easy:   { name: '简单', cash: 500000,  desc: '资金充足，适合熟悉玩法' },
+    normal: { name: '中等', cash: 500000,  desc: '标准体验，推荐首次玩家' },
+    hard:   { name: '困难', cash: 250000,  desc: '白手起家，精打细算' }
   },
 
   /* ===== 金融板块 ===== */
   bank: {
-    baseRate: 0.03,          // 基准年利率 3%
+    baseRate: 0.015,          // 基准年利率 1.5%（2026年央行1年期存款基准）
     rateMin: 0.005,          // 最低利率 0.5%
-    rateMax: 0.10,           // 最高利率 10%
-    loanRateMultiplier: 2.5, // 贷款利率 = 存款利率 × 2.5
+    rateMax: 0.08,           // 最高利率 8%
+    loanRateMultiplier: 2.5, // 贷款利率 = 存款利率 × 2.5（约3.75%≈LPR）
     maxLoanRatio: 0.5,       // 最高贷款 = 现金 × 0.5
     rateDriftPerDay: 0.0003,  // 每日利率自然漂移幅度（±0.03%/天）
     creditRatings: {
@@ -28,36 +28,55 @@ const DATA = {
     creditDowngradeDays: 30   // 连续 30 天有贷款未还清可降级
   },
 
+  /* ===== 经济周期系统 ===== */
+  economicCycle: {
+    phases: [
+      { id: 'boom',       name: '繁荣', minDays: 25, maxDays: 45,
+        productMult: 1.20, materialMult: 1.10, interestMult: 1.0, resignMult: 1.0, disasterMult: 0.5,
+        newsTitle: '经济快讯：市场繁荣', newsDesc: '经济增长强劲，消费需求旺盛，产品价格大幅上涨。原料价格温和上升，员工离职率处于低位。' },
+      { id: 'stable',     name: '平稳', minDays: 25, maxDays: 45,
+        productMult: 1.00, materialMult: 1.00, interestMult: 1.0, resignMult: 1.0, disasterMult: 1.0,
+        newsTitle: '经济快讯：市场平稳', newsDesc: '经济运行平稳，各项指标处于正常区间。' },
+      { id: 'recession',  name: '衰退', minDays: 25, maxDays: 45,
+        productMult: 0.80, materialMult: 0.90, interestMult: 1.5, resignMult: 2.0, disasterMult: 1.5,
+        newsTitle: '经济快讯：进入衰退', newsDesc: '经济增速放缓，市场需求萎缩，产品价格承压下行。员工士气受挫，离职率上升。' },
+      { id: 'depression', name: '萧条', minDays: 20, maxDays: 35,
+        productMult: 0.65, materialMult: 0.80, interestMult: 2.0, resignMult: 4.0, disasterMult: 2.0,
+        newsTitle: '经济快讯：深度萧条', newsDesc: '经济陷入深度萧条，产品价格暴跌，原料价格大幅下滑。贷款利息飙升，员工大量流失。' }
+    ],
+    rollbackChance: 0.3   // 阶段结束时30%概率回退到上一阶段
+  },
+
   stocks: [
     // 矿业/能源类
-    { code: 'LYKY',  name: '龙源矿业',   sector: 'mining',  basePrice: 12.5, industry: '煤炭采选',   desc: '国内领先煤炭生产商，业务覆盖开采、洗选、销售一体化运营。' },
-    { code: 'ZSYT',  name: '中石原油',   sector: 'mining',  basePrice: 8.2,  industry: '石油开采',   desc: '上游油气勘探开发龙头，受国际油价波动影响显著。' },
-    { code: 'JXME',  name: '江西煤业',   sector: 'mining',  basePrice: 6.4,  industry: '煤炭采选',   desc: '华东地区煤炭骨干企业，主营动力煤与焦煤。' },
+    { code: 'LYKY',  name: '龙源矿业',   sector: 'mining',  basePrice: 15.0, industry: '煤炭采选',   desc: '国内领先煤炭生产商，业务覆盖开采、洗选、销售一体化运营。' },
+    { code: 'ZSYT',  name: '中石原油',   sector: 'mining',  basePrice: 8.0,  industry: '石油开采',   desc: '上游油气勘探开发龙头，受国际油价波动影响显著。' },
+    { code: 'JXME',  name: '江西煤业',   sector: 'mining',  basePrice: 7.5,  industry: '煤炭采选',   desc: '华东地区煤炭骨干企业，主营动力煤与焦煤。' },
     // 农业类
-    { code: 'FLNY',  name: '丰乐农业',   sector: 'farm',    basePrice: 8.3,  industry: '种植养殖',   desc: '一体化农业集团，覆盖种子、种植、加工全产业链。' },
-    { code: 'BYNK',  name: '北原农牧',   sector: 'farm',    basePrice: 5.6,  industry: '种植养殖',   desc: '东北粮食主产区龙头企业，主营玉米大豆。' },
-    { code: 'WTHJ',  name: '万通调料',   sector: 'farm',    basePrice: 14.8, industry: '食品加工',   desc: '调味品行业知名品牌，下游消费需求稳定。' },
+    { code: 'FLNY',  name: '丰乐农业',   sector: 'farm',    basePrice: 10.0, industry: '种植养殖',   desc: '一体化农业集团，覆盖种子、种植、加工全产业链。' },
+    { code: 'BYNK',  name: '北原农牧',   sector: 'farm',    basePrice: 9.0,  industry: '种植养殖',   desc: '东北粮食主产区龙头企业，主营玉米大豆。' },
+    { code: 'WTHJ',  name: '万通调料',   sector: 'farm',    basePrice: 18.0, industry: '食品加工',   desc: '调味品行业知名品牌，下游消费需求稳定。' },
     // 冶金类
-    { code: 'AGYJ',  name: '鞍钢冶金',   sector: 'metall',  basePrice: 6.8,  industry: '钢铁冶炼',   desc: '大型钢铁联合企业，建材与特种钢双线布局。' },
-    { code: 'TBGF',  name: '铜陵股份',   sector: 'metall',  basePrice: 9.5,  industry: '有色金属',   desc: '国内铜冶炼龙头，受国际铜价影响较大。' },
-    { code: 'LVAL',  name: '鲁丰铝业',   sector: 'metall',  basePrice: 11.2, industry: '有色金属',   desc: '铝材加工企业，受益新能源轻量化趋势。' },
+    { code: 'AGYJ',  name: '鞍钢冶金',   sector: 'metall',  basePrice: 5.0,  industry: '钢铁冶炼',   desc: '大型钢铁联合企业，建材与特种钢双线布局。' },
+    { code: 'TBGF',  name: '铜陵股份',   sector: 'metall',  basePrice: 12.0, industry: '有色金属',   desc: '国内铜冶炼龙头，受国际铜价影响较大。' },
+    { code: 'LVAL',  name: '鲁丰铝业',   sector: 'metall',  basePrice: 8.0,  industry: '有色金属',   desc: '铝材加工企业，受益新能源轻量化趋势。' },
     // 工厂/制造类
-    { code: 'KCDZ',  name: '科创电子',   sector: 'factory', basePrice: 15.2, industry: '消费电子',   desc: '消费电子代工龙头，海外订单饱满。' },
-    { code: 'DFJQ',  name: '东方机械',   sector: 'factory', basePrice: 7.8,  industry: '工程机械',   desc: '重型机械制造商，受益基建投资周期。' },
-    { code: 'HSPC',  name: '华生汽车',   sector: 'factory', basePrice: 18.6, industry: '汽车制造',   desc: '自主品牌车企，新能源转型中。' },
+    { code: 'KCDZ',  name: '科创电子',   sector: 'factory', basePrice: 22.0, industry: '消费电子',   desc: '消费电子代工龙头，海外订单饱满。' },
+    { code: 'DFJQ',  name: '东方机械',   sector: 'factory', basePrice: 12.0, industry: '工程机械',   desc: '重型机械制造商，受益基建投资周期。' },
+    { code: 'HSPC',  name: '华生汽车',   sector: 'factory', basePrice: 25.0, industry: '汽车制造',   desc: '自主品牌车企，新能源转型中。' },
     // 制药/医疗
-    { code: 'HNZY',  name: '华润制药',   sector: 'pharma',  basePrice: 32.5, industry: '医药制造',   desc: '国内医药龙头，覆盖处方药与 OTC 双市场。' },
-    { code: 'FBYY',  name: '复必医药',   sector: 'pharma',  basePrice: 28.4, industry: '医药制造',   desc: '创新药研发企业，管线丰富，研发投入大。' },
-    { code: 'LKSW',  name: '联康生物',   sector: 'pharma',  basePrice: 9.7,  industry: '生物科技',   desc: '生物制药新锐，专注疫苗与抗体药物。' },
+    { code: 'HNZY',  name: '华润制药',   sector: 'pharma',  basePrice: 38.0, industry: '医药制造',   desc: '国内医药龙头，覆盖处方药与 OTC 双市场。' },
+    { code: 'FBYY',  name: '复必医药',   sector: 'pharma',  basePrice: 30.0, industry: '医药制造',   desc: '创新药研发企业，管线丰富，研发投入大。' },
+    { code: 'LKSW',  name: '联康生物',   sector: 'pharma',  basePrice: 15.0, industry: '生物科技',   desc: '生物制药新锐，专注疫苗与抗体药物。' },
     // 科技/半导体
-    { code: 'ZKBD',  name: '中科半导',   sector: 'tech',    basePrice: 42.8, industry: '半导体',     desc: '国产芯片设计龙头，受益国产替代趋势。' },
-    { code: 'TXKJ',  name: '通讯科技',   sector: 'tech',    basePrice: 21.5, industry: '5G通讯',     desc: '通信设备供应商，5G 基站建设核心受益标的。' },
+    { code: 'ZKBD',  name: '中科半导',   sector: 'tech',    basePrice: 55.0, industry: '半导体',     desc: '国产芯片设计龙头，受益国产替代趋势。' },
+    { code: 'TXKJ',  name: '通讯科技',   sector: 'tech',    basePrice: 28.0, industry: '5G通讯',     desc: '通信设备供应商，5G 基站建设核心受益标的。' },
     // 消费
-    { code: 'BLGF',  name: '保利百货',   sector: 'consume', basePrice: 13.6, industry: '商业零售',   desc: '全国连锁百货集团，受益消费复苏。' },
-    { code: 'GNLY',  name: '贵酿酒业',   sector: 'consume', basePrice: 68.5, industry: '白酒',       desc: '高端白酒品牌，毛利率高，现金流稳定。' },
+    { code: 'BLGF',  name: '保利百货',   sector: 'consume', basePrice: 10.0, industry: '商业零售',   desc: '全国连锁百货集团，受益消费复苏。' },
+    { code: 'GNLY',  name: '贵酿酒业',   sector: 'consume', basePrice: 180.0,industry: '白酒',       desc: '高端白酒品牌，毛利率高，现金流稳定。' },
     // 金融
-    { code: 'JSYH',  name: '建设银行',   sector: 'finance', basePrice: 5.8,  industry: '银行',       desc: '国有大行，分红稳定，估值低防御性强。' },
-    { code: 'TBTB',  name: '太平洋保',   sector: 'finance', basePrice: 19.2, industry: '保险',       desc: '综合保险集团，投资收益受市场波动影响。' }
+    { code: 'JSYH',  name: '建设银行',   sector: 'finance', basePrice: 7.5,  industry: '银行',       desc: '国有大行，分红稳定，估值低防御性强。' },
+    { code: 'TBTB',  name: '太平洋保',   sector: 'finance', basePrice: 25.0, industry: '保险',       desc: '综合保险集团，投资收益受市场波动影响。' }
   ],
 
   /* ===== 基金（12 只，不同类型） ===== */
@@ -77,9 +96,9 @@ const DATA = {
   ],
 
   metals: [
-    { code: 'gold',     name: '黄金', basePrice: 280,   volatility: 0.008 },
-    { code: 'silver',   name: '白银', basePrice: 3.6,   volatility: 0.015 },
-    { code: 'platinum', name: '铂金', basePrice: 200,   volatility: 0.012 }
+    { code: 'gold',     name: '黄金', basePrice: 913,   volatility: 0.012 },
+    { code: 'silver',   name: '白银', basePrice: 14,    volatility: 0.022 },
+    { code: 'platinum', name: '铂金', basePrice: 637,   volatility: 0.018 }
   ],
 
   /* ===== 五大产业 × 细分品类（含产出配方，联动核心） ===== */
@@ -123,18 +142,20 @@ const DATA = {
         content: '矿业每日产出矿石存入仓库，供冶金消耗。\n\n• 铁矿石→炼钢/炼铁\n• 铜矿石→炼铜\n• 铝土矿→炼铝\n• 煤炭→炼钢/水泥厂\n• 金矿石/银矿石→贵金属冶炼\n\n首次购买矿场需支付许可证费用。许可证可升级，提升产出并降低维护成本。'
       },
       categories: [
-        { code: 'coal',   name: '煤矿',   cost: 25000,  licenseCost: 75000, dailyIncome: 0,   reserve: 3650, produces: { code: 'coal',     qty: 2.5 } },
-        { code: 'iron',   name: '铁矿',   cost: 20000,  licenseCost: 60000, dailyIncome: 0,  reserve: 2920, produces: { code: 'iron',     qty: 2 } },
-        { code: 'copper', name: '铜矿',   cost: 1100000,  licenseCost: 3300000, dailyIncome: 0,  reserve: 2555, produces: { code: 'copper',   qty: 0.3 } },
-        { code: 'gold',   name: '金矿',   cost: 7000000, licenseCost: 21000000, dailyIncome: 0,  reserve: 1825, produces: { code: 'gold_ore', qty: 0.05 } },
-        { code: 'silver', name: '银矿',   cost: 100000,  licenseCost: 300000, dailyIncome: 0,  reserve: 2190, produces: { code: 'silver_ore', qty: 0.5 } },
-        { code: 'rare',   name: '稀土',   cost: 1300000, licenseCost: 3900000, dailyIncome: 0,  reserve: 1095, produces: { code: 'rare_earth', qty: 0.03 } },
-        { code: 'baux',   name: '铝土矿', cost: 10000,  licenseCost: 30000, dailyIncome: 0,   reserve: 2920, produces: { code: 'baux',     qty: 2 } },
-        { code: 'tung',   name: '钨矿',   cost: 2400000, licenseCost: 7200000, dailyIncome: 0,  reserve: 1460, produces: { code: 'tung',     qty: 0.15 } },
-        { code: 'tin',    name: '锡矿',   cost: 3500000,  licenseCost: 10500000, dailyIncome: 0,  reserve: 2190, produces: { code: 'tin',      qty: 0.2 } },
-        { code: 'phos',   name: '磷矿',   cost: 10000,  licenseCost: 30000, dailyIncome: 0,   reserve: 3650, produces: { code: 'phos_ore', qty: 2 } },
-        { code: 'quartz', name: '石英矿', cost: 6000,  licenseCost: 18000, dailyIncome: 0,   reserve: 3285, produces: { code: 'quartz_ore', qty: 1.5 } },
-        { code: 'limestone', name: '石灰矿', cost: 1600, licenseCost: 4800, dailyIncome: 0, reserve: 5000, produces: { code: 'limestone', qty: 3 } },
+        // cost = 原料单价 × 日产量 × 30天; licenseCost = cost × 3
+        // yieldVolatility: 日产量波动率 ∈ [1-vol, 1+vol]
+        { code: 'coal',   name: '煤矿',   cost: 60000,  licenseCost: 180000, dailyIncome: 0,   reserve: 3650, yieldVolatility: 0.08, produces: { code: 'coal',     qty: 2.5 } },
+        { code: 'iron',   name: '铁矿',   cost: 39000,  licenseCost: 117000, dailyIncome: 0,  reserve: 2920, yieldVolatility: 0.08, produces: { code: 'iron',     qty: 2 } },
+        { code: 'copper', name: '铜矿',   cost: 270000,  licenseCost: 810000, dailyIncome: 0,  reserve: 2555, yieldVolatility: 0.10, produces: { code: 'copper',   qty: 0.3 } },
+        { code: 'gold',   name: '金矿',   cost: 68000, licenseCost: 204000, dailyIncome: 0,  reserve: 1825, yieldVolatility: 0.20, produces: { code: 'gold_ore', qty: 0.05 } },
+        { code: 'silver', name: '银矿',   cost: 105000,  licenseCost: 315000, dailyIncome: 0,  reserve: 2190, yieldVolatility: 0.12, produces: { code: 'silver_ore', qty: 0.5 } },
+        { code: 'rare',   name: '稀土',   cost: 35000, licenseCost: 105000, dailyIncome: 0,  reserve: 1095, yieldVolatility: 0.15, produces: { code: 'rare_earth', qty: 0.03 } },
+        { code: 'baux',   name: '铝土矿', cost: 33000,  licenseCost: 99000, dailyIncome: 0,   reserve: 2920, yieldVolatility: 0.07, produces: { code: 'baux',     qty: 2 } },
+        { code: 'tung',   name: '钨矿',   cost: 1260000, licenseCost: 3780000, dailyIncome: 0,  reserve: 1460, yieldVolatility: 0.12, produces: { code: 'tung',     qty: 0.15 } },
+        { code: 'tin',    name: '锡矿',   cost: 1500000,  licenseCost: 4500000, dailyIncome: 0,  reserve: 2190, yieldVolatility: 0.10, produces: { code: 'tin',      qty: 0.2 } },
+        { code: 'phos',   name: '磷矿',   cost: 60000,  licenseCost: 180000, dailyIncome: 0,   reserve: 3650, yieldVolatility: 0.06, produces: { code: 'phos_ore', qty: 2 } },
+        { code: 'quartz', name: '石英矿', cost: 11000,  licenseCost: 33000, dailyIncome: 0,   reserve: 3285, yieldVolatility: 0.05, produces: { code: 'quartz_ore', qty: 1.5 } },
+        { code: 'limestone', name: '石灰矿', cost: 9000, licenseCost: 27000, dailyIncome: 0, reserve: 5000, yieldVolatility: 0.05, produces: { code: 'limestone', qty: 3 } },
       ],
       licenseMaxLevel: 5
     },
@@ -188,12 +209,12 @@ const DATA = {
         content: '地产提供基础设施支持：\n\n• 住宅：每套容纳10名员工（可升级扩容）\n• 仓库：每套存5000单位原料（可升级扩容）\n• 农用地：农业产能前置\n• 工业用地：冶金产能前置\n• 产业园：工厂产能前置\n• 物流产业园：物流产能前置\n\n地产可升级，提升容量和收益。'
       },
       categories: [
-        { code: 'residential', name: '住宅',       cost: 2000000, dailyIncome: 40 },
-        { code: 'warehouse',   name: '仓库',       cost: 800000,  dailyIncome: 22 },
-        { code: 'farmland',    name: '农用地',     cost: 120000,  dailyIncome: 8 },
-        { code: 'factory_land',name: '工业用地', cost: 500000,  dailyIncome: 15 },
-        { code: 'industrial_park', name: '产业园', cost: 3000000, dailyIncome: 100 },
-        { code: 'logistics_park',  name: '物流产业园', cost: 2000000, dailyIncome: 40 }
+        { code: 'residential', name: '住宅',       cost: 2000000, dailyIncome: 200 },
+        { code: 'warehouse',   name: '仓库',       cost: 1200000,  dailyIncome: 200 },
+        { code: 'farmland',    name: '农用地',     cost: 150000,  dailyIncome: 20 },
+        { code: 'factory_land',name: '工业用地', cost: 800000,  dailyIncome: 100 },
+        { code: 'industrial_park', name: '产业园', cost: 4500000, dailyIncome: 750 },
+        { code: 'logistics_park',  name: '物流产业园', cost: 3000000, dailyIncome: 550 }
       ]
     },
     logistics: {
@@ -202,14 +223,12 @@ const DATA = {
       unit: '站',
       description: {
         title: '物流规则系统',
-        content: '物流站提供自动买卖规则，管理仓库库存。\n\n• 基础物流站：仅自动卖出\n• 区域/智能/跨境物流站：支持自动买入\n• 冷链物流站：仅管理成品\n\n每条规则占用1个槽位，物流站等级越高槽位越多、手续费越低。设置阈值和比例，系统每日自动执行。'
+        content: '物流站提供自动买卖规则，管理仓库库存。\n\n• 快递网点：仅自动卖出，入门级\n• 区域物流中心：支持自动买入+卖出\n• 智能物流港：全功能，含冷链成品管理\n\n每条规则占用1个槽位，等级越高槽位越多、手续费越低。'
       },
       categories: [
-        { code: 'basic_logistics',       name: '基础物流站',   cost: 8000,  dailyIncome: 30,  slots: 5,  feeRate: 0.02 },
-        { code: 'regional_logistics',    name: '区域物流站',   cost: 15000, dailyIncome: 60,  slots: 10, feeRate: 0.015, canBuy: true },
-        { code: 'smart_logistics',       name: '智能物流中心', cost: 30000, dailyIncome: 120, slots: 20, feeRate: 0.01,  canBuy: true },
-        { code: 'cold_chain_logistics',  name: '冷链物流站',   cost: 25000, dailyIncome: 80,  slots: 15, feeRate: 0.012, finishedOnly: true },
-        { code: 'cross_border_logistics',name: '跨境物流站',   cost: 40000, dailyIncome: 150, slots: 25, feeRate: 0.005, canBuy: true, premiumOnly: true }
+        { code: 'courier_station', name: '快递网点',      cost: 120000,  dailyIncome: 220,  slots: 5,  feeRate: 0.02 },
+        { code: 'regional_center', name: '区域物流中心',  cost: 1200000, dailyIncome: 1800, slots: 15, feeRate: 0.01, canBuy: true },
+        { code: 'smart_hub',       name: '智能物流港',    cost: 8000000,dailyIncome: 5500, slots: 30, feeRate: 0.005,canBuy: true, finishedOnly: true }
       ]
     }
   },
@@ -267,13 +286,13 @@ const DATA = {
     free: {
       cost: 0,
       tiers: [
-        { min: 1.6, max: 2.5 },
+        { min: 1.5, max: 2.5 },
         { min: 2.5, max: 3.5 },
         { min: 3.5, max: 4.5 },
-        { min: 4.5, max: 6.0 }
+        { min: 4.5, max: 5.5 }
       ]
     },
-    paid: { cost: 600, minMult: 3.0, maxMult: 6.0 }
+    paid: { cost: 2000, minMult: 3.0, maxMult: 5.5 }
   },
 
   /* ===== 冶金配方：消耗仓库矿石原料 ===== */
@@ -302,53 +321,54 @@ const DATA = {
   capacityPerLand: { farm: 12, metall: 10, factory: 10 },
 
   /* ===== 全部原料列表（矿石+农产品+金属，可买卖） ===== */
+  /* 价格基于2026年7月中国市场真实现货价（¥/吨），来源：SMM/LME/国家统计局/发改委 */
   rawMaterials: [
     // 矿石（矿业产出 / 冶金消耗）
-    { code: 'iron',        name: '铁矿石',   price: 1000,  unit: '吨', from: '铁矿' },
-    { code: 'copper',      name: '铜矿石',   price: 55000, unit: '吨', from: '铜矿' },
-    { code: 'baux',        name: '铝土矿',   price: 500,  unit: '吨', from: '铝土矿' },
-    { code: 'coal',        name: '煤炭',     price: 1000,  unit: '吨', from: '煤矿' },
-    { code: 'zinc_ore',    name: '锌矿石',   price: 2500,  unit: '吨', from: '锌矿' },
-    { code: 'lead_ore',    name: '铅矿石',   price: 1800,  unit: '吨', from: '铅矿' },
-    { code: 'tin',         name: '锡矿石',   price: 175000, unit: '吨', from: '锡矿' },
-    { code: 'tung',        name: '钨矿石',   price: 120000, unit: '吨', from: '钨矿' },
-    { code: 'gold_ore',    name: '金矿石',   price: 350000, unit: '吨', from: '金矿' },
-    { code: 'silver_ore',  name: '银矿石',   price: 5000, unit: '吨', from: '银矿' },
-    { code: 'rare_earth',  name: '稀土矿',   price: 65000, unit: '吨', from: '稀土' },
-    { code: 'phos_ore',    name: '磷矿石',   price: 500,  unit: '吨', from: '磷矿' },
-    { code: 'quartz_ore',  name: '石英石',   price: 300,  unit: '吨', from: '石英矿' },
+    { code: 'iron',        name: '铁矿石',   price: 650,   unit: '吨', from: '铁矿', volatility: 0.012 },
+    { code: 'copper',      name: '铜矿石',   price: 30000, unit: '吨', from: '铜矿', volatility: 0.018 },
+    { code: 'baux',        name: '铝土矿',   price: 550,   unit: '吨', from: '铝土矿', volatility: 0.010 },
+    { code: 'coal',        name: '煤炭',     price: 800,   unit: '吨', from: '煤矿', volatility: 0.015 },
+    { code: 'zinc_ore',    name: '锌矿石',   price: 14000, unit: '吨', from: '锌矿', volatility: 0.020 },
+    { code: 'lead_ore',    name: '铅矿石',   price: 10000, unit: '吨', from: '铅矿', volatility: 0.018 },
+    { code: 'tin',         name: '锡矿石',   price: 250000, unit: '吨', from: '锡矿', volatility: 0.022 },
+    { code: 'tung',        name: '钨矿石',   price: 280000, unit: '吨', from: '钨矿', volatility: 0.020 },
+    { code: 'gold_ore',    name: '金矿石',   price: 45000, unit: '吨', from: '金矿', volatility: 0.015 },
+    { code: 'silver_ore',  name: '银矿石',   price: 7000,  unit: '吨', from: '银矿', volatility: 0.025 },
+    { code: 'rare_earth',  name: '稀土矿',   price: 38500, unit: '吨', from: '稀土', volatility: 0.025 },
+    { code: 'phos_ore',    name: '磷矿石',   price: 1000,  unit: '吨', from: '磷矿', volatility: 0.012 },
+    { code: 'quartz_ore',  name: '石英石',   price: 250,   unit: '吨', from: '石英矿', volatility: 0.008 },
     // 农产品（农业产出 / 工厂消耗）
-    { code: 'wheat',       name: '小麦',     price: 2800,  unit: '吨', from: '小麦' },
-    { code: 'rice',        name: '稻谷',     price: 3000,  unit: '吨', from: '水稻' },
-    { code: 'soy',         name: '大豆',     price: 5000,  unit: '吨', from: '大豆' },
-    { code: 'corn',        name: '玉米',     price: 2600,  unit: '吨', from: '玉米' },
-    { code: 'cotton',      name: '棉花',     price: 18000,  unit: '吨', from: '棉花' },
-    { code: 'rape',        name: '油菜籽',   price: 7000,  unit: '吨', from: '油菜' },
-    { code: 'sugarc',      name: '甘蔗',     price: 500,  unit: '吨', from: '甘蔗' },
-    { code: 'tea',         name: '茶叶',     price: 40000, unit: '吨', from: '茶园' },
-    { code: 'veg',         name: '蔬菜',     price: 3000,  unit: '吨', from: '蔬菜' },
-    { code: 'fruit',       name: '水果',     price: 8000, unit: '吨', from: '果树' },
-    { code: 'rubber',      name: '橡胶',     price: 12000, unit: '吨', from: '橡胶' },
-    { code: 'tobacco',     name: '烟叶',     price: 25000, unit: '吨', from: '烟叶' },
-    { code: 'wood_bamboo',   name: '竹子',     price: 500,  unit: '吨', from: '竹林' },
-    { code: 'wood_pine',     name: '松木',     price: 1000,  unit: '吨', from: '松林' },
-    { code: 'wood_cedar',    name: '杉木',     price: 1200,  unit: '吨', from: '杉木林' },
-    { code: 'wood_walnut',   name: '胡桃木',   price: 15000, unit: '吨', from: '胡桃林' },
-    { code: 'wood_rosewood', name: '紫檀木',   price: 100000, unit: '吨', from: '紫檀林' },
-    { code: 'wood_nanmu',    name: '金丝楠木', price: 200000, unit: '吨', from: '楠木林' },
-    { code: 'limestone',     name: '石灰石',   price: 80,  unit: '吨', from: '石灰矿' },
-    { code: 'sorghum',       name: '高粱',     price: 2800,  unit: '吨', from: '高粱' },
+    { code: 'wheat',       name: '小麦',     price: 2450,  unit: '吨', from: '小麦', volatility: 0.010 },
+    { code: 'rice',        name: '稻谷',     price: 2750,  unit: '吨', from: '水稻', volatility: 0.008 },
+    { code: 'soy',         name: '大豆',     price: 5000,  unit: '吨', from: '大豆', volatility: 0.012 },
+    { code: 'corn',        name: '玉米',     price: 2350,  unit: '吨', from: '玉米', volatility: 0.010 },
+    { code: 'cotton',      name: '棉花',     price: 18600, unit: '吨', from: '棉花', volatility: 0.015 },
+    { code: 'rape',        name: '油菜籽',   price: 6500,  unit: '吨', from: '油菜', volatility: 0.012 },
+    { code: 'sugarc',      name: '甘蔗',     price: 500,   unit: '吨', from: '甘蔗', volatility: 0.010 },
+    { code: 'tea',         name: '茶叶',     price: 50000, unit: '吨', from: '茶园', volatility: 0.018 },
+    { code: 'veg',         name: '蔬菜',     price: 4000,  unit: '吨', from: '蔬菜', volatility: 0.015 },
+    { code: 'fruit',       name: '水果',     price: 10000, unit: '吨', from: '果树', volatility: 0.015 },
+    { code: 'rubber',      name: '橡胶',     price: 17700, unit: '吨', from: '橡胶', volatility: 0.018 },
+    { code: 'tobacco',     name: '烟叶',     price: 30000, unit: '吨', from: '烟叶', volatility: 0.010 },
+    { code: 'wood_bamboo',   name: '竹子',     price: 500,   unit: '吨', from: '竹林', volatility: 0.008 },
+    { code: 'wood_pine',     name: '松木',     price: 1000,  unit: '吨', from: '松林', volatility: 0.008 },
+    { code: 'wood_cedar',    name: '杉木',     price: 1300,  unit: '吨', from: '杉木林', volatility: 0.008 },
+    { code: 'wood_walnut',   name: '胡桃木',   price: 16000, unit: '吨', from: '胡桃林', volatility: 0.012 },
+    { code: 'wood_rosewood', name: '紫檀木',   price: 120000, unit: '吨', from: '紫檀林', volatility: 0.015 },
+    { code: 'wood_nanmu',    name: '金丝楠木', price: 250000, unit: '吨', from: '楠木林', volatility: 0.018 },
+    { code: 'limestone',     name: '石灰石',   price: 100,   unit: '吨', from: '石灰矿', volatility: 0.005 },
+    { code: 'sorghum',       name: '高粱',     price: 2500,  unit: '吨', from: '高粱', volatility: 0.010 },
     // 金属（冶金产出 / 工厂消耗）
-    { code: 'steel',       name: '钢材',     price: 4500, unit: '吨', from: '炼钢' },
-    { code: 'ironR',       name: '生铁',     price: 3800, unit: '吨', from: '炼铁' },
-    { code: 'copperR',     name: '铜锭',     price: 67000, unit: '吨', from: '炼铜' },
-    { code: 'alum',        name: '铝锭',     price: 19000, unit: '吨', from: '炼铝' },
-    { code: 'zincR',       name: '锌锭',     price: 23000, unit: '吨', from: '炼锌' },
-    { code: 'leadR',       name: '铅锭',     price: 16000, unit: '吨', from: '炼铅' },
-    { code: 'tinR',        name: '锡锭',     price: 220000, unit: '吨', from: '炼锡' },
-    { code: 'tungR',       name: '钨锭',     price: 175000, unit: '吨', from: '炼钨' },
-    { code: 'alloy',       name: '铝合金材', price: 22000, unit: '吨', from: '铝合金' },
-    { code: 'precious_m',  name: '贵金属锭', price: 450000, unit: '吨', from: '贵金属冶炼' }
+    { code: 'steel',       name: '钢材',     price: 3300,  unit: '吨', from: '炼钢', volatility: 0.012 },
+    { code: 'ironR',       name: '生铁',     price: 3100,  unit: '吨', from: '炼铁', volatility: 0.012 },
+    { code: 'copperR',     name: '铜锭',     price: 102500, unit: '吨', from: '炼铜', volatility: 0.018 },
+    { code: 'alum',        name: '铝锭',     price: 23000, unit: '吨', from: '炼铝', volatility: 0.015 },
+    { code: 'zincR',       name: '锌锭',     price: 24000, unit: '吨', from: '炼锌', volatility: 0.020 },
+    { code: 'leadR',       name: '铅锭',     price: 16000, unit: '吨', from: '炼铅', volatility: 0.018 },
+    { code: 'tinR',        name: '锡锭',     price: 411000, unit: '吨', from: '炼锡', volatility: 0.022 },
+    { code: 'tungR',       name: '钨锭',     price: 550000, unit: '吨', from: '炼钨', volatility: 0.020 },
+    { code: 'alloy',       name: '铝合金材', price: 24000, unit: '吨', from: '铝合金', volatility: 0.014 },
+    { code: 'precious_m',  name: '贵金属锭', price: 550000, unit: '吨', from: '贵金属冶炼', volatility: 0.022 }
   ],
 
   /* ===== 仓库容量配置 ===== */

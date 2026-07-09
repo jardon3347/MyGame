@@ -60,7 +60,7 @@ Pages.staff = {
                   <span class="font-medium">${emp.name}</span>
                   <span class="text-sm text-muted" style="margin-left:6px;">加成 ×${emp.multiplier}</span>
                 </div>
-                <span class="text-sm text-muted">日薪 ¥${Math.round(emp.multiplier * 100)}</span>
+                <span class="text-sm text-muted">日薪 ¥${Math.round(emp.multiplier * 120)}</span>
               </div>
               <div class="mt-8">
                 <button class="btn primary sm full" onclick="Staff.showAssignPicker('${emp.id}')">分配到产业</button>
@@ -407,7 +407,7 @@ const Staff = {
     unassigned.forEach(e => {
       html += '<div class="list-item" style="padding:10px 12px;"><div class="list-row"><div>' +
         '<span class="font-medium">' + e.name + '</span>' +
-        '<span class="text-sm text-muted" style="margin-left:4px;">加成 ×' + e.multiplier + ' · 日薪 ¥' + Math.round(e.multiplier * 100) + '</span></div>' +
+        '<span class="text-sm text-muted" style="margin-left:4px;">加成 ×' + e.multiplier + ' · 日薪 ¥' + Math.round(e.multiplier * 120) + '</span></div>' +
         '<button class="btn sm primary" onclick="Employees.assign(\'' + e.id + '\',\'' + type + '\',\'' + category + '\');Staff.switchAssignTab(\'current\')">调入</button></div></div>';
     });
     return html;

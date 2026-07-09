@@ -118,7 +118,38 @@ Pages.warehouse = {
               🏭 工厂 → 消耗农产品+金属 → 现金收入<br><br>
               <strong>举例：</strong><br>
               买铁矿+煤矿 → 铁矿石+煤炭进仓库 → 炼钢消耗 → 产出钢材 → 机械厂消耗钢材<br><br>
-              <strong>市场价格：</strong>原料价格每日波动，新闻事件会影响价格走势。低买高卖可获利，卖出收 2% 手续费。
+              <strong>市场价格：</strong>原料价格每日波动，新闻事件会影响价格走势。低买高卖可获利，卖出收 2% 手续费。</p>
+          </div>
+          
+          <div class="section-title">协同加成</div>
+          <div class="list-item" id="synergy-status">
+          </div>
+          
+          <script>
+            (function() {
+              const el = document.getElementById('synergy-status');
+              if (!el || !window.Employees) return;
+              const industries = (State.data && State.data.industries) || [];
+              const hasMining = industries.some(i => i.type === 'mining');
+              const hasMetall = industries.some(i => i.type === 'metall');
+              const hasFarm = industries.some(i => i.type === 'farm');
+              const hasFactory = industries.some(i => i.type === 'factory');
+              let html = '<p class="text-sm" style="line-height:1.7;">';
+              if (hasMining && hasMetall && hasFactory) {
+                html += '<span style="color:var(--up)">全产业链协同：消耗 -15%</span><br>';
+              } else {
+                if (hasMining && hasMetall) html += '<span style="color:var(--up)">矿业+冶金协同：矿石消耗 -10%</span><br>';
+                if (hasFarm && hasFactory) html += '<span style="color:var(--up)">农业+工厂协同：农产品消耗 -10%</span><br>';
+                if (hasMetall && hasFactory) html += '<span style="color:var(--up)">冶金+工厂协同：金属消耗 -10%</span><br>';
+                if (!(hasMining && hasMetall) && !(hasFarm && hasFactory) && !(hasMetall && hasFactory)) {
+                  html += '<span class="text-muted">暂无协同加成</span><br>';
+                }
+              }
+              html += '<br><small class="text-muted">同时持有上下游产业时，原料消耗减少10-15%</small>';
+              html += '</p>';
+              el.innerHTML = html;
+            })();
+          </script>
             </p>
           </div>
           
