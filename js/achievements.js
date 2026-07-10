@@ -98,8 +98,14 @@ const Achievements = {
 
   /* ===== 检查功能是否解锁 ===== */
   isUnlocked(featureId) {
-    const rating = this.getCurrentRating();
-    return rating.unlocks.includes(featureId);
+    const assets = (State.totalAssets && State.totalAssets()) || 0;
+    // 遍历所有评级，累积已解锁功能（高评级继承低评级的所有解锁）
+    for (const rating of this.ratings) {
+      if (assets >= rating.minAssets && rating.unlocks.includes(featureId)) {
+        return true;
+      }
+    }
+    return false;
   }
 };
 

@@ -56,7 +56,6 @@ const Router = {
     if (this.current) {
       this.scrollPositions[this.current] = window.scrollY;
     }
-    this.render();
     // 恢复滚动位置
     if (this.current) {
       const saved = this.scrollPositions[this.current] || 0;
@@ -139,8 +138,9 @@ const UI = {
     const el = document.createElement('div');
     el.className = 'toast';
     el.textContent = msg;
+    el.onclick = function() { el.remove(); };
     document.body.appendChild(el);
-    setTimeout(() => el.remove(), duration);
+    setTimeout(() => { if (el.parentNode) el.remove(); }, duration);
   },
 
   /* 弹窗 */
@@ -198,10 +198,21 @@ const UI = {
     return 10000;
   },
 
+  /* 根据 max 生成统一快捷数量按钮 */
+  _defaultQuickAdds(max) {
+    const m = Math.floor(max);
+    if (m <= 50) return [m, Math.ceil(m / 2), Math.ceil(m / 4), Math.ceil(m / 10)];
+    if (m <= 500) return [m, 100, 50, 10];
+    if (m <= 5000) return [m, 500, 100, 50];
+    return [m, 1000, 500, 100];
+  },
+
   numberPicker({ title, unit, unitName, unitLabel, max, quickAdds, onConfirm, noPlusOne }) {
     const id = 'np_' + Date.now();
     const step = this._calcStep(max);
     window._npState = { id, unit, unitName, max, value: 0, onConfirm };
+    // 统一 quickAdds：不传则自动生成，所有按钮直设数值
+    var qa = quickAdds && quickAdds.length > 0 ? quickAdds : this._defaultQuickAdds(max);
 
     const content = `
       <div class="np-info">
@@ -214,8 +225,7 @@ const UI = {
              min="0" max="${max}" value="0" step="${step}"
              oninput="UI._npUpdate('${id}', this.value)">
       <div class="np-quick">
-        ${(noPlusOne ? quickAdds : [1, ...quickAdds.filter(n => n !== 1)]).map((n, i) => `<button class="np-quick-btn" onclick="UI._npAdd('${id}', ${n})" ${i > 0 && n > max ? 'disabled' : ''}>+${n.toLocaleString('zh-CN')}</button>`).join('')}
-        <button class="np-quick-btn np-max-btn" onclick="UI._npSet('${id}', ${max})">最大</button>
+        ${qa.filter(function(n) { return n > 0 && n <= max; }).map(function(n) { return '<button class="np-quick-btn" onclick="UI._npSet(\'' + id + '\', ' + n + ')">' + n.toLocaleString('zh-CN') + '</button>'; }).join('')}
       </div>
       <div class="np-total">
         <span>合计</span>
@@ -287,8 +297,10 @@ const UI = {
     const st = window._csState;
     st.value = val;
     const display = st._labelUpdater ? st._labelUpdater(val) : val.toLocaleString('zh-CN');
-    document.getElementById(id + '_val').textContent = display;
-    document.getElementById(id + '_result').textContent = display;
+    const vEl = document.getElementById(id + '_val');
+    if (vEl) vEl.textContent = display;
+    const rEl = document.getElementById(id + '_result');
+    if (rEl) rEl.textContent = display;
   },
 
   /* 为容量滑块设置自定义标签更新器 */

@@ -1,6 +1,7 @@
 ﻿/* overview.js — 集团概览（合并新闻 + 时间推进，单页常驻） */
 
 Pages.overview = {
+  _collapseRating: false, // 评级与成就默认折叠
   render(app) {
     const s = State.data;
     const total = State.totalAssets();
@@ -139,15 +140,32 @@ Pages.overview = {
         <!-- 新闻区（原 renderNews 内联） -->
         ${this._renderNewsSection()}
 
-        <!-- 排行榜概要 -->
-        <div class="section-title">🏆 竞争排行榜</div>
-        <div class="list-item" style="margin-bottom:12px;">
-          <div class="list-row">
-            <span class="list-label">你的集团排名</span>
-            <span class="list-value" id="overview-rank-text"></span>
+        <!-- 评级与成就（折叠） -->
+        <div class="collapsible ${this._collapseRating ? 'open' : ''}" id="collapse-rating">
+          <div class="collapsible-header" onclick="Pages.overview.toggleCollapse('rating')">
+            <span class="section-title" style="margin:16px 0 8px;">🏆 评级与成就</span>
+            <span class="collapsible-summary" style="font-size:11px;color:var(--text-secondary);">
+              ${window.Achievements ? Achievements.getCurrentRating().name + ' · ' + (Achievements.getUnlockedAchievements().length + '/' + Achievements.definitions.length) + '成就' : ''}
+            </span>
+            <span class="collapsible-chevron">▶</span>
           </div>
-          <div id="overview-rank-list"></div>
-          <button class="btn full" style="margin-top:8px;" onclick="Router.go('competitors')">查看完整排行榜</button>
+          <div class="collapsible-body">
+            <div class="list-item" style="margin-bottom:12px;">
+              <div class="list-row">
+                <span class="list-label">企业评级</span>
+                <span class="list-value">${window.Achievements ? Achievements.getCurrentRating().name : ''}</span>
+              </div>
+              ${window.Achievements && Achievements.getNextRating() ? '<div class="list-row" style="margin-top:4px;"><span class="text-sm text-muted">下一评级：' + Achievements.getNextRating().name + '（总资产 ' + State.formatMoney(Achievements.getNextRating().minAssets) + '）</span></div>' : '<div class="list-row" style="margin-top:4px;"><span class="text-sm text-muted">已满级</span></div>'}
+              <div style="margin-top:8px;">${this._renderAchievements()}</div>
+              <div style="border-top:0.5px solid var(--border);margin:8px 0;"></div>
+              <div class="list-row">
+                <span class="list-label">竞争排名</span>
+                <span class="list-value" id="overview-rank-text"></span>
+              </div>
+              <div id="overview-rank-list"></div>
+              <button class="btn full" style="margin-top:8px;" onclick="Router.go('competitors')">查看完整排行榜</button>
+            </div>
+          </div>
         </div>
 
                 <!-- 操作 -->
@@ -201,7 +219,7 @@ Pages.overview = {
             if (!isNaN(prodIncome)) daily += prodIncome;
           } else if (cat.produces) {
             const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
-              ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
+              ? (1 + (o.licenseLevel - 1) * 0.3) : 1;
             const produceQty = cat.produces.qty * qty * empMult * licenseMult;
             const matPrice = Employees.materialPrice(cat.produces.code);
             daily += produceQty * matPrice;
@@ -357,6 +375,21 @@ Pages.overview = {
     const stats = State.data.dailyStats || [];
     const w = canvas.clientWidth || canvas.parentElement.clientWidth - 24 || 320;
     Charts.lineChart(canvas, stats, { width: w, height: 80 });
+  },
+
+  _renderAchievements() {
+    if (!window.Achievements) return '<div class="text-sm text-muted">成就系统暂不可用</div>';
+    const unlocked = Achievements.getUnlockedAchievements();
+    if (unlocked.length === 0) return '<div class="text-sm text-muted">暂无成就，继续努力</div>';
+    return unlocked.map(a =>
+      '<div class="list-row" style="padding:4px 0;"><span class="text-sm">🏆 ' + a.name + '</span><span class="text-sm text-muted">' + a.desc + '</span></div>'
+    ).join('');
+  },
+
+  toggleCollapse(id) {
+    this['_collapse' + id.charAt(0).toUpperCase() + id.slice(1)] = !this['_collapse' + id.charAt(0).toUpperCase() + id.slice(1)];
+    const el = document.getElementById('collapse-' + id);
+    if (el) el.classList.toggle('open');
   },
 
 };

@@ -144,16 +144,16 @@ const FactoryProducts = {
   /* ===== 配方消耗缩放：1 配方单位 = scale 吨原料 ===== */
   /* 使投入成本 < 售价，目标利润率 30-50% */
   recipeScale: {
-    food:    0.019,   // 食品：小麦2450/吨 → 配方单位≈47kg
-    textile: 0.023,   // 纺织：棉花18600/吨 → 配方单位≈23kg
-    machine: 1.0,     // 机械：已盈利(钢材3300/吨)，不缩放
-    electr:  0.021,   // 电子：铜锭102500/吨 → 配方单位≈21kg
-    fert:    0.036,   // 化肥：磷矿1000/吨 → 配方单位≈36kg
-    paper:   0.041,   // 造纸：木材500-1300/吨 → 配方单位≈41kg
-    cement:  0.139,   // 水泥：石灰石100/吨 → 配方单位≈139kg
-    furn:    0.028,   // 家具：硬木1300-16000/吨 → 配方单位≈28kg
-    brew:    0.026,   // 酿酒：粮食2450-2750/吨 → 配方单位≈26kg
-    feed:    0.012,   // 饲料：玉米2350+大豆5000/吨 → 配方单位≈12kg
+    food:    0.06,    // 食品（3×提升）
+    textile: 0.08,    // 纺织（3.5×）
+    machine: 1.0,     // 机械：不缩放
+    electr:  0.07,    // 电子（3.3×）
+    fert:    0.12,    // 化肥（3.3×）
+    paper:   0.15,    // 造纸（3.7×）
+    cement:  0.5,     // 水泥（3.6×）
+    furn:    0.10,    // 家具（3.6×）
+    brew:    0.09,    // 酿酒（3.5×）
+    feed:    0.04,    // 饲料（3.3×）
   },
 
   /* 获取某工厂的配方缩放因子 */
@@ -296,12 +296,16 @@ const FactoryProducts = {
     return this.totalCapacity() - Pages.industry._usedCapacity('factory');
   },
 
-  /* 格式化配方描述 */
-  formatRecipe(recipe) {
+  /* 格式化配方描述：传入 factoryCode 后显示实际消耗量（缩放后） */
+  formatRecipe(recipe, factoryCode) {
     if (!recipe || recipe.length === 0) return '无原料';
+    const scale = factoryCode ? this._recipeScale(factoryCode) : 1;
     return recipe.map(r => {
       const mat = DATA.rawMaterials.find(m => m.code === r.code);
-      return (mat ? mat.name : r.code) + ' x' + r.qty;
+      const label = mat ? mat.name : r.code;
+      const qty = r.qty * scale;
+      const unit = mat ? mat.unit : '吨';
+      return label + ' x' + qty.toFixed(3) + unit;
     }).join(' + ');
   },
 

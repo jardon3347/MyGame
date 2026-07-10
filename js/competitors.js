@@ -69,11 +69,26 @@ const Competitors = {
   init() {
     if (State.data.competitors && State.data.competitors.length > 0) {
       State.data.competitors.forEach(c => {
-        if (!c.portfolio) c.portfolio = [];
-        if (c.cash === undefined) c.cash = 0;
-        if (c.employeeMult === undefined) c.employeeMult = 1.3;
+        const def = this.definitions.find(d => d.id === c.id);
+        // 修复老存档：丢失的 portfolio 从定义填充
+        if (!c.portfolio || c.portfolio.length === 0) {
+          c.portfolio = def ? def.startPortfolio.map(p => ({ ...p })) : [];
+        }
+        // 修复老存档：丢失的起始现金
+        if (c.cash === undefined || c.cash === 0) {
+          c.cash = def ? def.startCash : 500000;
+        }
+        // licenseLevel 兼容
+        c.portfolio.forEach(item => {
+          if (item.type === 'mining' && !item.licenseLevel) item.licenseLevel = 1;
+        });
+        if (c.employeeMult === undefined) c.employeeMult = def ? def.employeeMult : 1.3;
         if (c.cumulativeProfit === undefined) c.cumulativeProfit = 0;
         if (c.lastBuyDay === undefined) c.lastBuyDay = -10;
+        // 重建资产估值（当 assets 为 0 时，说明是刚修复的老存档）
+        if (!c.assets || c.assets === 0) {
+          this._recalcAssets(c);
+        }
       });
       return;
     }
@@ -102,22 +117,45 @@ const Competitors = {
     return Math.round(cfg.maxSlotsBase + cfg.slotsPerMonth * months);
   },
 
-  /* 计算单个产业的日产收入 */
-  _dailyIncome(type, category, qty, empMult, licenseLevel) {
+  /* 重新估算资产（基于持仓成本价） */
+  _recalcAssets(comp) {
+    let invested = 0;
+    (comp.portfolio || []).forEach(item => {
+      const cat = State.findIndustryCategory(item.type, item.category);
+      if (!cat) return;
+      const q = item.qty || 1;
+      if (cat.cost) {
+        invested += cat.cost * q;
+        if (item.type === 'mining' && cat.licenseCost) {
+          invested += cat.licenseCost * (item.licenseLevel || 1);
+        }
+      }
+    });
+    comp.assets = (comp.cash || 0) + invested + (comp.cumulativeProfit || 0);
+  },
+
+  /* 计算单个产业的日产收入（使用动态员工倍率） */
+  _dailyIncome(type, category, qty, empMult, licenseLevel, day) {
     const cat = State.findIndustryCategory(type, category);
     if (!cat) return 0;
 
-    // 无产出产业（地产/物流）：放大 dailyIncome
+    // 动态员工倍率：随天数增长（从1.3×起，每天+0.5%，第1000天≈6.8×）
+    const dynamicEmp = empMult * (1 + day * 0.005);
+
+    // 无产出产业（地产/物流）：按投资回报率
     if (!cat.produces) {
-      return Math.round((cat.dailyIncome || 0) * qty * empMult * 8);
+      const roi = cat.cost ? (cat.cost * qty * 0.004) : 0; // 0.4%/天 ≈ 146%/年
+      // 同时保留基础收入作为保底
+      const baseInc = (cat.dailyIncome || 0) * qty * dynamicEmp * 8;
+      return Math.round(Math.max(roi, baseInc));
     }
 
-    // 有产出产业
+    // 有产出产业：按产出量 × 市价
     let licenseM = 1;
     if (type === "mining" && licenseLevel && licenseLevel > 1) {
-      licenseM = 1 + (licenseLevel - 1) * 0.2;
+      licenseM = 1 + (licenseLevel - 1) * 0.3;
     }
-    const produceQty = cat.produces.qty * qty * empMult * licenseM;
+    const produceQty = cat.produces.qty * qty * dynamicEmp * licenseM;
     const matPrice = Employees.materialPrice(cat.produces.code);
     return Math.round(produceQty * matPrice);
   },
@@ -136,20 +174,23 @@ const Competitors = {
       let dailyInc = 0;
       let investedValue = 0;
       comp.portfolio.forEach(item => {
-        const inc = this._dailyIncome(item.type, item.category, item.qty || 1, comp.employeeMult, item.licenseLevel || 1);
+        const inc = this._dailyIncome(item.type, item.category, item.qty || 1, comp.employeeMult, item.licenseLevel || 1, day);
         dailyInc += inc;
         const cat = State.findIndustryCategory(item.type, item.category);
         if (cat && cat.cost) {
           investedValue += cat.cost * (item.qty || 1);
-          if (item.type === "mining" && cat.licenseCost && (item.licenseLevel || 1)) {
-            investedValue += cat.licenseCost * (item.licenseLevel || 1);
+          if (item.type === "mining" && cat.licenseCost) {
+            investedValue += cat.licenseCost * (item.licenseLevel || 1) * (item.qty || 1);
           }
         }
       });
 
-      dailyInc = Math.round(dailyInc * phaseMult);
+      // 2. 资产收益：总资产产生的金融回报（0.3%/天，让资金不会闲置）
+      const assetIncome = Math.round((comp.assets || 0) * 0.003);
 
-      // 2. 扣员工薪水
+      dailyInc = Math.round((dailyInc + assetIncome) * phaseMult);
+
+      // 3. 扣员工薪水（占比越来越小，不影响成长）
       const slotCount = comp.portfolio.reduce((s, p) => s + (p.qty || 1), 0);
       const empCount = Math.max(2, Math.round(slotCount * 1.5));
       const salary = Math.round(empCount * comp.employeeMult * 120);
@@ -159,7 +200,7 @@ const Competitors = {
       if (netInc > 0) comp.cumulativeProfit += netInc;
       comp.lastChange = netInc;
 
-      // 3. 投资决策
+      // 4. 投资决策
       comp.lastBuyDay = comp.lastBuyDay || -10;
       const maxSlots = this._maxSlots(comp);
       const canBuy = slotCount < maxSlots && (day - comp.lastBuyDay >= (cfg.buyInterval || 3));
@@ -178,10 +219,24 @@ const Competitors = {
         comp.lastAction = netInc >= 0 ? "日盈利" : "日亏损";
       }
 
-      // 4. 资产
+      // 5. 资产 = 现金 + 持仓价值 + 累计利润
       comp.assets = comp.cash + investedValue + comp.cumulativeProfit;
 
-      // 5. 历史
+      // 竞争保底：随着时间推移，对手资产不低于玩家的一个比例
+      // 第 100 天 ≈ 10%，第 500 天 ≈ 30%，第 1000 天 ≈ 50%
+      if (window.State && State.totalAssets) {
+        const playerAssets = State.totalAssets();
+        if (playerAssets > 0 && day > 50) {
+          const floorRatio = Math.min(0.5, day * 0.0005);
+          const floor = Math.floor(playerAssets * floorRatio);
+          if (comp.assets < floor) {
+            // 补差直接加进资产
+            comp.assets = floor;
+          }
+        }
+      }
+
+      // 6. 历史
       if (day % 10 === 0) {
         comp.history.push({ day, assets: comp.assets });
         if (comp.history.length > 50) comp.history.shift();

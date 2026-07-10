@@ -149,7 +149,7 @@ const DATA = {
         { code: 'copper', name: '铜矿',   cost: 270000,  licenseCost: 810000, dailyIncome: 0,  reserve: 2555, yieldVolatility: 0.10, produces: { code: 'copper',   qty: 0.3 } },
         { code: 'gold',   name: '金矿',   cost: 68000, licenseCost: 204000, dailyIncome: 0,  reserve: 1825, yieldVolatility: 0.20, produces: { code: 'gold_ore', qty: 0.05 } },
         { code: 'silver', name: '银矿',   cost: 105000,  licenseCost: 315000, dailyIncome: 0,  reserve: 2190, yieldVolatility: 0.12, produces: { code: 'silver_ore', qty: 0.5 } },
-        { code: 'rare',   name: '稀土',   cost: 35000, licenseCost: 105000, dailyIncome: 0,  reserve: 1095, yieldVolatility: 0.15, produces: { code: 'rare_earth', qty: 0.03 } },
+        { code: 'rare',   name: '稀土',   cost: 150000, licenseCost: 450000, dailyIncome: 0,  reserve: 2190, yieldVolatility: 0.15, produces: { code: 'rare_earth', qty: 0.5 } },
         { code: 'baux',   name: '铝土矿', cost: 33000,  licenseCost: 99000, dailyIncome: 0,   reserve: 2920, yieldVolatility: 0.07, produces: { code: 'baux',     qty: 2 } },
         { code: 'tung',   name: '钨矿',   cost: 1260000, licenseCost: 3780000, dailyIncome: 0,  reserve: 1460, yieldVolatility: 0.12, produces: { code: 'tung',     qty: 0.15 } },
         { code: 'tin',    name: '锡矿',   cost: 1500000,  licenseCost: 4500000, dailyIncome: 0,  reserve: 2190, yieldVolatility: 0.10, produces: { code: 'tin',      qty: 0.2 } },
@@ -286,13 +286,13 @@ const DATA = {
     free: {
       cost: 0,
       tiers: [
-        { min: 1.5, max: 2.5 },
-        { min: 2.5, max: 3.5 },
-        { min: 3.5, max: 4.5 },
-        { min: 4.5, max: 5.5 }
+        { min: 1.6, max: 2.6 },
+        { min: 2.6, max: 3.6 },
+        { min: 3.6, max: 4.6 },
+        { min: 4.6, max: 6.0 }
       ]
     },
-    paid: { cost: 2000, minMult: 3.0, maxMult: 5.5 }
+    paid: { cost: 2000, minMult: 4.0, maxMult: 6.0 }
   },
 
   /* ===== 冶金配方：消耗仓库矿石原料 ===== */

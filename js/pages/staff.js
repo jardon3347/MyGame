@@ -41,13 +41,13 @@ Pages.staff = {
         <div class="card-grid">
           <button class="card" onclick="Staff.recruitWithPicker('free')" ${count >= cap ? 'disabled style="opacity:0.4;"' : ''}>
             <div class="card-title">免费招聘</div>
-            <div class="card-sub">加成 1.6 ~ 3.5</div>
+            <div class="card-sub">加成 1.6 ~ 6.0（4档各25%）</div>
             <div class="card-value" style="font-size:11px;color:var(--text-secondary);">日薪 = 加成 × ¥100</div>
           </button>
-          <button class="card" onclick="Staff.recruitWithPicker('paid')" ${count >= cap || s.cash < 600 ? 'disabled style="opacity:0.4;"' : ''}>
+          <button class="card" onclick="Staff.recruitWithPicker('paid')" ${count >= cap || s.cash < 2000 ? 'disabled style="opacity:0.4;"' : ''}>
             <div class="card-title">付费招聘</div>
-            <div class="card-sub">¥600/人</div>
-            <div class="card-value" style="font-size:11px;color:var(--up);">加成 3.0 ~ 6.0</div>
+            <div class="card-sub">¥2,000/人</div>
+            <div class="card-value" style="font-size:11px;color:var(--up);">加成 4.0 ~ 6.0</div>
           </button>
         </div>
 
@@ -215,24 +215,57 @@ const Staff = {
     const current = Employees.getAssigned(type, category);
     const totalMult = Employees.multiplier(type, category);
     let h = '';
+
+    // ===== Sticky header：当前员工统计 + 操作按钮 =====
+    h += '<div style="position:sticky;top:0;background:var(--bg-card);z-index:2;padding-bottom:4px;">';
     if (current.length > 0) {
-      h += '<div class="text-sm text-muted" style="margin-bottom:6px;">\u5f53\u524d\u5458\u5de5\uff1a' + current.length + '\u4eba \u00b7 \u52a0\u6210 \u00d7' + totalMult.toFixed(1) + '\uff1a</div>';
-      current.sort((a, b) => b.multiplier - a.multiplier).forEach(e => {
-        h += '<div class="list-row" style="padding:4px 0;"><span class="text-sm">' + e.name + ' \u00d7' + e.multiplier + '</span>' +
-          '<button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.unassign(\x27' + e.id + '\x27, true);Staff._refreshEmpModal()">\u64a4\u56de</button></div>';
-      });
-      h += '<div style="margin:6px 0;"><button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;color:var(--down);border-color:var(--down);" onclick="Staff._unassignAll(\x27' + type + '\x27,\x27' + category + '\x27);Staff._refreshEmpModal()" title="\u5168\u90e8\u64a4\u56de">\u5168\u64a4</button></div>';
-      h += '<div style="margin:8px 0;border-top:0.5px solid var(--border);"></div>';
+      h += '<div class="text-sm text-muted" style="margin-bottom:6px;">当前员工：' + current.length + '人 · 加成 ×' + totalMult.toFixed(1) + '</div>';
+      h += '<div style="display:flex;gap:6px;margin-bottom:6px;">';
+      h += '<button class="btn sm" style="font-size:11px;min-width:0;padding:2px 8px;color:var(--down);border-color:var(--down);flex:1;" onclick="Staff._unassignAll(\x27' + type + '\x27,\x27' + category + '\x27);Staff._refreshEmpModal()">全撤</button>';
+      if (unassigned.length > 0) {
+        h += '<button class="btn sm primary" style="font-size:11px;min-width:0;padding:2px 8px;flex:1;" onclick="Staff._bulkAssign(\x27' + type + '\x27, \x27' + category + '\x27, ' + unassigned.length + ')">📥 批量调入（' + unassigned.length + '人）</button>';
+      }
+      h += '</div>';
+      h += '<div style="margin-bottom:6px;border-top:0.5px solid var(--border);"></div>';
+    } else {
+      h += '<div class="text-sm text-muted" style="margin-bottom:6px;">暂无员工</div>';
+      if (unassigned.length > 0) {
+        h += '<div style="margin-bottom:6px;"><button class="btn primary full" onclick="Staff._bulkAssign(\x27' + type + '\x27, \x27' + category + '\x27, ' + unassigned.length + ')">📥 批量调入（共 ' + unassigned.length + ' 人可用）</button></div>';
+        h += '<div style="margin-bottom:6px;border-top:0.5px solid var(--border);"></div>';
+      }
+    }
+    h += '</div>';
+
+    // ===== 当前员工列表（可滚动，最多显示5个后滚动） =====
+    if (current.length > 0) {
+      current.sort((a, b) => b.multiplier - a.multiplier);
+      // 前5个直接显示，后面的在可滚动区域里
+      var visibleCount = Math.min(5, current.length);
+      for (var i = 0; i < visibleCount; i++) {
+        var e = current[i];
+        h += '<div class="list-row" style="padding:4px 0;"><span class="text-sm">' + e.name + ' ×' + e.multiplier + '</span>' +
+          '<button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.unassign(\x27' + e.id + '\x27, true);Staff._refreshEmpModal()">撤回</button></div>';
+      }
+      if (current.length > 5) {
+        h += '<div style="max-height:120px;overflow-y:auto;border-top:0.5px solid var(--border);margin-top:4px;padding-top:2px;">';
+        for (var i = 5; i < current.length; i++) {
+          var e = current[i];
+          h += '<div class="list-row" style="padding:3px 0;"><span class="text-sm">' + e.name + ' ×' + e.multiplier + '</span>' +
+            '<button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.unassign(\x27' + e.id + '\x27, true);Staff._refreshEmpModal()">撤回</button></div>';
+        }
+        h += '</div>';
+      }
+    } else if (unassigned.length === 0) {
+      h += '<div class="empty">暂无员工 · 请先招聘</div>';
     }
     if (unassigned.length > 0) {
-      h += '<div style="margin-bottom:8px;"><button class="btn primary full" onclick="Staff._bulkAssign(\x27' + type + '\x27, \x27' + category + '\x27, ' + unassigned.length + ')">\ud83d\udce5 \u6279\u91cf\u8c03\u5165\uff08\u5171 ' + unassigned.length + ' \u4eba\u53ef\u7528\uff09</button></div>';
-      h += '<div class="text-sm text-muted" style="margin-bottom:6px;">\u6216\u5355\u4e2a\u8c03\u5165\uff08\u6309\u52a0\u6210\u964d\u5e8f\uff09</div>';
-      unassigned.forEach(e => {
-        h += '<div class="list-row" style="padding:4px 0;"><span class="text-sm">' + e.name + ' \u00d7' + e.multiplier + ' \u00b7 \u00a5' + Math.round(e.multiplier*100) + '/\u65e5</span>' +
-          '<button class="btn sm primary" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.assign(\x27' + e.id + '\x27,\x27' + type + '\x27,\x27' + category + '\x27, true);Staff._refreshEmpModal()">\u8c03\u5165</button></div>';
+      h += '<div class="text-sm text-muted" style="margin:6px 0;">或单个调入（按加成降序）：</div>';
+      h += '<div style="max-height:180px;overflow-y:auto;">';
+      unassigned.forEach(function(e) {
+        h += '<div class="list-row" style="padding:4px 0;"><span class="text-sm">' + e.name + ' ×' + e.multiplier + ' · ¥' + Math.round(e.multiplier*100) + '/日</span>' +
+          '<button class="btn sm primary" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.assign(\x27' + e.id + '\x27,\x27' + type + '\x27,\x27' + category + '\x27, true);Staff._refreshEmpModal()">调入</button></div>';
       });
-    } else {
-      h += '<div class="empty">\u6682\u65e0\u53ef\u5206\u914d\u5458\u5de5</div>';
+      h += '</div>';
     }
     return h;
   },
@@ -303,7 +336,6 @@ const Staff = {
       unitName: '人',
       unitLabel: '共 ' + maxQty + ' 人可分配 · 按加成高到低调入',
       max: maxQty,
-      quickAdds: maxQty >= 20 ? [1, 5, 10, 20] : [1, 3, 5, maxQty],
       onConfirm: (qty) => {
         if (qty <= 0) { UI.toast('请选择数量'); return; }
         const unassigned = (State.data.employees || []).filter(e => !e.assign).sort((a, b) => b.multiplier - a.multiplier);
@@ -537,7 +569,6 @@ const Staff = {
       unitName: '人',
       unitLabel: costPer > 0 ? '¥' + costPer.toLocaleString('zh-CN') + '/人 · 最多 ' + maxAvailable + ' 人' : '免费 · 最多 ' + maxAvailable + ' 人',
       max: maxAvailable,
-      quickAdds: maxAvailable >= 20 ? [1, 5, 10, 20] : [1, 3, 5, maxAvailable],
       onConfirm: (qty) => {
         if (qty <= 0) { UI.toast('请选择数量'); return; }
         Employees.recruit(mode, qty);

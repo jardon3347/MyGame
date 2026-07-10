@@ -177,9 +177,12 @@ const Engine = {
     if (window.Achievements) {
       const newAchievements = Achievements.checkAchievements();
       if (newAchievements && newAchievements.length > 0) {
-        newAchievements.forEach(a => {
-          UI.toast('🎉 解锁成就: ' + a.name);
-        });
+        const listHtml = newAchievements.map(a =>
+          '<div class="list-row" style="padding:6px 0;"><span class="font-medium">🏆 ' + a.name + '</span><span class="text-sm text-muted">' + a.desc + '</span></div>'
+        ).join('');
+        UI.modal('🎉 新成就解锁', listHtml, [
+          { label: '太棒了', class: 'primary', onclick: 'UI.closeModal()' }
+        ]);
       }
     }
     
@@ -230,12 +233,16 @@ const Engine = {
       // 天敌事件减产
       const disasterMult = window.EventSystem ? EventSystem.getOutputReduction(ind.type, ind.category) : 1;
       const licenseMult1 = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
-        ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
-      // 产量波动（仅矿业）：每日独立随机掷骰
+        ? (1 + (ind.licenseLevel - 1) * 0.3) : 1;
+      // 产量波动（仅矿业）：每日独立随机掷骰，许可证等级降低波动
       let yieldFactor = 1;
       if (ind.type === 'mining') {
         const cat = State.findIndustryCategory(ind.type, ind.category);
-        const vol = (cat && cat.yieldVolatility) ? cat.yieldVolatility : 0.08;
+        let vol = (cat && cat.yieldVolatility) ? cat.yieldVolatility : 0.08;
+        // 许可证等级降低产量波动，每级 -2%（绝对值），最小0
+        if (ind.licenseLevel && ind.licenseLevel > 1) {
+          vol = Math.max(0, vol - (ind.licenseLevel - 1) * 0.02);
+        }
         yieldFactor = 1 + (Math.random() * 2 - 1) * vol;
         // 存到产业对象上，供UI读取
         ind._yieldFactor = Math.round(yieldFactor * 100);
@@ -379,9 +386,9 @@ const Engine = {
       const cat = State.findIndustryCategory(ind.type, ind.category);
       if (!cat || !cat.cost) return;
       let cost = cat.cost * 0.0001 * Engine.levelMultiplier(ind.level || 1) * (ind.quantity || 1);
-      // 矿业：许可证等级降低维护成本 — 每级 -10%
+      // 矿业：许可证等级降低维护成本 — 每级 -12%
       if (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1) {
-        cost = cost / (1 + (ind.licenseLevel - 1) * 0.1);
+        cost = cost * Math.max(0.1, 1 - (ind.licenseLevel - 1) * 0.12);
       }
       maintenance += cost;
     });

@@ -52,7 +52,7 @@ Pages.industryDetail = {
             // 有产出的产业使用 产出量×市场价，无产出的使用 dailyIncome
             if (cat.produces) {
               const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
-              ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
+              ? (1 + (o.licenseLevel - 1) * 0.3) : 1;
               const produceQty = cat.produces.qty * qty * empMult * recipeSat * licenseMult;
               const matPrice = Employees.materialPrice(cat.produces.code);
               daily = produceQty * matPrice;
@@ -72,7 +72,7 @@ Pages.industryDetail = {
 
     app.innerHTML = `
 
-      <div class="page">
+      <div class="page page-industry-detail">
 
         ${UI.navbar(ind.icon + ' ' + ind.name)}
 
@@ -109,6 +109,7 @@ Pages.industryDetail = {
         </div>
 
 
+        <div class="ind-scroll-area">
 
         ${unstaffedCount > 0 ? `
 
@@ -129,7 +130,9 @@ Pages.industryDetail = {
 
         ${this._renderDualTabs(type, ind, owned)}
 
-        ${type === 'logistics' && owned.length > 0 ? this._renderLogisticsPanel(owned) : ''}
+        ${type === 'logistics' && owned.length > 0 ? '<div id="logistics-panel">' + this._renderLogisticsPanel(owned) + '</div>' : ''}
+
+        </div>
 
         ${UI.bottombar()}
 
@@ -165,6 +168,11 @@ Pages.industryDetail = {
 
   /* 只有地产和物流显示产业等级 */
   _showLevelDisplay(type) {
+    return true; // 所有产业类型都有等级
+  },
+
+  /* 判断是否有升级系统（仅地产和物流有等级，产能型和矿业许可证机制不用） */
+  _hasUpgrade(type, cat) {
     return type === 'estate' || type === 'logistics';
   },
 
@@ -304,10 +312,17 @@ Pages.industryDetail = {
     if (canBuy) h += ' \xb7 <span style="color:var(--up);">\u81ea\u52a8\u4e70\u5165\u2714</span>';
     h += '</div></div>';
 
+    // Add button (sticky at top)
+    h += '<div style="position:sticky;top:0;z-index:3;background:var(--bg-page);padding:4px 0 6px;">';
+    h += '<button class="btn full primary" ' + (freeSlots <= 0 ? 'disabled style="opacity:0.4;"' : '') + ' onclick="Pages.industryDetail._showAddRuleModal()">';
+    h += freeSlots <= 0 ? '\u89c4\u5219\u69fd\u4f4d\u5df2\u6ee1' : '+ \u6dfb\u52a0\u89c4\u5219';
+    h += '</button></div>';
+
     // Rules as compact cards
     if (rules.length === 0) {
       h += '<div class="empty" style="padding:16px;">\u6682\u65e0\u89c4\u5219</div>';
     } else {
+      h += '<div class="section-title" style="margin:6px 0 4px;">\u89c4\u5219\u5217\u8868</div>';
       for (var ri = 0; ri < rules.length; ri++) {
         var rule = rules[ri];
         var mat = DATA.rawMaterials.find(function(m) { return m.code === rule.materialCode; });
@@ -331,16 +346,14 @@ Pages.industryDetail = {
       }
     }
 
-    // Add button
-    h += '<button class="btn full primary" style="margin-top:8px;" ' + (freeSlots <= 0 ? 'disabled style="opacity:0.4;"' : '') + ' onclick="Pages.industryDetail._showAddRuleModal()">';
-    h += freeSlots <= 0 ? '\u89c4\u5219\u69fd\u4f4d\u5df2\u6ee1' : '+ \u6dfb\u52a0\u89c4\u5219';
-    h += '</button>';
-
     return h;
   },
 
   _refreshLogisticsPanel() {
-    Router.refresh();
+    var panel = document.getElementById('logistics-panel');
+    if (!panel) { Router.refresh(); return; }
+    var owned = State.data.industries.filter(function(i) { return i.type === 'logistics'; });
+    panel.innerHTML = this._renderLogisticsPanel(owned);
   },
 
   _showAddRuleModal() {
@@ -350,25 +363,26 @@ Pages.industryDetail = {
     var materials = DATA.rawMaterials;
     var id = 'lr_' + Date.now();
 
-    // Quick templates
-    var content = '<div style="display:flex;gap:6px;margin-bottom:12px;">';
-    content += '<button class="btn sm" style="flex:1;" onclick="Pages.industryDetail._applyTemplate(\'' + id + '\', \'sell_above\', 100)">\ud83d\udce4 \u5356\u51fa\u8fc7\u5269</button>';
-    content += '<button class="btn sm" style="flex:1;" onclick="Pages.industryDetail._applyTemplate(\'' + id + '\', \'buy_below\', 50)"' + (!canBuy ? ' disabled style="opacity:0.4;flex:1;"' : '') + '>\ud83d\udce5 \u4e70\u5165\u7d27\u7f3a</button>';
-    content += '<button class="btn sm" style="flex:1;" onclick="Pages.industryDetail._showCustomSettings(\'' + id + '\')">\u2699\ufe0f \u81ea\u5b9a\u4e49</button>';
+    // Material selection (先选材料)
+    var content = '<div class="input-group"><label for="' + id + '_search">选择材料</label>';
+    content += '<input type="text" id="' + id + '_search" placeholder="搜索材料..." oninput="Pages.industryDetail._filterMaterials(\'' + id + '\')" style="width:100%;padding:8px;border-radius:var(--radius-md);border:0.5px solid var(--border-strong);background:var(--bg-card);color:var(--text-primary);font-size:13px;margin-bottom:6px;">';
+
+    // 库存筛选标签
+    content += '<div style="display:flex;gap:6px;margin-bottom:6px;">';
+    content += '<button class="btn sm" style="flex:1;font-size:11px;border-color:var(--info);color:var(--info);background:var(--info);color:#fff;" id="' + id + '_filt_all" onclick="Pages.industryDetail._filterByStock(\'' + id + '\', \'all\')">全部</button>';
+    content += '<button class="btn sm" style="flex:1;font-size:11px;" id="' + id + '_filt_have" onclick="Pages.industryDetail._filterByStock(\'' + id + '\', \'have\')">有库存</button>';
+    content += '<button class="btn sm" style="flex:1;font-size:11px;" id="' + id + '_filt_none" onclick="Pages.industryDetail._filterByStock(\'' + id + '\', \'none\')">无库存</button>';
     content += '</div>';
 
-    // Material selection
-    content += '<div class="input-group"><label>\u9009\u62e9\u7269\u6599</label>';
-    content += '<input type="text" id="' + id + '_search" placeholder="\u641c\u7d22\u7269\u6599..." oninput="Pages.industryDetail._filterMaterials(\'' + id + '\')" style="width:100%;padding:8px;border-radius:var(--radius-md);border:0.5px solid var(--border-strong);background:var(--bg-card);color:var(--text-primary);font-size:13px;margin-bottom:6px;">';
     content += '<div id="' + id + '_list" class="mat-list" style="max-height:180px;overflow-y:auto;border:0.5px solid var(--border);border-radius:var(--radius-md);background:var(--bg-card);margin-bottom:8px;">';
     for (var i = 0; i < materials.length; i++) {
       var m = materials[i];
       var inv = State.data.inventory || {};
       var have = inv[m.code] || 0;
       var _py = m.name.split('').map(function(ch){ return Pages.industryDetail._pyMap[ch] || ch; }).join('');
-      content += '<div class="mat-item" data-code="' + m.code + '" data-pinyin="' + _py + '" onclick="Pages.industryDetail._selectMaterial(\'' + id + '\', \'' + m.code + '\')">';
+      content += '<div class="mat-item" data-code="' + m.code + '" data-have="' + (have > 0 ? '1' : '0') + '" data-pinyin="' + _py + '" onclick="Pages.industryDetail._selectMaterial(\'' + id + '\', \'' + m.code + '\')">';
       content += '<div><span class="font-medium">' + m.name + '</span><span class="text-muted" style="font-size:11px;margin-left:4px;">' + m.unit + '</span></div>';
-      content += '<span class="text-sm text-muted">\u5e93\u5b58 ' + have.toFixed(0) + '</span>';
+      content += '<span class="text-sm text-muted">库存 ' + have.toFixed(0) + '</span>';
       content += '</div>';
     }
     content += '</div>';
@@ -376,6 +390,13 @@ Pages.industryDetail = {
     content += '<input type="hidden" id="' + id + '_type" value="">';
     content += '<input type="hidden" id="' + id + '_threshold" value="100">';
     content += '<input type="hidden" id="' + id + '_pct" value="50">';
+    content += '</div>';
+
+    // Quick templates (再选方案)
+    content += '<div style="display:flex;gap:6px;margin-bottom:12px;">';
+    content += '<button class="btn sm" style="flex:1;" onclick="Pages.industryDetail._applyTemplate(\'' + id + '\', \'sell_above\', 100)">📤 卖出过剩</button>';
+    content += '<button class="btn sm" style="flex:1;" onclick="Pages.industryDetail._applyTemplate(\'' + id + '\', \'buy_below\', 50)"' + (!canBuy ? ' disabled style="opacity:0.4;flex:1;"' : '') + '>📥 买入紧缺</button>';
+    content += '<button class="btn sm" style="flex:1;" onclick="Pages.industryDetail._showCustomSettings(\'' + id + '\')">⚙️ 自定义</button>';
     content += '</div>';
 
     // Settings area (hidden until template selected)
@@ -396,14 +417,25 @@ Pages.industryDetail = {
 
     window._lrState = { id: id };
     UI.modal('\u6dfb\u52a0\u7269\u6d41\u89c4\u5219', content, [
-      { label: '\u53d6\u6d88', onclick: 'UI.closeModal()' },
+      { label: '\u5b8c\u6210', onclick: 'UI.closeModal()' },
       { label: '\u786e\u8ba4\u6dfb\u52a0', class: 'primary', onclick: 'Pages.industryDetail._confirmAddRule("' + id + '")' }
     ]);
   },
 
   _applyTemplate(id, type, pct) {
     var mat = document.getElementById(id + '_mat').value;
-    if (!mat) { UI.toast('\u8bf7\u5148\u9009\u62e9\u7269\u6599'); return; }
+    if (!mat) {
+      // 未选材料时自动选中列表第一个
+      var firstItem = document.querySelector('#' + id + '_list .mat-item');
+      if (firstItem) {
+        var code = firstItem.getAttribute('data-code');
+        if (code) {
+          this._selectMaterial(id, code);
+          mat = code;
+        }
+      }
+      if (!mat) { UI.toast('\u8bf7\u5148\u9009\u62e9\u7269\u6599'); return; }
+    }
     document.getElementById(id + '_type').value = type;
     document.getElementById(id + '_pct').value = pct;
     var pctSlider = document.getElementById(id + '_pct_slider');
@@ -452,16 +484,42 @@ Pages.industryDetail = {
     document.getElementById(id + '_pct_label').textContent = '\u6267\u884c\u6bd4\u4f8b\uff1a' + val + '%';
   },
 
+  _filterByStock(id, filter) {
+    // 切换标签高亮
+    ['all', 'have', 'none'].forEach(function(f) {
+      var btn = document.getElementById(id + '_filt_' + f);
+      if (!btn) return;
+      if (f === filter) {
+        btn.style.background = 'var(--info)';
+        btn.style.color = '#fff';
+      } else {
+        btn.style.background = '';
+        btn.style.color = '';
+      }
+    });
+    // 存到列表容器上
+    var list = document.getElementById(id + '_list');
+    if (list) list.setAttribute('data-stock-filter', filter);
+    this._filterMaterials(id);
+  },
+
   _filterMaterials(id) {
     var search = document.getElementById(id + '_search').value.toLowerCase();
     var list = document.getElementById(id + '_list');
+    if (!list) return;
+    var stockFilter = list.getAttribute('data-stock-filter') || 'all';
     var items = list.querySelectorAll('.mat-item');
     for (var i = 0; i < items.length; i++) {
       var item = items[i];
       var name = item.querySelector('.font-medium').textContent.toLowerCase();
       var py = (item.getAttribute('data-pinyin') || '').toLowerCase();
       var code = (item.getAttribute('data-code') || '').toLowerCase();
-      item.style.display = (name.indexOf(search) >= 0 || py.indexOf(search) >= 0 || code.indexOf(search) >= 0) ? '' : 'none';
+      // 搜索匹配
+      var matchSearch = search === '' || name.indexOf(search) >= 0 || py.indexOf(search) >= 0 || code.indexOf(search) >= 0;
+      // 库存筛选
+      var have = item.getAttribute('data-have') === '1';
+      var matchStock = stockFilter === 'all' || (stockFilter === 'have' && have) || (stockFilter === 'none' && !have);
+      item.style.display = (matchSearch && matchStock) ? '' : 'none';
     }
   },
 
@@ -488,9 +546,19 @@ Pages.industryDetail = {
     if (LogisticsSystem.getFreeSlots() <= 0) { UI.toast('\u89c4\u5219\u69fd\u4f4d\u5df2\u6ee1'); return; }
     if (type === 'buy_below' && !LogisticsSystem.canAutoBuy()) { UI.toast('\u9700\u8981\u652f\u6301\u81ea\u52a8\u4e70\u5165\u7684\u7269\u6d41\u7ad9'); return; }
     LogisticsSystem.addRule({ materialCode: mat, type: type, threshold: threshold, percentage: pct });
-    UI.closeModal();
+    // 后台刷新物流面板
     this._refreshLogisticsPanel();
-    UI.toast('\u89c4\u5219\u5df2\u6dfb\u52a0');
+    // 重置表单，不关闭弹窗，继续添加
+    document.getElementById(id + '_mat').value = '';
+    document.getElementById(id + '_type').value = '';
+    document.getElementById(id + '_threshold').value = '';
+    document.getElementById(id + '_pct').value = '';
+    document.getElementById(id + '_settings').style.display = 'none';
+    var slotsP = document.querySelector('.modal-body p.text-sm.text-muted');
+    if (slotsP) slotsP.textContent = '\u5269\u4f59\u89c4\u5219\u69fd\u4f4d: ' + LogisticsSystem.getFreeSlots();
+    var items = document.querySelectorAll('#' + id + '_list .mat-item');
+    for (var j = 0; j < items.length; j++) items[j].classList.remove('selected');
+    UI.toast('\u89c4\u5219\u5df2\u6dfb\u52a0\uff0c\u53ef\u7ee7\u7eed\u6dfb\u52a0\u4e0b\u4e00\u6761');
   },
 
   /* ===== 工厂产品分配卡片渲染 ===== */
@@ -530,10 +598,14 @@ Pages.industryDetail = {
     // === 头部：厂名 + 员工 ===
     h += '<div class="list-row">';
     h += '<div>';
-    h += '<div class="font-medium">' + cat.name + (Pages.industryDetail._showLevelDisplay(type) ? ' · Lv' + level : '') + ' × ' + qty.toLocaleString('zh-CN') + ' ' + ind.unit + '</div>';
+    h += '<div class="font-medium">' + cat.name + (Pages.industryDetail._showLevelDisplay(type) ? ' · Lv' + level : '') + ' × ' + qty.toLocaleString('zh-CN') + ' ' + ind.unit;
+    if (Pages.industryDetail._hasUpgrade(type, cat) && level < (DATA.maxIndustryLevel || 5)) {
+      h += ' <a onclick="Industry.quickUpgrade(\'' + type + '\',\'' + o.category + '\')" style="color:var(--info);font-size:11px;cursor:pointer;text-decoration:none;">⬆</a>';
+    }
+    h += '</div>';
     h += '<div class="text-sm ' + (hasStaff ? 'text-muted' : '') + '" style="' + (hasStaff ? '' : 'color:var(--down);') + '">';
     if (hasStaff) {
-      h += '员工 ' + empCnt + '人 · 加成 ×' + empMult.toFixed(1) + ' · 日入 ' + State.formatMoney(totalProdIncome);
+      h += '员工 ' + empCnt + '人 · 加成 ×' + empMult.toFixed(1) + ' · 日入 <span id="ind_daily_' + type + '_' + o.category + '">' + State.formatMoney(totalProdIncome) + '</span>';
       h += ' <canvas id="spark_' + type + '_' + o.category + '" style="width:60px;height:16px;display:inline-block;vertical-align:middle;margin-left:4px;"></canvas>';
     } else {
       h += '⚠️ 无员工 · 无产出';
@@ -549,6 +621,22 @@ Pages.industryDetail = {
     h += '总产能 <strong>' + qty + '</strong> ' + ind.unit + ' · 已分配 <strong id="pcap_alloc_' + tableId + '">' + allocLines + '</strong> · ';
     h += freeLines > 0 ? '<span style="color:var(--info);">剩余 <strong id="pcap_free_' + tableId + '">' + freeLines + '</strong></span>' : '<span style="color:var(--down);" id="pcap_free_' + tableId + '">已满</span>';
     h += '</div>';
+
+    // === 原料消耗概览（无需分配即可查看） ===
+    if (products && products.length > 0) {
+      // 收集所有原料去重
+      var allMats = {};
+      products.forEach(function(p) {
+        (p.recipe || []).forEach(function(r) {
+          var m = DATA.rawMaterials.find(function(mm) { return mm.code === r.code; });
+          allMats[r.code] = m ? m.name : r.code;
+        });
+      });
+      var matList = Object.values(allMats).join('、');
+      h += '<div class="text-sm text-muted" style="margin:2px 0 4px 0;">';
+      h += '📋 ' + products.length + '种产品 · 需原料：' + matList;
+      h += '</div>';
+    }
 
     // === 生产频率提示 ===
     h += '<div class="text-sm text-muted" style="margin:4px 0 6px 0; border-left:2px solid var(--info); padding-left:6px;">';
@@ -592,7 +680,7 @@ Pages.industryDetail = {
 
     // 每个产品行
     products.forEach(p => {
-      h += this._renderProductRow(tableId, type, o.category, p, alloc, prodIncomes, freeLines > 0 || (alloc[p.code] || 0) > 0);
+      h += this._renderProductRow(tableId, type, o.category, p, alloc, prodIncomes, freeLines > 0 || (alloc[p.code] || 0) > 0, qty);
     });
 
     // 产品分配统计行
@@ -602,6 +690,9 @@ Pages.industryDetail = {
     h += '<div id="psum_inc_' + tableId + '" style="width:48px;text-align:center;color:var(--up);font-weight:500;">' + (hasStaff ? State.formatMoney(totalProdIncome) : '¥0') + '</div>';
     h += '<div style="width:56px;"></div>';
     h += '</div>';
+
+    // 查看上下游
+    h += '<div class="text-sm" style="padding:2px 8px 0;"><a onclick="Pages.industryDetail._showSupplyChain(\'' + type + '\',\'' + o.category + '\')" style="color:var(--info);text-decoration:underline;cursor:pointer;font-size:11px;">🔗 查看上下游</a></div>';
 
     h += '</div>';
     h += '</div>';
@@ -635,12 +726,12 @@ Pages.industryDetail = {
   },
 
   /* 渲染单个产品行 */
-  _renderProductRow(tableId, type, categoryCode, product, alloc, prodIncomes, canAdjust) {
+  _renderProductRow(tableId, type, categoryCode, product, alloc, prodIncomes, canAdjust, totalQty) {
     const qty = alloc[product.code] || 0;
     const income = prodIncomes[product.code] || 0;
     const tierName = FactoryProducts.tierNames[product.tier] || '';
     const tierColor = FactoryProducts.tierColors[product.tier] || '#9a9a9f';
-    const recipeStr = FactoryProducts.formatRecipe(product.recipe);
+    const recipeStr = FactoryProducts.formatRecipe(product.recipe, categoryCode);
 
     // 原料库存状态
     const inv = State.data.inventory || {};
@@ -677,11 +768,11 @@ Pages.industryDetail = {
     // 产能数量
     h += '<div style="width:36px;text-align:center;font-weight:500;font-size:13px;" id="pq_' + tableId + '_' + product.code + '">' + qty + '</div>';
     // 日收入
-    h += '<div style="width:48px;text-align:center;font-size:12px;color:var(--up);">' + (income > 0 ? State.formatMoney(income) : '—') + '</div>';
-    // 操作按钮
-    h += '<div style="width:56px;display:flex;gap:2px;justify-content:flex-end;">';
-    h += '<button class="btn sm" style="min-width:24px;padding:1px 5px;font-size:14px;line-height:1;" onclick="Industry.incProdAlloc(\'' + type + '\',\'' + categoryCode + '\',\'' + product.code + '\')">+</button>';
-    h += '<button class="btn sm danger' + (qty <= 0 ? ' disabled-look' : '') + '" style="min-width:24px;padding:1px 5px;font-size:14px;line-height:1;' + (qty <= 0 ? 'opacity:0.3;' : '') + '" onclick="Industry.decProdAlloc(\'' + type + '\',\'' + categoryCode + '\',\'' + product.code + '\')">−</button>';
+    h += '<div style="width:48px;text-align:center;font-size:12px;color:var(--up);" id="pinc_' + tableId + '_' + product.code + '">' + (income > 0 ? State.formatMoney(income) : '—') + '</div>';
+    // 操作：滑条 + 减号按钮
+    h += '<div style="width:80px;display:flex;align-items:center;gap:2px;">';
+    h += '<input type="range" min="0" max="' + (totalQty || 1) + '" value="' + qty + '" id="psl_' + tableId + '_' + product.code + '" class="np-slider" style="flex:1;min-width:30px;margin:0;height:4px;" oninput="Industry.incProdAllocSlide(\'' + type + '\',\'' + categoryCode + '\',\'' + product.code + '\',this.value)">';
+    h += '<button class="btn sm danger' + (qty <= 0 ? ' disabled-look' : '') + '" style="min-width:20px;padding:1px 3px;font-size:12px;line-height:1;' + (qty <= 0 ? 'opacity:0.3;' : '') + '" onclick="Industry.decProdAlloc(\'' + type + '\',\'' + categoryCode + '\',\'' + product.code + '\')">−</button>';
     h += '</div>';
     h += '</div>';
     return h;
@@ -730,7 +821,7 @@ Pages.industryDetail = {
       const matName = mat ? mat.name : cat.produces.code;
 
       const licenseMult = (type === 'mining' && o.licenseLevel && o.licenseLevel > 1)
-        ? (1 + (o.licenseLevel - 1) * 0.2) : 1;
+        ? (1 + (o.licenseLevel - 1) * 0.3) : 1;
       const dailyProduce = hasStaff ? cat.produces.qty * qty * empMult * licenseMult : 0;
 
       const have = inv[cat.produces.code] || 0;
@@ -789,32 +880,45 @@ Pages.industryDetail = {
 
 
 
-    // 工厂：消耗农产品/金属
+    // 工厂：消耗农产品/金属（基于已分配产品的实际配方）
 
-    if (type === 'factory' && DATA.factoryRecipes[o.category]) {
+    if (type === 'factory') {
 
-      recipeSat = Employees.recipeSatisfaction(o.category, qty);
+      // 计算所有已分配产品的总消耗
+      var totalConsumption = {};
+      var lowestSat = 1.0;
+      var hasAlloc = false;
+      if (o.products && cat.products) {
+        Object.entries(o.products).forEach(function([prodCode, lineCount]) {
+          if (lineCount <= 0) return;
+          hasAlloc = true;
+          var prod = cat.products.find(function(p) { return p.code === prodCode; });
+          if (!prod || !prod.recipe) return;
+          var sat = FactoryProducts.productSatisfaction(o.category, prodCode, lineCount);
+          if (sat < lowestSat) lowestSat = sat;
+          var scale = FactoryProducts._recipeScale(o.category);
+          prod.recipe.forEach(function(r) {
+            totalConsumption[r.code] = (totalConsumption[r.code] || 0) + r.qty * lineCount * scale;
+          });
+        });
+      }
+      recipeSat = lowestSat;
 
-      const recipe = DATA.factoryRecipes[o.category];
-
-      recipeInfo = '<div class="text-sm text-muted">📥 消费：' + recipe.map(r => {
-
-        const mat = DATA.rawMaterials.find(m => m.code === r.code);
-
-        const have = inv[r.code] || 0;
-
-        const need = r.qty * qty;
-
-        const sat = have >= need ? '✅' : (have > 0 ? '▲' : '❌');
-
-        return `${mat ? mat.name : r.code} ${have.toFixed(0)}/${need.toFixed(0)}${sat}`;
-
-      }).join(' · ') + '</div>';
+      if (hasAlloc && Object.keys(totalConsumption).length > 0) {
+        recipeInfo = '<div class="text-sm text-muted">📥 消费：' + Object.entries(totalConsumption).map(function([code, need]) {
+          var mat = DATA.rawMaterials.find(function(m) { return m.code === code; });
+          var have = inv[code] || 0;
+          var sat = have >= need ? '✅' : (have > 0 ? '▲' : '❌');
+          var matName = mat ? mat.name : code;
+          var unit = mat ? mat.unit : '吨';
+          return matName + ' ' + have.toFixed(1) + '/' + need.toFixed(3) + unit + sat;
+        }).join(' · ') + '</div>';
+      } else {
+        recipeInfo = '<div class="text-sm text-muted">📥 分配产品后将显示原料消耗</div>';
+      }
 
       if (recipeSat < 1) {
-
-        recipeInfo += `<div class="text-sm" style="color:var(--warning);">原料不足，产出仅 ${Math.round(recipeSat*100)}% · <a onclick="Router.go('warehouse')" style="color:var(--info);text-decoration:underline;">去仓库 →</a></div>`;
-
+        recipeInfo += '<div class="text-sm" style="color:var(--warning);">原料不足，产出下降 · <a onclick="Router.go(\'warehouse\')" style="color:var(--info);text-decoration:underline;">去仓库 →</a></div>';
       }
 
     }
@@ -829,8 +933,10 @@ Pages.industryDetail = {
     const licenseMaxLevel = DATA.industries.mining.licenseMaxLevel || 5;
     if (type === 'mining') {
       const licLv = o.licenseLevel || 1;
-      const bonusPct = (licLv - 1) * 20;
-      licenseInfo = `<div class="text-sm text-muted" style="margin-top:4px;">📜 许可证 Lv${licLv}${bonusPct > 0 ? ' · 产出+' + bonusPct + '% · 维护-' + Math.round((1 - 1/(1+(licLv-1)*0.1))*100) + '%' : ''}</div>`;
+      const bonusPct = (licLv - 1) * 30;
+      const mntPct = Math.min(95, (licLv - 1) * 12);
+      const volPct = Math.min(95, (licLv - 1) * 2);
+      licenseInfo = `<div class="text-sm text-muted" style="margin-top:4px;">📜 许可证 Lv${licLv} · 产出+${bonusPct}% · 维护-${mntPct}% · 波动-${volPct}%</div>`;
     }
 
     return `
@@ -841,7 +947,7 @@ Pages.industryDetail = {
 
           <div>
 
-            <div class="font-medium">${cat.name}${Pages.industryDetail._showLevelDisplay(type) ? ' · Lv' + (o.level||1) : ''} × ${qty.toLocaleString('zh-CN')} ${ind.unit}</div>
+            <div class="font-medium">${cat.name}${Pages.industryDetail._showLevelDisplay(type) ? ' · Lv' + (o.level||1) : ''} × ${qty.toLocaleString('zh-CN')} ${ind.unit}${Pages.industryDetail._hasUpgrade(type, cat) && (o.level||1) < (DATA.maxIndustryLevel||5) ? ' <a onclick="Industry.quickUpgrade(\'' + type + '\',\'' + o.category + '\')" style="color:var(--info);font-size:11px;cursor:pointer;text-decoration:none;">⬆</a>' : ''}</div>
 
             <div class="text-sm ${hasStaff ? 'text-muted' : ''}" style="${hasStaff ? '' : 'color:var(--down);'}">
 
@@ -856,6 +962,7 @@ Pages.industryDetail = {
 
             ${recipeInfo}
             ${licenseInfo}
+            ${cat.produces || (type === 'metall' && DATA.smelterRecipes[o.category]) || (type === 'factory' && DATA.factoryRecipes[o.category]) ? '<div class="text-sm" style="margin-top:2px;"><a onclick="Pages.industryDetail._showSupplyChain(\'' + type + '\',\'' + o.category + '\')" style="color:var(--info);text-decoration:underline;cursor:pointer;font-size:11px;">🔗 查看上下游</a></div>' : ''}
 
           </div>
 
@@ -870,7 +977,7 @@ Pages.industryDetail = {
         <div class="flex gap-8 mt-8">
 
           <button class="btn sm danger" style="flex:1;" onclick="Industry.sell('${type}','${o.category}')">${!cat.cost ? '减少' : '出售'}</button>
-          ${Pages.industryDetail._showLevelDisplay(type) && cat.cost ? `<button class="btn sm" style="flex:1;" ${(o.level||1) >= (DATA.maxIndustryLevel||5) ? 'disabled style="opacity:0.4;flex:1;"' : ''} onclick="Industry.upgrade('${type}','${o.category}')">${(o.level||1) >= (DATA.maxIndustryLevel||5) ? '已满级' : '升级'}</button>` : ''}
+          ${Pages.industryDetail._hasUpgrade(type, cat) ? `<button class="btn sm" style="flex:1;" ${(o.level||1) >= (DATA.maxIndustryLevel||5) ? 'disabled style="opacity:0.4;flex:1;"' : ''} onclick="Industry.upgrade('${type}','${o.category}')">${(o.level||1) >= (DATA.maxIndustryLevel||5) ? '已满级' : '升级'}</button>` : ''}
           ${type === 'mining' ? `<button class="btn sm" style="flex:1;border-color:var(--warning);color:var(--warning);" ${(o.licenseLevel||1) >= (DATA.industries.mining.licenseMaxLevel||5) ? 'disabled style="opacity:0.4;flex:1;"' : ''} onclick="Industry.upgradeLicense('${type}','${o.category}')">${(o.licenseLevel||1) >= (DATA.industries.mining.licenseMaxLevel||5) ? '许可证已满级' : '升级许可证'}</button>` : ''}
 
           <button class="btn sm" style="flex:1;" onclick="Industry.buy('${type}','${o.category}')">${!cat.cost ? '增加' : '加购'}</button>
@@ -996,6 +1103,13 @@ Pages.industryDetail = {
     const produceMat = cat.produces ? DATA.rawMaterials.find(m => m.code === cat.produces.code) : null;
     const produceUnit = produceMat ? produceMat.unit : '';
     const produceName = produceMat ? produceMat.name : '';
+    // 工厂原料清单（可购入时显示）
+    let factoryMatSummary = '';
+    if (type === 'factory' && cat.products && cat.products.length > 0) {
+      var fm = {};
+      cat.products.forEach(function(p) { (p.recipe || []).forEach(function(r) { var mm = DATA.rawMaterials.find(function(mmm) { return mmm.code === r.code; }); fm[r.code] = mm ? mm.name : r.code; }); });
+      factoryMatSummary = Object.values(fm).join('、');
+    }
 
     // check land prereq
     const _prereq = DATA.landPrereqs ? DATA.landPrereqs[type] : null;
@@ -1038,10 +1152,12 @@ Pages.industryDetail = {
             <div class="font-medium">${cat.name}</div>
             <div class="text-sm text-muted">日入 ${State.formatMoney(cat.produces ? cat.produces.qty * Employees.materialPrice(cat.produces.code) : cat.dailyIncome)}/${ind.unit} · 回本 ${payback} 天${cat.cycle ? ' · ' + cat.cycle : ''}${cat.reserve ? ' · 储量 ' + cat.reserve + ' 天' : ''}${type === 'mining' && cat.licenseCost && !hasMining ? ' · 含采矿许可证 ' + State.formatMoney(cat.licenseCost) : ''}${type === 'factory' && cat.products && cat.products.length > 0 ? ' · ' + cat.products.length + '种产品可分配' : ''}${type === 'factory' && !cat.products && DATA.factoryRecipes[cat.code] ? ' · 需: ' + DATA.factoryRecipes[cat.code].map(r => { const m = DATA.rawMaterials.find(m2 => m2.code === r.code); return (m ? m.name : r.code) + '×' + r.qty; }).join('+') : ''}${type === 'metall' && DATA.smelterRecipes[cat.code] ? ' · 需: ' + DATA.smelterRecipes[cat.code].map(r => { const m = DATA.rawMaterials.find(m2 => m2.code === r.code); return (m ? m.name : r.code) + '×' + r.qty; }).join('+') : ''}</div>
     ${estDailyProduce > 0 ? `<div class="text-sm text-muted">📦 日产量 ${estDailyProduce}${produceUnit}${produceName ? '(' + produceName + ')' : ''}/${ind.unit}</div>` : ''}
+    ${factoryMatSummary ? '<div class="text-sm text-muted">📋 ' + cat.products.length + '种产品 · 需：' + factoryMatSummary + '</div>' : ''}
           </div>
           <div style="text-align:right;">
-            <div class="font-medium">${totalCost ? State.formatMoney(totalCost) : '—'}</div>
-            <div class="text-sm text-muted">/${ind.unit}${type === 'mining' && !hasMining ? ' +许可证' : ''}</div>
+            ${isCap ? `<div class="font-medium" style="color:var(--info);">产能型</div>
+            <div class="text-sm text-muted">/${ind.unit}</div>` : `<div class="font-medium">${State.formatMoney(cat.cost)}</div>
+            <div class="text-sm text-muted">/${ind.unit}${type === 'mining' && !hasMining ? '<br>+许可证 ' + State.formatMoney(cat.licenseCost) : ''}</div>`}
           </div>
         </div>
         ${!_hasPrereq ? '<div class="text-sm" style="color:var(--warning);margin-top:6px;">' + _reqLabel + '</div>' : ''}
@@ -1051,7 +1167,219 @@ Pages.industryDetail = {
           </button>
         </div>
       </div>
-    `;}
+    `;},
+
+  /* ===== 产业链弹窗 ===== */
+  _showSupplyChain(type, category) {
+    const cat = State.findIndustryCategory(type, category);
+    if (!cat) return;
+    const o = State.data.industries.find(function(i) { return i.type === type && i.category === category; });
+    const qty = (o && o.quantity) || 1;
+    const empMult = Employees.multiplier(type, category);
+    const hasStaff = empMult > 0;
+    const inv = State.data.inventory || {};
+    var h = '';
+
+    // 构建生产者映射 { code: [{ name, daily, icon }] }
+    var producers = {};
+    // 构建消费者映射 { code: [{ name, daily, icon }] }
+    var consumers = {};
+
+    function addProducer(code, name, daily, icon) {
+      if (daily <= 0) return;
+      if (!producers[code]) producers[code] = [];
+      var existing = producers[code].find(function(e) { return e.name === name; });
+      if (existing) { existing.daily += daily; } else { producers[code].push({ name: name, daily: daily, icon: icon }); }
+    }
+    function addConsumer(code, name, daily, icon) {
+      if (daily <= 0) return;
+      if (!consumers[code]) consumers[code] = [];
+      var existing = consumers[code].find(function(e) { return e.name === name; });
+      if (existing) { existing.daily += daily; } else { consumers[code].push({ name: name, daily: daily, icon: icon }); }
+    }
+
+    // 扫描矿业（生产者）
+    (DATA.industries.mining.categories || []).forEach(function(mc) {
+      if (!mc.produces) return;
+      var mo = State.data.industries.find(function(i) { return i.type === 'mining' && i.category === mc.code; });
+      if (!mo || !mo.quantity) return;
+      var mq = mo.quantity || 1;
+      var me = Employees.multiplier('mining', mc.code);
+      var ml = (mo.licenseLevel && mo.licenseLevel > 1) ? (1 + (mo.licenseLevel - 1) * 0.3) : 1;
+      addProducer(mc.produces.code, mc.name, mc.produces.qty * mq * me * ml, '⛏');
+    });
+
+    // 扫描农业（生产者）
+    (DATA.industries.farm.categories || []).forEach(function(fc) {
+      if (!fc.produces) return;
+      var fo = State.data.industries.find(function(i) { return i.type === 'farm' && i.category === fc.code; });
+      if (!fo || !fo.quantity) return;
+      var fq = fo.quantity || 1;
+      var fe = Employees.multiplier('farm', fc.code);
+      addProducer(fc.produces.code, fc.name, fc.produces.qty * fq * fe, '🌾');
+    });
+
+    // 扫描冶金（既是生产者也是消费者）
+    (DATA.industries.metall.categories || []).forEach(function(mtc) {
+      // 作为消费者：检查配方
+      var recipe = DATA.smelterRecipes[mtc.code];
+      if (recipe) {
+        var mto = State.data.industries.find(function(i) { return i.type === 'metall' && i.category === mtc.code; });
+        var mtq = (mto && mto.quantity) || 0;
+        if (mtq > 0) {
+          recipe.forEach(function(r) {
+            addConsumer(r.code, mtc.name, r.qty * mtq, '🔥');
+          });
+        }
+      }
+      // 作为生产者：产出金属
+      if (mtc.produces) {
+        var mto2 = State.data.industries.find(function(i) { return i.type === 'metall' && i.category === mtc.code; });
+        var mtq2 = (mto2 && mto2.quantity) || 0;
+        if (mtq2 > 0) {
+          var mte2 = Employees.multiplier('metall', mtc.code);
+          var sat = Employees.smelterSatisfaction(mtc.code, mtq2);
+          addProducer(mtc.produces.code, mtc.name, mtc.produces.qty * mtq2 * mte2 * sat, '🔥');
+        }
+      }
+    });
+
+    // 扫描工厂（消费者）
+    // 扫描老式工厂配方（无产品的才走这里）
+    Object.keys(DATA.factoryRecipes || {}).forEach(function(code) {
+      // 如果该厂有产品定义（新产品系统），跳过，由下面扫描
+      if (window.FactoryProducts && FactoryProducts.data && FactoryProducts.data[code]) return;
+      var fcCat = (DATA.industries.factory.categories || []).find(function(c) { return c.code === code; });
+      var fcName = fcCat ? fcCat.name : code;
+      var fco = State.data.industries.find(function(i) { return i.type === 'factory' && i.category === code; });
+      var fcq = (fco && fco.quantity) || 0;
+      if (fcq <= 0) return;
+      DATA.factoryRecipes[code].forEach(function(r) {
+        addConsumer(r.code, fcName, r.qty * fcq, '🏭');
+      });
+    });
+
+    // 扫描产品型工厂（FactoryProducts.data）的消耗
+    if (window.FactoryProducts && FactoryProducts.data) {
+      Object.keys(FactoryProducts.data).forEach(function(fc) {
+        var fco = State.data.industries.find(function(i) { return i.type === 'factory' && i.category === fc; });
+        var fcq = (fco && fco.quantity) || 0;
+        if (fcq <= 0) return;
+        var fcc = (DATA.industries.factory.categories || []).find(function(c) { return c.code === fc; });
+        var fcName = fcc ? fcc.name : fc;
+        var allocs = fco.products || {};
+        var scale = FactoryProducts._recipeScale ? FactoryProducts._recipeScale(fc) : 1;
+        (FactoryProducts.data[fc] || []).forEach(function(p) {
+          var lines = allocs[p.code] || 0;
+          if (lines <= 0) return;
+          (p.recipe || []).forEach(function(r) {
+            addConsumer(r.code, fcName, r.qty * lines * scale, '🏭');
+          });
+        });
+      });
+    }
+
+    // ===== 产出方视角 =====
+    if (cat.produces) {
+      var matCode = cat.produces.code;
+      var mat = DATA.rawMaterials.find(function(m) { return m.code === matCode; });
+      var matName = mat ? mat.name : matCode;
+      var matUnit = mat ? mat.unit : '';
+      var matPrice = (mat && mat.price) || 0;
+      var licM = (type === 'mining' && o && o.licenseLevel && o.licenseLevel > 1) ? (1 + (o.licenseLevel - 1) * 0.3) : 1;
+      var rSat = (type === 'metall') ? Employees.smelterSatisfaction(category, qty) : 1;
+      var prodDaily = hasStaff ? cat.produces.qty * qty * empMult * licM * rSat : 0;
+      var have = inv[matCode] || 0;
+      var prodIncome = prodDaily * matPrice;
+
+      h += '<div style="margin-bottom:10px;">';
+      h += '<div class="font-medium" style="margin-bottom:6px;font-size:13px;">📤 ' + matName + ' 产出流向</div>';
+      h += '<div class="list-row" style="padding:3px 0;"><span>本产业产出</span><span style="color:var(--up);">+' + prodDaily.toFixed(1) + ' ' + matUnit + '/日 · ' + State.formatMoney(prodIncome) + '/日</span></div>';
+      h += '<div class="list-row" style="padding:3px 0;"><span class="text-muted">仓库库存</span><span>' + have.toFixed(1) + ' ' + matUnit + '</span></div>';
+
+      var consList = consumers[matCode];
+      if (consList && consList.length > 0) {
+        h += '<div style="border-top:0.5px solid var(--border);margin:6px 0;"></div>';
+        var totalC = 0;
+        consList.forEach(function(cr) {
+          totalC += cr.daily;
+          h += '<div class="list-row" style="padding:2px 0;"><span>' + cr.icon + ' ' + cr.name + '</span><span style="color:var(--down);">-' + cr.daily.toFixed(1) + ' ' + matUnit + '/日</span></div>';
+        });
+          h += '<div style="border-top:0.5px solid var(--border);margin:4px 0;"></div>';
+          var bal = prodDaily - totalC;
+          h += '<div class="list-row"><span style="font-weight:500;">净余</span><span style="color:' + (bal >= 0 ? 'var(--up)' : 'var(--down)') + ';font-weight:500;">' + (bal >= 0 ? '+' : '') + bal.toFixed(1) + ' ' + matUnit + '/日</span></div>';
+        if (bal < 0) h += '<div class="text-sm" style="color:var(--warning);margin-top:4px;">⚠️ 产出不足</div>';
+        else h += '<div class="text-sm" style="color:var(--up);margin-top:4px;">✅ 供应充足</div>';
+      }
+      h += '</div>';
+    }
+
+    // ===== 消耗方视角 =====
+    var recipe = DATA.smelterRecipes[category] || DATA.factoryRecipes[category];
+    var recipeIsAggregated = false; // 产品聚合的recipe已经是总量，不用再乘qty
+    // 产品型工厂：跳过旧的 factoryRecipes，从产品配方汇总
+    if (type === 'factory' && cat.products && cat.products.length > 0 && window.FactoryProducts) {
+      recipe = null;
+      recipeIsAggregated = true;
+      var allocs = (o && o.products) || {};
+      var scale = FactoryProducts._recipeScale ? FactoryProducts._recipeScale(category) : 1;
+      var prodMats = {};
+      (cat.products || []).forEach(function(p) {
+        var lines = allocs[p.code] || 0;
+        if (lines <= 0) return;
+        (p.recipe || []).forEach(function(r) {
+          if (!prodMats[r.code]) prodMats[r.code] = { code: r.code, qty: 0 };
+          prodMats[r.code].qty += r.qty * lines * scale;
+        });
+      });
+      var prodRecipe = Object.values(prodMats).filter(function(m) { return m.qty > 0; });
+      if (prodRecipe.length > 0) recipe = prodRecipe;
+    }
+    if (recipe && hasStaff) {
+      if (cat.produces) h += '<div style="border-top:0.5px solid var(--border);margin:8px 0;"></div>';
+      // 产品型工厂的满足率是按产品单独算的，聚合展示时忽略满足率
+      var gSat = recipeIsAggregated ? 1 : ((type === 'metall') ? Employees.smelterSatisfaction(category, qty) : Employees.recipeSatisfaction(category, qty));
+      recipe.forEach(function(r) {
+        var mat = DATA.rawMaterials.find(function(m) { return m.code === r.code; });
+        var matName = mat ? mat.name : r.code;
+        var matUnit = mat ? mat.unit : '';
+        var matPrice = (mat && mat.price) || 0;
+        // 消耗量：聚合配方已是总量，不重复乘qty
+        var consumeDaily = recipeIsAggregated ? r.qty * gSat : r.qty * qty * gSat;
+        var consumeIncome = consumeDaily * matPrice;
+        var prodList = producers[r.code];
+
+        h += '<div style="margin-bottom:10px;">';
+        h += '<div class="font-medium" style="margin-bottom:4px;font-size:13px;">📥 ' + matName + ' 来源</div>';
+        h += '<div class="list-row" style="padding:3px 0;">';
+        h += '<span>本产业消耗</span>';
+        h += '<span style="color:var(--down);">-' + consumeDaily.toFixed(1) + ' ' + matUnit + '/日 · ' + State.formatMoney(consumeIncome) + '/日</span>';
+        h += '</div>';
+
+        if (prodList && prodList.length > 0) {
+          h += '<div style="border-top:0.5px solid var(--border);margin:4px 0;"></div>';
+          var totalP = 0;
+          prodList.forEach(function(pr) {
+            totalP += pr.daily;
+            h += '<div class="list-row" style="padding:2px 0;"><span style="padding-left:8px;">' + pr.icon + ' ' + pr.name + '</span><span style="color:var(--up);">+' + pr.daily.toFixed(1) + ' ' + matUnit + '/日</span></div>';
+          });
+          h += '<div style="border-top:0.5px solid var(--border);margin:4px 0;"></div>';
+          var bal = totalP - consumeDaily;
+          h += '<div class="list-row"><span style="font-weight:500;">余量</span><span style="color:' + (bal >= 0 ? 'var(--up)' : 'var(--down)') + ';font-weight:500;">' + (bal >= 0 ? '+' : '') + bal.toFixed(1) + ' ' + matUnit + '/日</span></div>';
+          if (bal < 0) h += '<div class="text-sm" style="color:var(--warning);margin-top:4px;">⚠️ 供应不足</div>';
+          else h += '<div class="text-sm" style="color:var(--up);margin-top:4px;">✅ 供应充足</div>';
+        } else {
+          h += '<div class="text-sm" style="color:var(--down);margin-top:4px;">暂无上游产业</div>';
+        }
+        h += '</div>';
+      });
+    }
+
+    if (!h) { UI.toast('该产业无上下游关联'); return; }
+    UI.modal('🔗 ' + cat.name + ' · 产业链', h, [
+      { label: '关闭', class: 'primary', onclick: 'UI.closeModal()' }
+    ]);
+  },
 
 };
 
@@ -1223,8 +1551,9 @@ const Industry = {
 
     const ind = DATA.industries[type];
     const hasMining = type === 'mining' ? (State.data.industries || []).some(i => i.type === 'mining' && i.category === categoryCode) : false;
-    const unitCost = type === 'mining' ? (cat.cost + (hasMining ? 0 : (cat.licenseCost || 0))) : cat.cost;
-    const maxQty = Math.floor(State.data.cash / unitCost);
+    const baseCost = cat.cost;
+    const licenseFee = (type === 'mining' && !hasMining) ? (cat.licenseCost || 0) : 0;
+    const maxQty = licenseFee > 0 ? Math.floor((State.data.cash - licenseFee) / baseCost) : Math.floor(State.data.cash / baseCost);
 
     if (maxQty <= 0) { UI.toast('现金不足'); return; }
 
@@ -1234,21 +1563,20 @@ const Industry = {
 
       title: '可购入 ' + cat.name,
 
-      unit: unitCost,
+      unit: baseCost,
 
       unitName: ind.unit,
 
-      unitLabel: `${State.formatMoney(unitCost)}/${ind.unit} · 日入 ${State.formatMoney(cat.dailyIncome)}/${ind.unit}${type === 'mining' && !hasMining ? ' · 含许可证 ' + State.formatMoney(cat.licenseCost || 0) : ''}`,
+      unitLabel: `${State.formatMoney(baseCost)}/${ind.unit} · 日入 ${State.formatMoney(cat.dailyIncome)}/${ind.unit}${licenseFee > 0 ? ' · 含许可证 ' + State.formatMoney(licenseFee) : ''}`,
 
       max: maxQty,
 
-      quickAdds: maxQty >= 1000 ? [10, 100, 500, 1000] : [5, 10, 50, 100],
 
       onConfirm: (qty) => {
 
         if (qty <= 0) { UI.toast('请选择数量'); return; }
 
-        const totalCost = unitCost * qty;
+        const totalCost = baseCost * qty + licenseFee;
 
         State.data.cash -= totalCost;
 
@@ -1277,7 +1605,7 @@ const Industry = {
 
         UI.toast(`购入 ${qty.toLocaleString('zh-CN')} ${ind.unit} ${cat.name}`);
 
-        Router.refresh();
+        Pages.industryDetail._refreshCapacity(type);
 
       }
 
@@ -1322,12 +1650,31 @@ const Industry = {
 
       UI.toast('升级成功');
 
-      Router.refresh();
+      Pages.industryDetail._refreshCapacity(type);
 
     });
 
   },
 
+  /* 快捷升级（跳过确认弹窗） */
+  quickUpgrade(type, categoryCode) {
+    const owned = State.data.industries.find(i => i.type === type && i.category === categoryCode);
+    if (!owned) return;
+    const cat = State.findIndustryCategory(type, categoryCode);
+    const qty = owned.quantity || 1;
+    if ((owned.level || 1) >= (DATA.maxIndustryLevel || 5)) {
+      UI.toast('已达最高等级 Lv' + (DATA.maxIndustryLevel || 5));
+      return;
+    }
+    const baseCost = cat.cost || ((cat.produces ? cat.produces.qty * Employees.materialPrice(cat.produces.code) : (cat.dailyIncome || 0)) * 30);
+    const upgradeCost = baseCost * 0.5 * qty;
+    if (State.data.cash < upgradeCost) { UI.toast('现金不足，需要 ' + State.formatMoney(upgradeCost)); return; }
+    State.data.cash -= upgradeCost;
+    owned.level = (owned.level || 1) + 1;
+    State.save();
+    UI.toast(cat.name + ' Lv' + (owned.level - 1) + ' → Lv' + owned.level + '，花费 ' + State.formatMoney(upgradeCost));
+    Pages.industryDetail._refreshCapacity(type);
+  },
 
 
   upgradeLicense(type, categoryCode) {
@@ -1343,14 +1690,14 @@ const Industry = {
       return;
     }
     const baseLicenseCost = cat.licenseCost || 0;
-    const upgradeCost = Math.floor(baseLicenseCost * 0.5 * qty);
+    const upgradeCost = Math.floor(baseLicenseCost * 0.5);
     if (State.data.cash < upgradeCost) { UI.toast('\u73b0\u91d1\u4e0d\u8db3\uff0c\u9700\u8981 ' + State.formatMoney(upgradeCost)); return; }
-    UI.confirm('\u5347\u7ea7\u8bb8\u53ef\u8bc1 - ' + cat.name, 'Lv' + curLevel + ' \u2192 Lv' + (curLevel + 1) + '\uff08\u5168\u90e8 ' + qty.toLocaleString('zh-CN') + ' \u4e2a\uff09<br>\u82b1\u8d39 ' + State.formatMoney(upgradeCost) + '<br>\u65e5\u6536\u63d0\u5347 20%\uff0c\u6210\u672c\u964d\u4f4e 10%\uff08\u6bcf\u7ea7\u00d71.2\uff0c\u4e0a\u9650Lv' + maxLevel + '\uff09', () => {
+    UI.confirm('升级许可证 - ' + cat.name, 'Lv' + curLevel + ' → Lv' + (curLevel + 1) + '<br>花费 ' + State.formatMoney(upgradeCost) + '<br>产出+30% · 维护-12% · 产量波动-2%<br>（每级递增，上限Lv' + maxLevel + '）', () => {
       State.data.cash -= upgradeCost;
       owned.licenseLevel = curLevel + 1;
       State.save();
       UI.toast('\u8bb8\u53ef\u8bc1\u5347\u7ea7\u6210\u529f Lv' + owned.licenseLevel);
-      Router.refresh();
+      Pages.industryDetail._refreshCapacity(type);
     });
   },
 
@@ -1397,7 +1744,6 @@ const Industry = {
 
       max: qty,
 
-      quickAdds: qty >= 1000 ? [10, 100, 500, 1000] : [5, 10, 50, 100],
 
       onConfirm: (sellQty) => {
 
@@ -1425,7 +1771,7 @@ const Industry = {
 
         UI.toast(`出售 ${sellQty.toLocaleString('zh-CN')} ${ind.unit}，到账 ${State.formatMoney(refund)}`);
 
-        Router.refresh();
+        Pages.industryDetail._refreshCapacity(type);
 
       }
 
@@ -1482,10 +1828,18 @@ Industry._updateProdAllocUI = function(type, categoryCode) {
     }
   }
 
-  // 更新每个产品行的数量
+  // 更新每个产品行的数量和日入
   (cat.products || []).forEach(p => {
+    const q = owned.products[p.code] || 0;
     const el = document.getElementById('pq_' + tableId + '_' + p.code);
-    if (el) el.textContent = owned.products[p.code] || 0;
+    if (el) el.textContent = q;
+    const incEl = document.getElementById('pinc_' + tableId + '_' + p.code);
+    if (incEl) {
+      const inc = hasStaff ? p.sellPrice * q * empMult * levelMult : 0;
+      incEl.textContent = inc > 0 ? State.formatMoney(inc) : '—';
+    }
+    const sliderEl = document.getElementById('psl_' + tableId + '_' + p.code);
+    if (sliderEl) sliderEl.value = q;
   });
 
   // 更新合计行
@@ -1577,6 +1931,30 @@ Industry.decProdAlloc = function(type, categoryCode, productCode) {
   this._updateProdAllocUI(type, categoryCode);
 };
 
+/* 滑条快速分配 */
+Industry.incProdAllocSlide = function(type, categoryCode, productCode, val) {
+  const owned = this._ensureProductAlloc(type, categoryCode);
+  if (!owned) return;
+  const cat = State.findIndustryCategory(type, categoryCode);
+  if (!cat || !cat.products) return;
+  const product = cat.products.find(p => p.code === productCode);
+  if (!product) return;
+  const qty = owned.quantity || 1;
+  let allocTotal = 0;
+  Object.entries(owned.products).forEach(([code, v]) => {
+    if (code !== productCode) allocTotal += v;
+  });
+  const freeLines = qty - allocTotal;
+  const target = Math.max(0, Math.min(parseInt(val) || 0, freeLines));
+  if (target > 0) {
+    owned.products[productCode] = target;
+  } else {
+    delete owned.products[productCode];
+  }
+  State.save();
+  this._updateProdAllocUI(type, categoryCode);
+};
+
 /* 批量分配产品弹窗 */
 Industry.allocProduct = function(type, categoryCode) {
   const owned = this._ensureProductAlloc(type, categoryCode);
@@ -1610,18 +1988,19 @@ Industry.allocProduct = function(type, categoryCode) {
   content += '<div style="max-height:300px;overflow-y:auto;">';
   cat.products.forEach(p => {
     const current = owned.products[p.code] || 0;
-    const recipeStr = FactoryProducts.formatRecipe(p.recipe);
+    const recipeStr = FactoryProducts.formatRecipe(p.recipe, categoryCode);
     const tierName = FactoryProducts.tierNames[p.tier] || '';
     content += '<div style="display:flex;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);">';
     content += '<div style="flex:1;min-width:0;">';
     content += '<div style="font-size:13px;">' + p.name;
     if (tierName) content += ' <span style="font-size:10px;color:var(--text-muted);">(' + tierName + ')</span>';
     content += '</div>';
-    content += '<div class="text-muted" style="font-size:11px;">' + recipeStr + ' · ¥' + p.sellPrice + '/条</div>';
+    content += '<div class="text-muted" style="font-size:11px;">' + recipeStr + ' · ¥' + p.sellPrice + '/' + (p.unit || '条') + '</div>';
     content += '</div>';
     content += '<div style="display:flex;align-items:center;gap:4px;">';
     content += '<button class="btn sm danger" style="min-width:24px;padding:1px 5px;font-size:14px;" onclick="Industry._allocPickDec(' + "'" + id + "'" + ',' + "'" + p.code + "'" + ')">\u2212</button>';
-    content += '<span id="' + id + '_' + p.code + '_val" style="min-width:20px;text-align:center;font-weight:500;">' + current + '</span>';
+    content += '<input type="range" min="0" max="' + freeLines + '" value="' + current + '" id="' + id + '_' + p.code + '_slider" class="np-slider" style="flex:1;margin:0 4px;" oninput="Industry._allocPickSlide(\'' + id + '\',\'' + p.code + '\',this.value)">';
+    content += '<span id="' + id + '_' + p.code + '_val" style="min-width:20px;text-align:center;font-weight:500;font-size:12px;">' + current + '</span>';
     content += '<button class="btn sm" style="min-width:24px;padding:1px 5px;font-size:14px;" onclick="Industry._allocPickInc(' + "'" + id + "'" + ',' + "'" + p.code + "'" + ')">+</button>';
     content += '</div>';
     content += '</div>';
@@ -1648,8 +2027,7 @@ Industry._allocPickInc = function(id, productCode) {
   const maxTotal = owned ? (owned.quantity || 1) : 0;
   if (total >= maxTotal) { UI.toast('产能已用完'); return; }
   st.allocs[productCode] = (st.allocs[productCode] || 0) + 1;
-  const el = document.getElementById(id + '_' + productCode + '_val');
-  if (el) el.textContent = st.allocs[productCode];
+  this._allocPickRefreshUI(id, productCode);
 };
 
 Industry._allocPickDec = function(id, productCode) {
@@ -1658,8 +2036,32 @@ Industry._allocPickDec = function(id, productCode) {
   const current = st.allocs[productCode] || 0;
   if (current <= 0) { UI.toast('已经是0'); return; }
   st.allocs[productCode] = current - 1;
-  const el = document.getElementById(id + '_' + productCode + '_val');
-  if (el) el.textContent = st.allocs[productCode];
+  this._allocPickRefreshUI(id, productCode);
+};
+
+Industry._allocPickSlide = function(id, productCode, val) {
+  const st = window._allocState;
+  if (!st) return;
+  const num = parseInt(val) || 0;
+  const owned = State.data.industries.find(i => i.type === st.type && i.category === st.categoryCode);
+  const maxTotal = owned ? (owned.quantity || 1) : 0;
+  let otherTotal = 0;
+  Object.entries(st.allocs).forEach(([code, qty]) => {
+    if (code !== productCode) otherTotal += qty;
+  });
+  const clamped = Math.max(0, Math.min(num, maxTotal - otherTotal));
+  st.allocs[productCode] = clamped;
+  this._allocPickRefreshUI(id, productCode);
+};
+
+Industry._allocPickRefreshUI = function(id, productCode) {
+  const st = window._allocState;
+  if (!st) return;
+  const val = st.allocs[productCode] || 0;
+  const slider = document.getElementById(id + '_' + productCode + '_slider');
+  if (slider) slider.value = val;
+  const span = document.getElementById(id + '_' + productCode + '_val');
+  if (span) span.textContent = val;
 };
 
 /* 折叠/展开产品分配表格 */

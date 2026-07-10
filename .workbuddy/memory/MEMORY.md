@@ -7,6 +7,7 @@
 - H5 单页应用（HTML/CSS/JS）
 - PWA 配置（可加桌面、离线可玩）
 - Capacitor 打包成 Android APK（后续）
+- `Canvas` 图表绘制（`Charts.sparkline` / `Charts.lineChart`，无外部依赖）
 - localStorage 存档
 - 部署：CloudStudio 云端部署，手机扫码体验
 
@@ -98,6 +99,14 @@
 - AAA/AA/A/B 四级评级，影响贷款总额度和利率倍率
 - 连续 90 天无贷款升级，连续 30 天有贷款降级
 - 存取款/贷款/还款全部改为滑块操作
+
+### 数据趋势可视化（2026-07-09）
+- `State.data.dailyStats` 每日整体统计（环形缓冲30天）：`{day, netIncome, revenue, expenses}`
+- `State.data.industryDailyStats` 按产业类型拆分（环形缓冲7天）：`{ farm: [], mining: [], ... }`
+- `js/charts.js` Canvas 图表模块：`Charts.sparkline()` 迷你折线图、`Charts.lineChart()` 完整折线图
+- 概览页：近30日净收入趋势卡片（面积折线图 + 最高/最低/平均）
+- 产业卡片：日收入旁 sparkline 迷你趋势（涨红跌绿）
+- 引擎阶段8：`recordDailyStats()` 记录每日统计
 
 ## 开发顺序
 1. ✅ 骨架 + 主界面布局

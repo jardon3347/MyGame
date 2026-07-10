@@ -69,7 +69,7 @@ Pages.stocks = {
   renderList() {
     const s = State.data;
     return `
-      <div class="tab-container" style="margin-bottom:12px;">
+      <div class="tab-container" style="position:sticky;top:54px;z-index:9;background:var(--bg-page);margin-bottom:12px;">
         <div class="tab-bar">
           <div class="tab${this._currentTab === 'holdings' ? ' active' : ''}" data-stockstab="holdings" onclick="Pages.stocks.switchTab('holdings')">✅ 我的持仓 (${s.stocks.length})</div>
           <div class="tab${this._currentTab === 'market' ? ' active' : ''}" data-stockstab="market" onclick="Pages.stocks.switchTab('market')">📈 股票市场 (${DATA.stocks.length})</div>
@@ -123,17 +123,23 @@ Pages.stocks = {
     const pnl = value - cost;
     const pnlPct = cost > 0 ? pnl / cost : 0;
     const hands = Math.floor(st.shares / 100);
+    const maxBuy = Math.floor(State.data.cash / (price * 1.001));
     return `
-      <div class="list-item" onclick="Router.go('stockDetail',{code:'${st.code}'})" style="cursor:pointer;">
-        <div class="list-row">
+      <div class="list-item" style="cursor:pointer;">
+        <div class="list-row" onclick="Router.go('stockDetail',{code:'${st.code}'})">
           <div>
             <div class="font-medium">${stock.name}</div>
-            <div class="text-sm text-muted">${st.shares.toLocaleString('zh-CN')} \u80A1\uFF08${hands} \u624B\uFF09@ \u00A5${st.avgCost.toFixed(2)}</div>
+            <div class="text-sm text-muted">${st.shares.toLocaleString('zh-CN')} 股（${hands} 手）@ ¥${st.avgCost.toFixed(2)}</div>
           </div>
           <div style="text-align:right;">
             <div class="font-medium">${State.formatMoney(value)}</div>
             <div class="text-sm ${pnl >= 0 ? 'text-up' : 'text-down'}">${pnl >= 0 ? '+' : ''}${State.formatMoney(pnl)} (${State.formatPct(pnlPct)})</div>
           </div>
+        </div>
+        <div class="flex gap-8 mt-8">
+          ${maxBuy > 0 ? '<button class="btn sm" style="min-width:0;padding:1px 6px;font-size:11px;border-color:var(--info);color:var(--info);" onclick="Stocks._quickBuy(\'' + st.code + '\')">补仓</button>' : ''}
+          ${st.shares > 0 ? '<button class="btn sm" style="min-width:0;padding:1px 6px;font-size:11px;border-color:var(--down);color:var(--down);" onclick="Stocks._quickSell(\'' + st.code + '\')">清仓</button>' : ''}
+          <button class="btn sm" style="flex:1;" onclick="Router.go(\'stockDetail\',{code:\'' + st.code + '\'});event.stopPropagation();">详情</button>
         </div>
       </div>
     `;
@@ -171,13 +177,12 @@ const Stocks = {
     const maxShares = Math.floor(State.data.cash / (price * 1.001));
     if (maxShares <= 0) { UI.toast('\u73B0\u91D1\u4E0D\u8DB3\uFF0C\u81F3\u5C11\u9700\u8981 \u00A5' + Math.round(price*1.001)); return; }
 
-    UI.numberPicker({ noPlusOne: true,
+    UI.numberPicker({
       title: '\u4E70\u5165 ' + stock.name,
       unit: price * 1.001,
       unitName: '\u80A1',
       unitLabel: `\u00A5${price.toFixed(2)}/\u80A1 \u00b7 \u542B\u624B\u7EED\u8D39 \u00b7 1\u624B=100\u80A1`,
       max: maxShares,
-      quickAdds: maxShares >= 1000 ? [100, 500, 1000, 5000] : [10, 50, 100, 500],
       onConfirm: (shares) => {
         if (shares <= 0) { UI.toast('\u8BF7\u9009\u62E9\u6570\u91CF'); return; }
         const cost = shares * price;
@@ -212,13 +217,12 @@ const Stocks = {
     const price = State.data.stockPrices[code] || 0;
     const unitNet = price * (1 - 0.001 - 0.0005);
 
-    UI.numberPicker({ noPlusOne: true,
+    UI.numberPicker({
       title: '\u5356\u51FA ' + stock.name,
       unit: unitNet,
       unitName: '\u80A1',
       unitLabel: `\u00A5${price.toFixed(2)}/\u80A1 \u00b7 \u6263\u624B\u7EED\u8D39+\u5370\u82B1\u7A0E \u00b7 \u6301\u6709 ${maxShares.toLocaleString('zh-CN')} \u80A1`,
       max: maxShares,
-      quickAdds: maxShares >= 1000 ? [100, 500, 1000, 5000] : [10, 50, 100, 500],
       onConfirm: (shares) => {
         if (shares <= 0) { UI.toast('\u8BF7\u9009\u62E9\u6570\u91CF'); return; }
         if (shares > holding.shares) { UI.toast('\u6301\u4ED3\u4E0D\u8DB3'); return; }
@@ -236,6 +240,49 @@ const Stocks = {
         Router.refresh();
       }
     });
+  },
+
+  /* 快捷补仓：按现金上限买入 */
+  _quickBuy(code) {
+    const price = State.data.stockPrices[code] || 0;
+    const maxShares = Math.floor(State.data.cash / (price * 1.001));
+    if (maxShares <= 0) { UI.toast('现金不足'); return; }
+    const cost = maxShares * price;
+    const fee = cost * 0.001;
+    const total = cost + fee;
+    State.data.cash -= total;
+    const existing = State.data.stocks.find(s => s.code === code);
+    if (existing) {
+      const totalShares = existing.shares + maxShares;
+      existing.avgCost = (existing.shares * existing.avgCost + cost) / totalShares;
+      existing.shares = totalShares;
+    } else {
+      State.data.stocks.push({ code, shares: maxShares, avgCost: price, buyDay: State.data.date.totalDays });
+    }
+    State.save();
+    UI.toast(`补仓 ${maxShares} 股，花费 ${State.formatMoney(total)}`);
+    Router.refresh();
+  },
+
+  /* 快捷清仓：全部卖出 */
+  _quickSell(code) {
+    const holding = State.data.stocks.find(s => s.code === code);
+    if (!holding) { UI.toast('无持仓'); return; }
+    if (State.data.date.totalDays <= (holding.buyDay||0)) {
+      UI.toast('T+1 限制：今日买入明日方可卖出');
+      return;
+    }
+    const price = State.data.stockPrices[code] || 0;
+    const shares = holding.shares;
+    const revenue = shares * price;
+    const fee = revenue * 0.001;
+    const tax = revenue * 0.0005;
+    const net = revenue - fee - tax;
+    State.data.cash += net;
+    State.data.stocks = State.data.stocks.filter(s => s.code !== code);
+    State.save();
+    UI.toast(`清仓 ${shares} 股，到账 ${State.formatMoney(net)}`);
+    Router.refresh();
   }
 };
 

@@ -10,15 +10,20 @@ window.Pages.industry = {
 
     app.innerHTML = `
       <div class="page">
+
+        <div class="industry-header">
+
         ${UI.navbar('实业', false)}
 
-        <!-- 顶部常驻 Tab（与 finance.js 统一用 .tab-bar + .tab 样式） -->
-        <div class="tab-container">
+        <!-- 顶部常驻 Tab -->
+        <div class="tab-container" style="margin-top:0;">
           <div class="tab-bar">
             <div class="tab${this._tab === 'plants' ? ' active' : ''}" data-indtab="plants" onclick="Pages.industry.switchTab('plants')">🏭 产业</div>
             <div class="tab${this._tab === 'staff' ? ' active' : ''}" data-indtab="staff" onclick="Pages.industry.switchTab('staff')">👥 员工</div>
             <div class="tab${this._tab === 'warehouse' ? ' active' : ''}" data-indtab="warehouse" onclick="Pages.industry.switchTab('warehouse')">📦 仓库</div>
           </div>
+        </div>
+
         </div>
 
         <!-- Tab 内容区 -->

@@ -104,9 +104,19 @@ const LogisticsSystem = {
     return stations;
   },
 
-  /* 添加规则 */
+  /* 添加规则（自动去重：相同物资+类型+阈值视为重复） */
   addRule(rule) {
     if (!State.data.logisticsRules) State.data.logisticsRules = [];
+    // 去重检查
+    const dup = State.data.logisticsRules.find(r =>
+      r.materialCode === rule.materialCode &&
+      r.type === rule.type &&
+      r.threshold === rule.threshold
+    );
+    if (dup) {
+      if (window.UI) UI.toast('规则已存在，请勿重复添加');
+      return;
+    }
     State.data.logisticsRules.push(rule);
     State.save();
   },

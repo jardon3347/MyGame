@@ -172,10 +172,124 @@ Pages.warehouse = {
         </div>
 
         <div style="height:20px;"></div>
+        <div id="warehouse-content">
+          ${this._renderContent(inv, s, cap, free)}
+        </div>
+
         ${UI.bottombar()}
       </div>
     `;
   },
+
+  /* 渲染Tab+内容区（供局部刷新和初始渲染共用） */
+  _renderContent(inv, s, cap, free) {
+    return `
+        <!-- 选项卡栏 -->
+        <div class="tab-container">
+          <div class="tab-bar">
+            <div class="tab ${this.currentTab === 'inventory' ? 'active' : ''}" data-tab="inventory" onclick="Pages.warehouse.switchTab('inventory')">
+              📦 我的库存
+            </div>
+            <div class="tab ${this.currentTab === 'ore' ? 'active' : ''}" data-tab="ore" onclick="Pages.warehouse.switchTab('ore')">
+              ⛏️ 矿石市场
+            </div>
+            <div class="tab ${this.currentTab === 'farm' ? 'active' : ''}" data-tab="farm" onclick="Pages.warehouse.switchTab('farm')">
+              🌾 农产品市场
+            </div>
+            <div class="tab ${this.currentTab === 'metal' ? 'active' : ''}" data-tab="metal" onclick="Pages.warehouse.switchTab('metal')">
+              🔥 金属市场
+            </div>
+            <div class="tab ${this.currentTab === 'finished' ? 'active' : ''}" data-tab="finished" onclick="Pages.warehouse.switchTab('finished')">
+              🏭 成品
+            </div>
+            <div class="tab ${this.currentTab === 'help' ? 'active' : ''}" data-tab="help" onclick="Pages.warehouse.switchTab('help')">
+              ❓ 说明
+            </div>
+          </div>
+        </div>
+
+        <!-- 库存选项卡（含子分类） -->
+        <div class="tab-content ${this.currentTab === 'inventory' ? 'active' : ''}" id="inventory-tab">
+          ${this._renderInventoryTab(inv, s, cap, free)}
+        </div>
+
+        <!-- 矿石市场选项卡 -->
+        <div class="tab-content ${this.currentTab === 'ore' ? 'active' : ''}" id="ore-tab">
+          <div class="section-title">原料市场 · 矿石（冶金消耗）</div>
+          ${this.materialList(inv, s, free, this._categories.ore.codes)}
+        </div>
+
+        <!-- 农产品市场选项卡 -->
+        <div class="tab-content ${this.currentTab === 'farm' ? 'active' : ''}" id="farm-tab">
+          <div class="section-title">原料市场 · 农产品（工厂消耗）</div>
+          ${this.materialList(inv, s, free, this._categories.farm.codes)}
+        </div>
+
+        <!-- 金属市场选项卡 -->
+        <div class="tab-content ${this.currentTab === 'metal' ? 'active' : ''}" id="metal-tab">
+          <div class="section-title">原料市场 · 金属（工厂消耗）</div>
+          ${this.materialList(inv, s, free, this._categories.metal.codes)}
+        </div>
+
+        <!-- 成品选项卡 -->
+        <div class="tab-content ${this.currentTab === 'finished' ? 'active' : ''}" id="finished-tab">
+          ${this._renderFinishedGoodsTab(inv, s, free)}
+        </div>
+
+        <!-- 说明选项卡 -->
+        <div class="tab-content ${this.currentTab === 'help' ? 'active' : ''}" id="help-tab">
+          <div class="section-title">产业链说明</div>
+          <div class="list-item">
+            <p class="text-sm text-muted" style="line-height:1.7;">
+              <strong>完整供应链：</strong><br>
+              ⛏️ 矿业 → 产出矿石 → 仓库<br>
+              🌾 农业 → 产出农产品 → 仓库<br>
+              🔥 冶金 → 消耗矿石 → 产出金属 → 仓库<br>
+              🏭 工厂 → 消耗农产品+金属 → 现金收入<br><br>
+              <strong>举例：</strong><br>
+              买铁矿+煤矿 → 铁矿石+煤炭进仓库 → 炼钢消耗 → 产出钢材 → 机械厂消耗钢材<br><br>
+              <strong>市场价格：</strong>原料价格每日波动，新闻事件会影响价格走势。低买高卖可获利，卖出收 2% 手续费。</p>
+          </div>
+
+          <div class="section-title">协同加成</div>
+          <div class="list-item" id="synergy-status">
+          </div>
+        </div>
+    `;
+  },
+
+  /* 局部刷新入口：更新内容区 + 顶栏统计 */
+  _refreshContent() {
+    const el = document.getElementById('warehouse-content');
+    if (!el) { this.render(document.getElementById('app')); return; }
+    const s = State.data;
+    const cap = Employees.warehouseCapacity();
+    const used = Employees.warehouseUsed();
+    const free = Employees.warehouseFree();
+    const inv = s.inventory || {};
+    // 更新顶部统计
+    var topbar = document.querySelector('.topbar');
+    if (topbar) {
+      topbar.innerHTML = `
+        <div class="topbar-stats">
+          <div class="stat-item">
+            <div class="label">总容量</div>
+            <div class="value">${cap.toLocaleString('zh-CN')}</div>
+          </div>
+          <div class="stat-item">
+            <div class="label">已用</div>
+            <div class="value">${used.toLocaleString('zh-CN', {maximumFractionDigits:0})}</div>
+          </div>
+          <div class="stat-item">
+            <div class="label">剩余</div>
+            <div class="value ${free < cap * 0.1 ? 'down' : 'up'}">${free.toLocaleString('zh-CN')}</div>
+          </div>
+        </div>
+      `;
+    }
+    el.innerHTML = this._renderContent(inv, s, cap, free);
+  },
+
 
   /* 渲染库存选项卡（含子分类tab） */
   _renderInventoryTab(inv, s, cap, free) {
@@ -244,12 +358,13 @@ Pages.warehouse = {
                   <div class="text-sm text-muted">${qty.toFixed(1)} ${mat.unit} · 市值 ¥${(qty * mkt).toLocaleString('zh-CN', {maximumFractionDigits:0})}</div>
                 </div>
                 <div style="text-align:right;">
-                  <div class="text-sm" style="color:${chgColor};">市场价 ¥${mkt}/${mat.unit} ${chgArrow}${Math.abs(chgPct*100).toFixed(1)}%</div>
+                  <div class="text-sm" style="color:${chgColor};">市场价 ¥${(mkt).toFixed(2)}/${mat.unit} ${chgArrow}${Math.abs(chgPct*100).toFixed(1)}%</div>
                   <div class="text-sm text-muted">卖出 ¥${(qty * sellP).toLocaleString('zh-CN', {maximumFractionDigits:0})}</div>
                 </div>
               </div>
               <div class="flex gap-8 mt-8">
                 <button class="btn sm" style="flex:1;" onclick="Warehouse.showSell('${code}', ${qty})">卖出</button>
+                ${qty > 0 ? '<button class="btn sm" style="min-width:0;padding:1px 6px;font-size:11px;border-color:var(--down);color:var(--down);" onclick="Employees.sellMaterial(\'' + code + '\',' + qty + ');Pages.warehouse._refreshContent()">全部卖出</button>' : ''}
               </div>
             </div>
           `;
@@ -360,13 +475,45 @@ Pages.warehouse = {
   /* 切换选项卡 */
   switchTab(tabName) {
     this.currentTab = tabName;
-    this.render(document.getElementById('app'));
+    this._refreshContent();
   },
 
   /* 切换库存子选项卡 */
   switchSubTab(subTab) {
     this.currentSubTab = subTab;
-    this.render(document.getElementById('app'));
+    this._refreshContent();
+  },
+
+  /* 局部刷新：只更新Tab和内容区，不碰导航栏和底部栏 */
+  _refreshContent() {
+    const el = document.getElementById('warehouse-content');
+    if (!el) { this.render(document.getElementById('app')); return; }
+    const s = State.data;
+    const cap = Employees.warehouseCapacity();
+    const used = Employees.warehouseUsed();
+    const free = Employees.warehouseFree();
+    const inv = s.inventory || {};
+    // 更新顶部统计
+    const topbar = document.querySelector('.topbar');
+    if (topbar) {
+      topbar.innerHTML = `
+        <div class="topbar-stats">
+          <div class="stat-item">
+            <div class="label">总容量</div>
+            <div class="value">${cap.toLocaleString('zh-CN')}</div>
+          </div>
+          <div class="stat-item">
+            <div class="label">已用</div>
+            <div class="value">${used.toLocaleString('zh-CN', {maximumFractionDigits:0})}</div>
+          </div>
+          <div class="stat-item">
+            <div class="label">剩余</div>
+            <div class="value ${free < cap * 0.1 ? 'down' : 'up'}">${free.toLocaleString('zh-CN')}</div>
+          </div>
+        </div>
+      `;
+    }
+    el.innerHTML = this._renderContent(inv, s, cap, free);
   },
 
   /* 按分类渲染原料列表 */
@@ -397,6 +544,8 @@ Pages.warehouse = {
             <button class="btn sm ${maxBuy > 0 ? 'primary' : ''}" style="flex:1;" ${maxBuy > 0 ? '' : 'disabled style="opacity:0.4;flex:1;"'} onclick="Warehouse.showBuy('${code}')">
               ${maxBuy > 0 ? '买入' : (s.cash < mkt ? '现金不足' : '仓库满')}
             </button>
+            ${have > 0 ? '<button class="btn sm" style="min-width:0;padding:1px 6px;font-size:11px;border-color:var(--down);color:var(--down);" onclick="Employees.sellMaterial(\'' + code + '\',' + have + ');Pages.warehouse._refreshContent()">全部卖出</button>' : ''}
+            ${maxBuy > 0 ? '<button class="btn sm primary" style="min-width:0;padding:1px 6px;font-size:11px;" onclick="Employees.buyMaterial(\'' + code + '\',' + maxBuy + ');Pages.warehouse._refreshContent()">买最大</button>' : ''}
           </div>
         </div>
       `;
@@ -419,9 +568,8 @@ const Warehouse = {
       title: '买入 ' + mat.name,
       unit: mkt,
       unitName: mat.unit,
-      unitLabel: `市场价 ¥${mkt}/${mat.unit} · 卖出价 ¥${sellP.toFixed(1)} (扣2%) · 仓库剩余 ${free}`,
+      unitLabel: `市场价 ¥${mkt.toFixed(2)}/${mat.unit} · 卖出价 ¥${sellP.toFixed(1)} (扣2%) · 仓库剩余 ${free}`,
       max: maxBuy,
-      quickAdds: maxBuy >= 1000 ? [50, 100, 500, 1000] : [10, 50, 100, 500],
       onConfirm: (qty) => {
         if (qty <= 0) { UI.toast('请选择数量'); return; }
         Employees.buyMaterial(code, qty);
@@ -438,9 +586,8 @@ const Warehouse = {
       title: '卖出 ' + mat.name,
       unit: sellP,
       unitName: mat.unit,
-      unitLabel: `卖出价 ¥${sellP.toFixed(1)}/${mat.unit} (市场价¥${mkt}扣2%) · 持有 ${maxQty.toFixed(0)} ${mat.unit}`,
+      unitLabel: `卖出价 ¥${sellP.toFixed(1)}/${mat.unit} (市场价¥${mkt.toFixed(2)}扣2%) · 持有 ${maxQty.toFixed(0)} ${mat.unit}`,
       max: Math.floor(maxQty),
-      quickAdds: maxQty >= 1000 ? [50, 100, 500, 1000] : [10, 50, 100, 500],
       onConfirm: (qty) => {
         if (qty <= 0) { UI.toast('请选择数量'); return; }
         Employees.sellMaterial(code, qty);
@@ -471,7 +618,7 @@ const Warehouse = {
     State.data.cash += totalCash;
     State.save();
     UI.toast('售出全部成品 ' + totalSold.toFixed(0) + ' 单位，到账 ' + State.formatMoney(totalCash));
-    Router.refresh();
+    Pages.warehouse._refreshContent();
   }
 };
 window.Pages = window.Pages || {};

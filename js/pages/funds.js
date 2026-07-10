@@ -62,7 +62,7 @@ Pages.funds = {
   renderList() {
     const s = State.data;
     return `
-      <div class="tab-container" style="margin-bottom:12px;">
+      <div class="tab-container" style="position:sticky;top:54px;z-index:9;background:var(--bg-page);margin-bottom:12px;">
         <div class="tab-bar">
           <div class="tab${this._currentTab === 'holdings' ? ' active' : ''}" data-fundstab="holdings" onclick="Pages.funds.switchTab('holdings')">✅ 我的持仓 (${(s.fundHoldings||[]).length})</div>
           <div class="tab${this._currentTab === 'market' ? ' active' : ''}" data-fundstab="market" onclick="Pages.funds.switchTab('market')">📊 基金市场 (${DATA.funds.length})</div>
@@ -109,17 +109,23 @@ Pages.funds = {
     const cost = h.shares * h.avgCost;
     const pnl = value - cost;
     const pnlPct = cost > 0 ? pnl / cost : 0;
+    const maxBuy = Math.floor(State.data.cash / (price * 1.0015));
     return `
-      <div class="list-item" onclick="Router.go('fundDetail',{code:'${h.code}'})" style="cursor:pointer;">
-        <div class="list-row">
+      <div class="list-item" style="cursor:pointer;">
+        <div class="list-row" onclick="Router.go('fundDetail',{code:'${h.code}'})">
           <div>
             <div class="font-medium">${f.name}</div>
-            <div class="text-sm text-muted">${h.shares.toLocaleString('zh-CN')} \u4EFD @ \u00A5${h.avgCost.toFixed(4)}</div>
+            <div class="text-sm text-muted">${h.shares.toLocaleString('zh-CN')} 份 @ ¥${h.avgCost.toFixed(4)}</div>
           </div>
           <div style="text-align:right;">
             <div class="font-medium">${State.formatMoney(value)}</div>
             <div class="text-sm ${pnl >= 0 ? 'text-up' : 'text-down'}">${pnl >= 0 ? '+' : ''}${State.formatMoney(pnl)} (${State.formatPct(pnlPct)})</div>
           </div>
+        </div>
+        <div class="flex gap-8 mt-8">
+          ${maxBuy > 0 ? '<button class="btn sm" style="min-width:0;padding:1px 6px;font-size:11px;border-color:var(--info);color:var(--info);" onclick="Funds._quickBuy(\'' + h.code + '\')">加仓</button>' : ''}
+          ${h.shares > 0 ? '<button class="btn sm" style="min-width:0;padding:1px 6px;font-size:11px;border-color:var(--down);color:var(--down);" onclick="Funds._quickSell(\'' + h.code + '\')">赎回</button>' : ''}
+          <button class="btn sm" style="flex:1;" onclick="Router.go(\'fundDetail\',{code:\'' + h.code + '\'});event.stopPropagation();">详情</button>
         </div>
       </div>
     `;
@@ -287,13 +293,12 @@ const Funds = {
     const maxShares = Math.floor(State.data.cash / unitCost);
     if (maxShares <= 0) { UI.toast('\u73B0\u91D1\u4E0D\u8DB3'); return; }
 
-    UI.numberPicker({ noPlusOne: true,
+    UI.numberPicker({
       title: '\u7533\u8D2D ' + f.name,
       unit: unitCost,
       unitName: '\u4EFD',
       unitLabel: `\u00A5${price.toFixed(4)}/\u4EFD \u00b7 \u7533\u8D2D\u8D39 0.15%`,
       max: maxShares,
-      quickAdds: maxShares >= 10000 ? [100, 1000, 5000, 10000] : [10, 100, 500, 1000],
       onConfirm: (shares) => {
         if (shares <= 0) { UI.toast('\u8BF7\u9009\u62E9\u6570\u91CF'); return; }
         const cost = shares * price;
@@ -331,13 +336,12 @@ const Funds = {
     const feeRate = held7 ? 0 : 0.0025;
     const unitNet = price * (1 - feeRate);
 
-    UI.numberPicker({ noPlusOne: true,
+    UI.numberPicker({
       title: '\u8D4E\u56DE ' + f.name,
       unit: unitNet,
       unitName: '\u4EFD',
       unitLabel: `\u00A5${price.toFixed(4)}/\u4EFD \u00b7 \u8D4E\u56DE\u8D39 ${feeRate*100}% \u00b7 \u6301\u6709 ${maxShares.toLocaleString('zh-CN')} \u4EFD`,
       max: maxShares,
-      quickAdds: maxShares >= 10000 ? [100, 1000, 5000, 10000] : [10, 100, 500, 1000],
       onConfirm: (shares) => {
         if (shares <= 0) { UI.toast('\u8BF7\u9009\u62E9\u6570\u91CF'); return; }
         if (shares > holding.shares) { UI.toast('\u6301\u4ED3\u4E0D\u8DB3'); return; }
@@ -354,6 +358,50 @@ const Funds = {
         Router.refresh();
       }
     });
+  },
+
+  /* 快捷加仓 */
+  _quickBuy(code) {
+    const price = State.data.fundPrices[code] || 0;
+    const fund = DATA.funds.find(f => f.code === code);
+    if (!fund) return;
+    const feeRate = (fund.type === 'money' || fund.type === 'bond') ? 0 : 0.0015;
+    const maxShares = Math.floor(State.data.cash / (price * (1 + feeRate)));
+    if (maxShares <= 0) { UI.toast('现金不足'); return; }
+    const cost = maxShares * price;
+    const fee = cost * feeRate;
+    const total = cost + fee;
+    State.data.cash -= total;
+    const existing = State.data.fundHoldings.find(h => h.code === code);
+    if (existing) {
+      const totalShares = existing.shares + maxShares;
+      existing.avgCost = (existing.shares * existing.avgCost + cost) / totalShares;
+      existing.shares = totalShares;
+    } else {
+      State.data.fundHoldings.push({ code, shares: maxShares, avgCost: price, buyDay: State.data.date.totalDays });
+    }
+    State.save();
+    UI.toast(`加仓 ${maxShares} 份，花费 ${State.formatMoney(total)}`);
+    Router.refresh();
+  },
+
+  /* 快捷赎回全部 */
+  _quickSell(code) {
+    const holding = State.data.fundHoldings.find(h => h.code === code);
+    if (!holding) { UI.toast('无持仓'); return; }
+    if (State.data.date.totalDays <= (holding.buyDay||0)) { UI.toast('今日买入不可当日赎回'); return; }
+    const price = State.data.fundPrices[code] || 0;
+    const fund = DATA.funds.find(f => f.code === code);
+    const feeRate = (holding.buyDay && State.data.date.totalDays - holding.buyDay >= 7) ? 0 : (fund ? fund.feeRate || 0.0025 : 0.0025);
+    const shares = holding.shares;
+    const revenue = shares * price;
+    const fee = revenue * feeRate;
+    const net = revenue - fee;
+    State.data.cash += net;
+    State.data.fundHoldings = State.data.fundHoldings.filter(h => h.code !== code);
+    State.save();
+    UI.toast(`赎回 ${shares} 份，到账 ${State.formatMoney(net)}`);
+    Router.refresh();
   }
 };
 

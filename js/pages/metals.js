@@ -123,6 +123,8 @@ Pages.metals = {
     const cost = m.grams * m.avgCost;
     const pnl = value - cost;
     const pnlPct = cost > 0 ? pnl / cost : 0;
+    const unitCost = price * 1.002;
+    const maxBuy = Math.floor(State.data.cash / unitCost);
     return `
       <div class="list-item">
         <div class="list-row">
@@ -134,6 +136,10 @@ Pages.metals = {
             <div class="font-medium">${State.formatMoney(value)}</div>
             <div class="text-sm ${pnl >= 0 ? 'text-up' : 'text-down'}">${pnl >= 0 ? '+' : ''}${State.formatMoney(pnl)} (${State.formatPct(pnlPct)})</div>
           </div>
+        </div>
+        <div class="flex gap-8 mt-8">
+          ${maxBuy > 0 ? '<button class="btn sm" style="min-width:0;padding:1px 6px;font-size:11px;border-color:var(--info);color:var(--info);" onclick="Metals._quickBuy(\'' + m.code + '\')">加仓</button>' : ''}
+          ${m.grams > 0 ? '<button class="btn sm" style="min-width:0;padding:1px 6px;font-size:11px;border-color:var(--down);color:var(--down);" onclick="Metals._quickSell(\'' + m.code + '\')">清仓</button>' : ''}
         </div>
       </div>
     `;
@@ -154,7 +160,6 @@ const Metals = {
       unitName: '克',
       unitLabel: `¥${price.toFixed(2)}/克 · 含手续费`,
       max: maxGrams,
-      quickAdds: maxGrams >= 1000 ? [10, 100, 500, 1000] : [1, 10, 50, 100],
       onConfirm: (grams) => {
         if (grams <= 0) { UI.toast('请选择数量'); return; }
         const cost = grams * price;
@@ -190,7 +195,6 @@ const Metals = {
       unitName: '克',
       unitLabel: `¥${price.toFixed(2)}/克 · 扣手续费 · 持有 ${maxGrams.toLocaleString('zh-CN')} 克`,
       max: maxGrams,
-      quickAdds: maxGrams >= 1000 ? [10, 100, 500, 1000] : [1, 10, 50, 100],
       onConfirm: (grams) => {
         if (grams <= 0) { UI.toast('请选择数量'); return; }
         if (grams > holding.grams) { UI.toast('持仓不足'); return; }
@@ -207,6 +211,45 @@ const Metals = {
         Router.refresh();
       }
     });
+  },
+
+  /* 快捷加仓 */
+  _quickBuy(code) {
+    const price = State.data.metalPrices[code] || 0;
+    const unitCost = price * 1.002;
+    const maxGrams = Math.floor(State.data.cash / unitCost);
+    if (maxGrams <= 0) { UI.toast('现金不足'); return; }
+    const cost = maxGrams * price;
+    const fee = cost * 0.002;
+    const total = cost + fee;
+    State.data.cash -= total;
+    const existing = State.data.metals.find(m => m.code === code);
+    if (existing) {
+      const totalGrams = existing.grams + maxGrams;
+      existing.avgCost = (existing.grams * existing.avgCost + cost) / totalGrams;
+      existing.grams = totalGrams;
+    } else {
+      State.data.metals.push({ code, grams: maxGrams, avgCost: price });
+    }
+    State.save();
+    UI.toast(`加仓 ${maxGrams} 克，花费 ${State.formatMoney(total)}`);
+    Router.refresh();
+  },
+
+  /* 快捷清仓 */
+  _quickSell(code) {
+    const holding = State.data.metals.find(m => m.code === code);
+    if (!holding) { UI.toast('无持仓'); return; }
+    const price = State.data.metalPrices[code] || 0;
+    const grams = holding.grams;
+    const revenue = grams * price;
+    const fee = revenue * 0.002;
+    const net = revenue - fee;
+    State.data.cash += net;
+    State.data.metals = State.data.metals.filter(m => m.code !== code);
+    State.save();
+    UI.toast(`清仓 ${grams} 克，到账 ${State.formatMoney(net)}`);
+    Router.refresh();
   }
 };
 

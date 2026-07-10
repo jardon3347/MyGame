@@ -587,6 +587,13 @@ input { font-family: inherit; }
 .tab-container {
   margin: 12px 0;
 }
+/* 实业页导航栏+Tab栏整体粘性 */
+.industry-header {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: var(--bg-page);
+}
 .tab-bar {
   display: flex;
   background: var(--bg-card);
@@ -624,6 +631,53 @@ input { font-family: inherit; }
 .tab-icon {
   font-size: 14px;
   margin-right: 4px;
+}
+
+/* ===== 产业详情页 - 固定tab布局 ===== */
+.page-industry-detail {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 72px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  overflow: hidden;
+}
+.page-industry-detail .ind-scroll-area {
+  flex: 1;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+.page-industry-detail .tab-bar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--bg-page);
+}
+
+/* 页面滚动条暗色样式 */
+.page-industry-detail .ind-scroll-area::-webkit-scrollbar {
+  width: 4px;
+}
+.page-industry-detail .ind-scroll-area::-webkit-scrollbar-track {
+  background: transparent;
+}
+.page-industry-detail .ind-scroll-area::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 2px;
+}
+.page-industry-detail .ind-scroll-area {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-strong) transparent;
+}
+
+/* ===== 滚动条暗色样式（全局兜底） ===== */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 2px;
 }
 
 /* 移动设备优化 */

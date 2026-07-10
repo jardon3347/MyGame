@@ -446,7 +446,7 @@ const State = {
         let daily = 0;
         if (cat.produces) {
           const licenseMult = (ind.type === 'mining' && ind.licenseLevel && ind.licenseLevel > 1)
-            ? (1 + (ind.licenseLevel - 1) * 0.2) : 1;
+            ? (1 + (ind.licenseLevel - 1) * 0.3) : 1;
           const prodRecipeSat = (ind.type === 'metall' && DATA.smelterRecipes[ind.category])
             ? Employees.smelterSatisfaction(ind.category, qty) : 1;
           const produceQty = cat.produces.qty * qty * (empMult || 0) * licenseMult * prodRecipeSat;
@@ -520,7 +520,7 @@ const State = {
 
     // 采矿许可证
     if (type === 'mining' && o && o.licenseLevel > 1) {
-      licenseMult = 1 + (o.licenseLevel - 1) * 0.2;
+      licenseMult = 1 + (o.licenseLevel - 1) * 0.3;
     }
 
     // 工厂产品系统（factoryDailyInternal 内部已含 recipeSat，不再重复乘）
