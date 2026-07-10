@@ -1,0 +1,9 @@
+{
+  "name": "盛世集团·经营模拟",
+  "short_name": "盛世集团",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#ffffff",
+  "icons": []
+}

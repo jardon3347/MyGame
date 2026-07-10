@@ -1,6 +1,10 @@
 ﻿/* factoryProducts.js — 工厂产品系统：每个工厂的具象化产品定义、配方、产出 */
+import { DATA } from './data.js';
+import { State } from './state.js';
+import { Employees } from './employees.js';
+import { Engine } from './engine.js';
 
-const FactoryProducts = {
+export const FactoryProducts = {
 
   /* ===== 产品定义：每个工厂 10 个产品 ===== */
   data: {

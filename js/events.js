@@ -1,6 +1,10 @@
 /* events.js — 天敌事件系统：定义、判定、应对 */
+import { State } from './state.js';
+import { DATA } from './data.js';
+import { Engine } from './engine.js';
+import { UI, Router } from './ui.js';
 
-const DisasterEvents = {
+export const DisasterEvents = {
 
   /* ===== 事件定义 ===== */
   _definitions: [
@@ -85,6 +89,7 @@ const DisasterEvents = {
     const phase = State.data.economicPhase || 'stable';
     const isDepression = phase === 'depression';
     const mult = this._disasterMult();
+    const eventMult = (State.getDifficultyConfig ? State.getDifficultyConfig().eventMult : 1.0);
     const now = State.data.date.totalDays;
 
     // 初始化下次天敌事件日
@@ -95,8 +100,8 @@ const DisasterEvents = {
     // 还在冷却期内，不触发
     if (now < State.data.nextDisasterDay) return null;
 
-    // 冷却结束，确定是否触发（50%概率触发，否则再等5-10天）
-    if (Math.random() > 0.5) {
+    // 冷却结束，确定是否触发（难度影响触发概率）
+    if (Math.random() > 0.5 * eventMult) {
       State.data.nextDisasterDay = now + 5 + Math.floor(Math.random() * 6);
       return null;
     }
@@ -171,6 +176,13 @@ const DisasterEvents = {
 
   /* 应用事件效果到产业数据 */
   apply(event) {
+    // 简单模式：天敌事件有概率自动解决
+    const diffCfg = State.getDifficultyConfig ? State.getDifficultyConfig() : null;
+    if (diffCfg && diffCfg.disasterAutoResolve && Math.random() < (diffCfg.autoResolveChance || 0.5)) {
+      event._autoResolved = true;  // 标记自动解决，上层过滤掉不弹窗
+      return; // 自动解决，不产生任何影响
+    }
+
     if (!State.data.activeEvents) State.data.activeEvents = [];
     const now = State.data.date.totalDays;
 
@@ -388,7 +400,7 @@ const DisasterEvents = {
 };
 
 /* ===== 额外事件辅助函数（在 engine.js 中调用） ===== */
-const EventSystem = {
+export const EventSystem = {
   /* 批量离职 */
   fireResignations(count) {
     const emps = State.data.employees || [];

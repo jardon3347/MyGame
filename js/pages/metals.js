@@ -1,4 +1,8 @@
 /* metals.js — 贵金属页 */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { DATA } from '../data.js';
+import { Router, UI } from '../ui.js';
 
 Pages.metals = {
   render(app) {
@@ -146,7 +150,7 @@ Pages.metals = {
   }
 };
 
-const Metals = {
+export const Metals = {
   showBuy(code) {
     const m = DATA.metals.find(x => x.code === code);
     const price = State.data.metalPrices[code] || 0;

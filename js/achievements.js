@@ -1,6 +1,7 @@
 ﻿/* achievements.js — 成就与评级系统 */
+import { State } from './state.js';
 
-const Achievements = {
+export const Achievements = {
 
   /* ===== 评级等级定义 ===== */
   ratings: [
@@ -37,6 +38,8 @@ const Achievements = {
 
     // 生存里程碑
     { id: "survive_100d", name: "百年老店", desc: "连续存活100天", condition: s => (s.date || {}).totalDays >= 100 },
+    { id: "hell_survivor", name: "地狱幸存者", desc: "地狱难度存活30天", condition: s =>
+      s.difficulty === 'hell' && (s.date || {}).totalDays >= 30 },
     { id: "monthly_income_100w", name: "日进斗金", desc: "单月净收入突破 ¥100万", condition: s => (s.dailyStats || []).slice(-30).reduce((sum, d) => sum + (d.netIncome || 0), 0) >= 1000000 }
   ],
 

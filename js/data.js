@@ -1,12 +1,25 @@
 ﻿/* data.js — 静态数据：产业、股票、贵金属、新闻事件库 */
 
-const DATA = {
+export const DATA = {
   maxIndustryLevel: 5,
   /* ===== 难度配置 ===== */
   difficulties: {
-    easy:   { name: '简单', cash: 200000,  desc: '起步轻松，选择多样' },
-    normal: { name: '中等', cash: 120000,  desc: '精打细算，步步为营' },
-    hard:   { name: '困难', cash: 60000,   desc: '白手起家，极致挑战' }
+    easy:   { name: '简单', cash: 800000,  desc: '起步轻松，选择多样',
+              eventMult: 0.7, salaryMult: 0.8,
+              disasterAutoResolve: true, autoResolveChance: 0.5,
+              initialCredit: 'A', bankruptcyThreshold: -50000 },
+    normal: { name: '中等', cash: 500000,  desc: '精打细算，步步为营',
+              eventMult: 1.0, salaryMult: 1.0,
+              disasterAutoResolve: false,
+              initialCredit: 'B', bankruptcyThreshold: -50000 },
+    hard:   { name: '困难', cash: 250000,  desc: '白手起家，极致挑战',
+              eventMult: 1.3, salaryMult: 1.3,
+              disasterAutoResolve: false,
+              initialCredit: 'C', bankruptcyThreshold: -50000 },
+    hell:   { name: '地狱', cash: 100000,  desc: '九死一生，只为证明',
+              eventMult: 1.5, salaryMult: 1.5,
+              disasterAutoResolve: false,
+              initialCredit: 'C', bankruptcyThreshold: -10000 }
   },
 
   /* ===== 金融板块 ===== */
@@ -398,7 +411,7 @@ const DATA = {
 
 
 /* ===== 随机事件模板（非历史事件，用于新闻系统动态生成） ===== */
-const RANDOM_EVENT_TEMPLATES = [
+export const RANDOM_EVENT_TEMPLATES = [
   // ---- 利率事件 ----
   { id: 'r001', type: 'rate', title: '央行加息', desc: '央行上调基准利率，存款收益上升但贷款成本增加。',
     effects: { interestRate: 0.015 }, minDay: 0 },
@@ -489,7 +502,7 @@ const RANDOM_EVENT_TEMPLATES = [
 
 /* ===== 真实历史事件（2018—2025，按游戏天数触发） ===== */
 // 游戏起始日 2018-01-01 = day 0；下方 minDay 为距今的大致天数
-const NEWS_HISTORY = [
+export const NEWS_HISTORY = [
   { id: 'h001', type: 'international', title: '中美贸易摩擦升级',
     desc: '美国宣布对500亿美元中国商品加征25%关税，大豆等农产品出口受阻。', minDay: 80,
     effects: { sectors: { 'soy': 0.12, 'machine': -0.06, 'electr': -0.05 }, marketSentiment: -0.02 } },
@@ -563,7 +576,7 @@ const NEWS_HISTORY = [
 
 /* ===== 整合全部事件到统一池（历史事件 + 预置模板） ===== */
 // 此函数由 engine.js 的 rollNews 调用，传入当前 gameDay 返回可用事件池
-function getNewsPool(gameDay) {
+export function getNewsPool(gameDay) {
   let pool = [];
   // 历史事件：只在对应日期附近（±10天窗口内）且未超过时加入
   NEWS_HISTORY.forEach(n => {
@@ -581,7 +594,7 @@ function getNewsPool(gameDay) {
   });
   return pool;
 }
-const NEWS_LIBRARY = [
+export const NEWS_LIBRARY = [
   // 政策类
   { id: 'n001', type: 'policy', title: '央行定向降准 释放流动性',
     desc: '中国人民银行宣布定向降准，市场资金面宽松，利好股市整体情绪。',

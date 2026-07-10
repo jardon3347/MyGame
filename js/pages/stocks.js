@@ -1,4 +1,8 @@
 /* stocks.js — 股票列表 + 详情 */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { DATA } from '../data.js';
+import { Router, UI } from '../ui.js';
 
 Pages.stocks = {
   _currentTab: 'holdings',
@@ -170,7 +174,7 @@ Pages.stocks = {
   }
 };
 
-const Stocks = {
+export const Stocks = {
   showBuy(code) {
     const stock = DATA.stocks.find(s => s.code === code);
     const price = State.data.stockPrices[code] || 0;

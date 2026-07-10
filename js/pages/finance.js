@@ -1,4 +1,7 @@
 ﻿/* finance.js — 金融主页面（股票/基金/贵金属 Tab） */
+import { Pages } from './home.js';
+import { Router, UI } from '../ui.js';
+import { Futures } from '../futures.js';
 
 Pages.finance = {
   _activeTab: 'stocks', // 'stocks' | 'funds' | 'metals'

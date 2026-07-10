@@ -1,4 +1,10 @@
 ﻿/* staff.js — 员工管理页：独立员工模型 { id, name, multiplier, assign } */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { Employees } from '../employees.js';
+import { DATA } from '../data.js';
+import { TimeManager } from '../time.js';
+import { Router, UI } from '../ui.js';
 
 Pages.staff = {
   render(app) {
@@ -7,12 +13,15 @@ Pages.staff = {
     const count = Employees.count();
     const unassigned = Employees.unassignedCount();
     const salary = Employees.totalSalary();
+    const avgMorale = Math.round(Employees.averageMorale());
+    const lowCount = Employees.lowMoraleCount();
+    const moraleColor = avgMorale >= 60 ? 'var(--up)' : (avgMorale >= 30 ? 'var(--warning)' : 'var(--down)');
 
     app.innerHTML = `
       <div class="page">
         ${UI.navbar('员工管理')}
         <div class="topbar">
-          <div class="topbar-stats">
+          <div class="topbar-stats" style="grid-template-columns:repeat(4,1fr);">
             <div class="stat-item">
               <div class="label">员工总数</div>
               <div class="value" id="staff-stat-count">${count} / ${cap}</div>
@@ -24,6 +33,10 @@ Pages.staff = {
             <div class="stat-item">
               <div class="label">日薪支出</div>
               <div class="value down" id="staff-stat-salary">-${State.formatMoney(salary)}</div>
+            </div>
+            <div class="stat-item">
+              <div class="label">士气 ${lowCount > 0 ? '⚠' + lowCount : ''}</div>
+              <div class="value" id="staff-stat-morale" style="color:${moraleColor};">${avgMorale}</div>
             </div>
           </div>
         </div>
@@ -51,22 +64,30 @@ Pages.staff = {
           </button>
         </div>
 
+        <!-- 奖金激励 -->
+        ${Staff._bonusSectionHtml(s.cash)}
+
         <div class="section-title">未分配员工（${unassigned}）</div>
         ${unassigned === 0 ? '<div class="empty">没有未分配的员工</div>' :
-          (s.employees || []).filter(e => !e.assign).sort((a, b) => b.multiplier - a.multiplier).slice(0, 10).map(emp => `
+          (s.employees || []).filter(e => !e.assign).sort((a, b) => b.multiplier - a.multiplier).slice(0, 10).map(emp => {
+            const m = emp.morale || 100;
+            const mc = m >= 60 ? 'var(--up)' : (m >= 30 ? 'var(--warning)' : 'var(--down)');
+            const warn = m < 30 ? ' ⚠' : '';
+            return `
             <div class="list-item">
               <div class="list-row">
                 <div>
                   <span class="font-medium">${emp.name}</span>
                   <span class="text-sm text-muted" style="margin-left:6px;">加成 ×${emp.multiplier}</span>
                 </div>
-                <span class="text-sm text-muted">日薪 ¥${Math.round(emp.multiplier * 120)}</span>
+                <span class="text-sm" style="color:${mc};">士气 ${m}${warn}</span>
               </div>
-              <div class="mt-8">
-                <button class="btn primary sm full" onclick="Staff.showAssignPicker('${emp.id}')">分配到产业</button>
+              <div class="list-row" style="margin-top:2px;">
+                <span class="text-sm text-muted">日薪 ¥${Math.round(emp.multiplier * 120)}</span>
+                <button class="btn primary sm" style="font-size:11px;min-width:0;padding:2px 8px;" onclick="Staff.showAssignPicker('${emp.id}')">分配</button>
               </div>
             </div>
-          `).join('')
+          `;}).join('')
         }
 
         ${Staff._collapsibleSection('assigned', '已分配员工', Staff._collapse.assigned, Staff._assignedSummary(), this.assignedList())}
@@ -94,18 +115,23 @@ Pages.staff = {
       return `
         <div class="list-item" style="margin-bottom:8px;">
           <div class="font-medium" style="margin-bottom:4px;">${ind ? ind.icon : ''} ${cat ? cat.name : ''} ×${grp.employees.length}人 · 加成 ×${totalMult.toFixed(1)}</div>
-          ${grp.employees.sort((a, b) => b.multiplier - a.multiplier).map(e => `
+          ${grp.employees.sort((a, b) => b.multiplier - a.multiplier).map(e => {
+            const m = e.morale || 100;
+            const mc = m >= 60 ? 'var(--up)' : (m >= 30 ? 'var(--warning)' : 'var(--down)');
+            const warn = m < 30 ? ' ⚠' : '';
+            return `
             <div class="list-row" style="padding:4px 0;">
               <div>
                 <span class="text-sm">${e.name}</span>
                 <span class="text-sm text-muted" style="margin-left:4px;">×${e.multiplier}</span>
+                <span class="text-sm" style="margin-left:4px;color:${mc};">${m}${warn}</span>
               </div>
               <div style="display:flex;gap:4px;">
                 <button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.unassign('${e.id}')">撤回</button>
                 <button class="btn sm danger" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.fire('${e.id}')">解雇</button>
               </div>
             </div>
-          `).join('')}
+          `;}).join('')}
         </div>
       `;
     }).join('');
@@ -147,7 +173,7 @@ Pages.staff = {
   }
 };
 
-const Staff = {
+export const Staff = {
   _collapse: { assigned: false, overview: false },
 
   toggleCollapse(id) {
@@ -182,6 +208,33 @@ const Staff = {
     if (withEmp > 0) parts.push(withEmp + '有员');
     if (withoutEmp > 0) parts.push(withoutEmp + '缺员');
     return parts.join('·');
+  },
+
+  _bonusSectionHtml(cash) {
+    const count = (State.data.employees || []).length;
+    if (count === 0) return '';
+    const smallCost = Employees.getBonusCost('small');
+    const medCost = Employees.getBonusCost('medium');
+    const largeCost = Employees.getBonusCost('large');
+    return `
+      <div class="section-title">奖金激励</div>
+      <div class="card-grid" style="grid-template-columns:repeat(3,1fr);">
+        <button class="card" onclick="Employees.giveBonus('small')" style="${cash < smallCost ? 'opacity:0.4;' : ''}" ${cash < smallCost ? 'disabled' : ''}>
+          <div class="card-title" style="font-size:12px;">小额激励</div>
+          <div class="card-sub" style="font-size:11px;">士气 +5</div>
+          <div class="card-value" style="font-size:11px;">${State.formatMoney(smallCost)}</div>
+        </button>
+        <button class="card" onclick="Employees.giveBonus('medium')" style="${cash < medCost ? 'opacity:0.4;' : ''}" ${cash < medCost ? 'disabled' : ''}>
+          <div class="card-title" style="font-size:12px;">发奖金</div>
+          <div class="card-sub" style="font-size:11px;">士气 +20</div>
+          <div class="card-value" style="font-size:11px;">${State.formatMoney(medCost)}</div>
+        </button>
+        <button class="card" onclick="Employees.giveBonus('large')" style="${cash < largeCost ? 'opacity:0.4;' : ''}" ${cash < largeCost ? 'disabled' : ''}>
+          <div class="card-title" style="font-size:12px;">大额分红</div>
+          <div class="card-sub" style="font-size:11px;">士气 +50</div>
+          <div class="card-value" style="font-size:11px;">${State.formatMoney(largeCost)}</div>
+        </button>
+      </div>`;
   },
 
   currentAssignTab: 'quick',
@@ -243,14 +296,22 @@ const Staff = {
       var visibleCount = Math.min(5, current.length);
       for (var i = 0; i < visibleCount; i++) {
         var e = current[i];
+        var em = e.morale || 100;
+        var ec = em >= 60 ? 'color:var(--up);' : (em >= 30 ? 'color:var(--warning);' : 'color:var(--down);');
+        var ew = em < 30 ? ' ⚠' : '';
         h += '<div class="list-row" style="padding:4px 0;"><span class="text-sm">' + e.name + ' ×' + e.multiplier + '</span>' +
+          '<span class="text-sm" style="margin-left:4px;' + ec + '">' + em + ew + '</span>' +
           '<button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.unassign(\x27' + e.id + '\x27, true);Staff._refreshEmpModal()">撤回</button></div>';
       }
       if (current.length > 5) {
         h += '<div style="max-height:120px;overflow-y:auto;border-top:0.5px solid var(--border);margin-top:4px;padding-top:2px;">';
         for (var i = 5; i < current.length; i++) {
           var e = current[i];
+          var em = e.morale || 100;
+          var ec = em >= 60 ? 'color:var(--up);' : (em >= 30 ? 'color:var(--warning);' : 'color:var(--down);');
+          var ew = em < 30 ? ' ⚠' : '';
           h += '<div class="list-row" style="padding:3px 0;"><span class="text-sm">' + e.name + ' ×' + e.multiplier + '</span>' +
+            '<span class="text-sm" style="margin-left:4px;' + ec + '">' + em + ew + '</span>' +
             '<button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.unassign(\x27' + e.id + '\x27, true);Staff._refreshEmpModal()">撤回</button></div>';
         }
         h += '</div>';
@@ -262,7 +323,11 @@ const Staff = {
       h += '<div class="text-sm text-muted" style="margin:6px 0;">或单个调入（按加成降序）：</div>';
       h += '<div style="max-height:180px;overflow-y:auto;">';
       unassigned.forEach(function(e) {
+        var em = e.morale || 100;
+        var ec = em >= 60 ? 'color:var(--up);' : (em >= 30 ? 'color:var(--warning);' : 'color:var(--down);');
+        var ew = em < 30 ? ' ⚠' : '';
         h += '<div class="list-row" style="padding:4px 0;"><span class="text-sm">' + e.name + ' ×' + e.multiplier + ' · ¥' + Math.round(e.multiplier*100) + '/日</span>' +
+          '<span class="text-sm" style="margin-left:4px;' + ec + '">' + em + ew + '</span>' +
           '<button class="btn sm primary" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.assign(\x27' + e.id + '\x27,\x27' + type + '\x27,\x27' + category + '\x27, true);Staff._refreshEmpModal()">调入</button></div>';
       });
       h += '</div>';
@@ -386,9 +451,13 @@ const Staff = {
     }
     let html = '<div class="text-sm text-muted" style="margin:0 0 8px;">当前员工（' + total + '人）</div>';
     current.forEach(e => {
+      var em = e.morale || 100;
+      var ec = em >= 60 ? 'color:var(--up);' : (em >= 30 ? 'color:var(--warning);' : 'color:var(--down);');
+      var ew = em < 30 ? ' ⚠' : '';
       html += '<div class="list-item" style="padding:10px 12px;"><div class="list-row"><div>' +
         '<span class="font-medium">' + e.name + '</span>' +
-        '<span class="text-sm text-muted" style="margin-left:6px;">加成 ×' + e.multiplier + '</span></div>' +
+        '<span class="text-sm text-muted" style="margin-left:6px;">加成 ×' + e.multiplier + '</span>' +
+        '<span class="text-sm" style="margin-left:4px;' + ec + '">' + em + ew + '</span></div>' +
         '<button class="btn sm" onclick="Employees.unassign(\'' + e.id + '\');Staff.switchAssignTab(\'current\')">撤回</button></div></div>';
     });
     html += '<div class="mt-12"><button class="btn full danger" onclick="Staff._unassignAll(\'' + type + '\', \'' + category + '\')">❌ 撤回所有员工</button></div>';
@@ -402,9 +471,13 @@ const Staff = {
     }
     let html = '<div class="text-sm text-muted" style="margin:0 0 8px;">可分配员工（' + unassigned.length + '人）</div>';
     unassigned.sort((a, b) => b.multiplier - a.multiplier).forEach(e => {
+      var em = e.morale || 100;
+      var ec = em >= 60 ? 'color:var(--up);' : (em >= 30 ? 'color:var(--warning);' : 'color:var(--down);');
+      var ew = em < 30 ? ' ⚠' : '';
       html += '<div class="list-item" style="padding:10px 12px;"><div class="list-row"><div>' +
         '<span class="font-medium">' + e.name + '</span>' +
-        '<span class="text-sm text-muted" style="margin-left:4px;">加成 ×' + e.multiplier + '</span></div>' +
+        '<span class="text-sm text-muted" style="margin-left:4px;">加成 ×' + e.multiplier + '</span>' +
+        '<span class="text-sm" style="margin-left:4px;' + ec + '">' + em + ew + '</span></div>' +
         '<button class="btn sm primary" onclick="Employees.assign(\'' + e.id + '\',\'' + type + '\',\'' + category + '\');Staff.switchAssignTab(\'current\')">调入</button></div></div>';
     });
     return html;
@@ -419,10 +492,15 @@ const Staff = {
     }
     let html = '<div class="text-sm text-muted" style="margin:0 0 8px;">可调拨员工（' + otherAssigned.length + '人）</div>';
     otherAssigned.sort((a, b) => b.multiplier - a.multiplier).forEach(e => {
+      var tm = e.morale || 100;
+      var tc = tm >= 60 ? 'color:var(--up);' : (tm >= 30 ? 'color:var(--warning);' : 'color:var(--down);');
+      var tw = tm < 30 ? ' ⚠' : '';
       const fromCat = State.findIndustryCategory(type, e.assign.category);
       html += '<div class="list-item" style="padding:10px 12px;"><div class="list-row"><div>' +
         '<span class="font-medium">' + e.name + '</span>' +
-        '<span class="text-sm text-muted" style="margin-left:4px;">×' + e.multiplier + ' · 来自 ' + (fromCat ? fromCat.name : '') + '</span></div>' +
+        '<span class="text-sm text-muted" style="margin-left:4px;">×' + e.multiplier + '</span>' +
+        '<span class="text-sm" style="margin-left:4px;' + tc + '">' + tm + tw + '</span>' +
+        '<span class="text-sm text-muted" style="margin-left:4px;">来自 ' + (fromCat ? fromCat.name : '') + '</span></div>' +
         '<button class="btn sm" onclick="Employees.transfer(\'' + e.id + '\',\'' + type + '\',\'' + category + '\');Staff.switchAssignTab(\'current\')">调拨</button></div></div>';
     });
     return html;
@@ -437,9 +515,14 @@ const Staff = {
     let html = '<div class="text-sm text-muted" style="margin:0 0 8px;">快速分配（' + unassigned.length + '人可用）</div>';
     html += '<button class="btn primary full" style="margin-bottom:8px;" onclick="Staff._assignAllUnassigned(\'' + type + '\',\'' + category + '\')">一键全部调入</button>';
     unassigned.forEach(e => {
+      var qm = e.morale || 100;
+      var qc = qm >= 60 ? 'color:var(--up);' : (qm >= 30 ? 'color:var(--warning);' : 'color:var(--down);');
+      var qw = qm < 30 ? ' ⚠' : '';
       html += '<div class="list-item" style="padding:10px 12px;"><div class="list-row"><div>' +
         '<span class="font-medium">' + e.name + '</span>' +
-        '<span class="text-sm text-muted" style="margin-left:4px;">加成 ×' + e.multiplier + ' · 日薪 ¥' + Math.round(e.multiplier * 120) + '</span></div>' +
+        '<span class="text-sm text-muted" style="margin-left:4px;">加成 ×' + e.multiplier + '</span>' +
+        '<span class="text-sm" style="margin-left:4px;' + qc + '">' + qm + qw + '</span>' +
+        '<span class="text-sm text-muted" style="margin-left:4px;">日薪 ¥' + Math.round(e.multiplier * 120) + '</span></div>' +
         '<button class="btn sm primary" onclick="Employees.assign(\'' + e.id + '\',\'' + type + '\',\'' + category + '\');Staff.switchAssignTab(\'current\')">调入</button></div></div>';
     });
     return html;
@@ -472,12 +555,17 @@ const Staff = {
     const cap = Employees.capacity();
     const unassigned = Employees.unassignedCount();
     const salary = Employees.totalSalary();
+    const avgMorale = Math.round(Employees.averageMorale());
+    const lowCount = Employees.lowMoraleCount();
+    const moraleColor = avgMorale >= 60 ? 'var(--up)' : (avgMorale >= 30 ? 'var(--warning)' : 'var(--down)');
     const el1 = document.getElementById('staff-stat-count');
     const el2 = document.getElementById('staff-stat-unassigned');
     const el3 = document.getElementById('staff-stat-salary');
+    const el4 = document.getElementById('staff-stat-morale');
     if (el1) el1.textContent = count + ' / ' + cap;
     if (el2) el2.textContent = unassigned;
     if (el3) el3.textContent = '-' + State.formatMoney(salary);
+    if (el4) { el4.textContent = avgMorale; el4.style.color = moraleColor; }
   },
 
   _refreshSingleCard(type, category) {

@@ -1,6 +1,16 @@
 ﻿/* engine.js — 核心引擎：每日结算、价格波动、新闻触发 */
+import { DATA, getNewsPool } from './data.js';
+import { State } from './state.js';
+import { Employees } from './employees.js';
+import { EventSystem, DisasterEvents } from './events.js';
+import { Competitors } from './competitors.js';
+import { Futures } from './futures.js';
+import { Achievements } from './achievements.js';
+import { FactoryProducts } from './factoryProducts.js';
+import { LogisticsSystem } from './logistics.js';
+import { UI } from './ui.js';
 
-const Engine = {
+export const Engine = {
   /* 等级倍率：每级 1.2x（上限 5 级） */
   levelMultiplier(level) {
     return (level || 1) * 1.2;
@@ -81,8 +91,10 @@ const Engine = {
     const totalDebt = Math.abs(s.loan || 0);
     // 净资产 = 总资产 - 总负债
     const netWorth = totalAssets - totalDebt;
-    // 破产阈值：净资产低于 -50000
-    if (netWorth < -50000) {
+    // 破产阈值（来自难度配置）
+    const diffCfg = State.getDifficultyConfig ? State.getDifficultyConfig() : null;
+    const threshold = diffCfg ? diffCfg.bankruptcyThreshold : -50000;
+    if (netWorth < threshold) {
       this.showGameOver(netWorth);
       return true;
     }
@@ -217,6 +229,8 @@ const Engine = {
         events.forEach(e => {
           if (e.definition) DisasterEvents.apply(e);
         });
+        // 过滤掉自动解决的天敌事件（简单模式）
+        DisasterEvents._pendingEvents = DisasterEvents._pendingEvents.filter(e => !e._autoResolved);
       }
     }
 

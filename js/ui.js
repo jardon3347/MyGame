@@ -1,9 +1,15 @@
 ﻿/* ui.js — UI 渲染工具：路由、卡片、弹窗、Toast */
+import { DATA } from './data.js';
+import { State } from './state.js';
+import { Employees } from './employees.js';
+import { TimeManager } from './time.js';
+import { Pages } from './pages/home.js';  // Pages 注册表入口
 
-const Router = {
+export const Router = {
   current: null,
   history: [],
   scrollPositions: {},
+  _lastRenderKey: null,  // 页面级缓存：相同页面+参数跳过 innerHTML 重绘
 
   /* 普通跳转：压栈，支持返回 */
   go(page, params = {}) {
@@ -51,6 +57,8 @@ const Router = {
 
   /* 刷新当前页（不压栈，用于交易后更新数据） */
   refresh() {
+    // 清除页面缓存指纹，强制重绘（数据已变化）
+    this._lastRenderKey = null;
     // 先保存当前滚动位置（必须在 render 之前，否则 DOM 重绘后 scrollY 归零）
     if (this.current) {
       this.scrollPositions[this.current] = window.scrollY;
@@ -68,6 +76,11 @@ const Router = {
   render() {
     const app = document.getElementById('app');
     const page = this.current;
+
+    // 页面级缓存：相同 page + 相同 params → 跳过 DOM 重建，消除返回/重入闪烁
+    const newKey = page + '|' + JSON.stringify(this.params || {});
+    if (newKey === this._lastRenderKey) return;
+    this._lastRenderKey = newKey;
 
     // 时间管理
     const pausePages = ['stockDetail', 'fundDetail', 'metalDetail'];
@@ -120,7 +133,7 @@ const Router = {
   },
 };
 
-const UI = {
+export const UI = {
 
   /* 导航栏 */
   navbar(title, showBack = true) {
@@ -208,10 +221,10 @@ const UI = {
     return [m, 1000, 500, 100];
   },
 
-  numberPicker({ title, unit, unitName, unitLabel, max, quickAdds, onConfirm, noPlusOne }) {
+  numberPicker({ title, unit, unitName, unitLabel, max, quickAdds, onConfirm, noPlusOne, fixedFee }) {
     const id = 'np_' + Date.now();
     const step = this._calcStep(max);
-    window._npState = { id, unit, unitName, max, value: 0, onConfirm };
+    window._npState = { id, unit, unitName, max, value: 0, onConfirm, fixedFee: fixedFee || 0 };
     // 统一 quickAdds：不传则自动生成，所有按钮直设数值
     var qa = quickAdds && quickAdds.length > 0 ? quickAdds : this._defaultQuickAdds(max);
 
@@ -246,7 +259,7 @@ const UI = {
     st.value = val;
     document.getElementById(id + '_val').textContent = val.toLocaleString('zh-CN');
     document.getElementById(id + '_slider').value = val;
-    document.getElementById(id + '_total').textContent = '¥' + State.formatNum(val * st.unit);
+    document.getElementById(id + '_total').textContent = '¥' + State.formatNum(val * st.unit + (st.fixedFee || 0));
   },
 
   _npAdd(id, n) {

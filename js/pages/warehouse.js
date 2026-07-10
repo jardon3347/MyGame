@@ -1,4 +1,10 @@
 ﻿/* warehouse.js — 仓库页：容量管理、原料买卖（选项卡版） */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { DATA } from '../data.js';
+import { Employees } from '../employees.js';
+import { FactoryProducts } from '../factoryProducts.js';
+import { Router, UI } from '../ui.js';
 
 Pages.warehouse = {
   currentTab: 'inventory', // 默认选中库存选项卡
@@ -40,7 +46,7 @@ Pages.warehouse = {
         </div>
 
         ${cap === 0 ? `
-          <div class="list-item" style="border-left:4px solid var(--warning);background:rgba(186,117,23,0.1);padding:14px 16px;">
+          <div class="list-item" style="border-left:4px solid var(--warning);padding:14px 16px;">
             <div style="display:flex;align-items:flex-start;gap:10px;">
               <span style="font-size:28px;line-height:1;">⚠️</span>
               <div>
@@ -553,7 +559,7 @@ Pages.warehouse = {
   }
 };
 
-const Warehouse = {
+export const Warehouse = {
   showBuy(code) {
     const mat = DATA.rawMaterials.find(m => m.code === code);
     if (!mat) return;

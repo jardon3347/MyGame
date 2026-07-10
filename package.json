@@ -1,0 +1,9 @@
+{
+  "name": "shengshi-group",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "npx live-server --port=8080 --no-browser",
+    "dev:py": "python -m http.server 8080"
+  }
+}

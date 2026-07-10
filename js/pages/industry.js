@@ -1,7 +1,12 @@
 ﻿/* industry.js — 实业主页面（顶部三 Tab：产业 / 员工 / 仓库） */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { DATA } from '../data.js';
+import { Employees } from '../employees.js';
+import { Engine } from '../engine.js';
+import { Router, UI } from '../ui.js';
 
-window.Pages = window.Pages || {};
-window.Pages.industry = {
+Pages.industry = {
   _tab: 'plants',   // 'plants' | 'staff' | 'warehouse'
 
   render(app, params) {
@@ -63,6 +68,9 @@ window.Pages.industry = {
     const canHire = count < cap;
     const unassigned = Employees.unassignedCount();
     const salary = Employees.totalSalary();
+    const avgMorale = Math.round(Employees.averageMorale());
+    const lowCount = Employees.lowMoraleCount();
+    const moraleColor = avgMorale >= 60 ? 'var(--up)' : (avgMorale >= 30 ? 'var(--warning)' : 'var(--down)');
 
     // 住宅列表
     const houses = (State.data.industries || []).filter(i => i.type === 'estate' && i.category === 'residential');
@@ -112,22 +120,28 @@ window.Pages.industry = {
 
     // 未分配员工列表（按加成降序）
     const unassignedList = (State.data.employees || []).filter(e => !e.assign).sort((a, b) => b.multiplier - a.multiplier);
-    const unassignedHtml = unassignedList.length > 0 ? unassignedList.slice(0, 10).map(emp => `
+    const unassignedHtml = unassignedList.length > 0 ? unassignedList.slice(0, 10).map(emp => {
+      const m = emp.morale || 100;
+      const mc = m >= 60 ? 'var(--up)' : (m >= 30 ? 'var(--warning)' : 'var(--down)');
+      const warn = m < 30 ? ' ⚠' : '';
+      return `
       <div class="list-row" style="padding:4px 0;">
         <div>
           <span class="font-medium">${emp.name}</span>
           <span class="text-sm text-muted" style="margin-left:4px;">×${emp.multiplier}</span>
+          <span class="text-sm" style="margin-left:4px;color:${mc};">${m}${warn}</span>
         </div>
         <div style="display:flex;gap:4px;">
           <button class="btn sm" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Staff.showAssignPicker('${emp.id}')">分配</button>
           <button class="btn sm danger" style="font-size:11px;min-width:0;padding:2px 6px;" onclick="Employees.fire('${emp.id}')">解雇</button>
-        </div></div>`).join('')
+        </div></div>`;
+    }).join('')
     : '<div class="empty">无未分配员工</div>';
 
     return `
       <!-- 统计条 -->
       <div class="topbar">
-        <div class="topbar-stats">
+        <div class="topbar-stats" style="grid-template-columns:repeat(4,1fr);">
           <div class="stat-item">
             <div class="label">员工总数</div>
             <div class="value">${count} / ${cap}</div></div>
@@ -136,7 +150,10 @@ window.Pages.industry = {
             <div class="value ${unassigned > 0 ? 'down' : ''}">${unassigned}</div></div>
           <div class="stat-item">
             <div class="label">日薪支出</div>
-            <div class="value down">-${State.formatMoney(salary)}</div></div></div></div>
+            <div class="value down">-${State.formatMoney(salary)}</div></div>
+          <div class="stat-item">
+            <div class="label">士气${lowCount > 0 ? ' ⚠' + lowCount : ''}</div>
+            <div class="value" style="color:${moraleColor};">${avgMorale}</div></div></div></div>
 
       ${cap === 0 ? `
         <div class="list-item" style="border-left:3px solid var(--warning);margin:8px 0;">
@@ -164,6 +181,9 @@ window.Pages.industry = {
         ${houseList || '<div class="empty">尚未购买住宅</div>'}
         <button class="btn sm full" style="margin-top:8px;"
                 onclick="Router.go('industryDetail', {type:'estate'})">购买住宅 ›</button></div>
+
+      <!-- 奖金激励 -->
+      ${Industry._bonusSectionHtml()}
 
       <!-- 未分配员工 -->
       <div class="section-title">未分配员工（${unassigned}）</div>
@@ -246,7 +266,7 @@ window.Pages.industry = {
         </div>
       ` : `
         <!-- 无仓库提示 -->
-        <div class="list-item" style="border-left:4px solid var(--warning);background:rgba(186,117,23,0.1);padding:14px 16px;">
+        <div class="list-item" style="border-left:4px solid var(--warning);padding:14px 16px;">
           <div style="display:flex;align-items:flex-start;gap:10px;">
             <span style="font-size:28px;line-height:1;">⚠️</span>
             <div style="flex:1;">
@@ -361,5 +381,35 @@ if (window.Industry) {
           <div class="card-title">付费招聘</div>
           <div class="card-sub">¥${paidCfg.cost}/人 · 加成 ${paidCfg.minMult} ~ ${paidCfg.maxMult}</div></button></div>
     `, [{ label: '取消', onclick: 'UI.closeModal()' }]);
+  };
+
+  Industry._bonusSectionHtml = function() {
+    const cash = State.data.cash;
+    const count = (State.data.employees || []).length;
+    if (count === 0) return '';
+    const smallCost = Employees.getBonusCost('small');
+    const medCost = Employees.getBonusCost('medium');
+    const largeCost = Employees.getBonusCost('large');
+    return `
+      <div class="section-title">奖金激励</div>
+      <div class="list-item">
+        <div class="card-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:0;">
+          <button class="card" onclick="Employees.giveBonus('small')" style="${cash < smallCost ? 'opacity:0.4;' : ''}" ${cash < smallCost ? 'disabled' : ''}>
+            <div class="card-title" style="font-size:12px;">小额激励</div>
+            <div class="card-sub" style="font-size:11px;">士气 +5</div>
+            <div class="card-value" style="font-size:11px;">${State.formatMoney(smallCost)}</div>
+          </button>
+          <button class="card" onclick="Employees.giveBonus('medium')" style="${cash < medCost ? 'opacity:0.4;' : ''}" ${cash < medCost ? 'disabled' : ''}>
+            <div class="card-title" style="font-size:12px;">发奖金</div>
+            <div class="card-sub" style="font-size:11px;">士气 +20</div>
+            <div class="card-value" style="font-size:11px;">${State.formatMoney(medCost)}</div>
+          </button>
+          <button class="card" onclick="Employees.giveBonus('large')" style="${cash < largeCost ? 'opacity:0.4;' : ''}" ${cash < largeCost ? 'disabled' : ''}>
+            <div class="card-title" style="font-size:12px;">大额分红</div>
+            <div class="card-sub" style="font-size:11px;">士气 +50</div>
+            <div class="card-value" style="font-size:11px;">${State.formatMoney(largeCost)}</div>
+          </button>
+        </div>
+      </div>`;
   };
 }

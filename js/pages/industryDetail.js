@@ -1,4 +1,13 @@
 ﻿/* industry.js — 通用产业页（支持农业/矿业/冶金/工厂/地产） */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { DATA } from '../data.js';
+import { Employees } from '../employees.js';
+import { Engine } from '../engine.js';
+import { FactoryProducts } from '../factoryProducts.js';
+import { LogisticsSystem } from '../logistics.js';
+import { Charts } from '../charts.js';
+import { Router, UI } from '../ui.js';
 
 
 
@@ -369,7 +378,7 @@ Pages.industryDetail = {
 
     // 库存筛选标签
     content += '<div style="display:flex;gap:6px;margin-bottom:6px;">';
-    content += '<button class="btn sm" style="flex:1;font-size:11px;border-color:var(--info);color:var(--info);background:var(--info);color:#fff;" id="' + id + '_filt_all" onclick="Pages.industryDetail._filterByStock(\'' + id + '\', \'all\')">全部</button>';
+    content += '<button class="btn sm" style="flex:1;font-size:11px;border-color:var(--info);background:var(--info);color:#fff;" id="' + id + '_filt_all" onclick="Pages.industryDetail._filterByStock(\'' + id + '\', \'all\')">全部</button>';
     content += '<button class="btn sm" style="flex:1;font-size:11px;" id="' + id + '_filt_have" onclick="Pages.industryDetail._filterByStock(\'' + id + '\', \'have\')">有库存</button>';
     content += '<button class="btn sm" style="flex:1;font-size:11px;" id="' + id + '_filt_none" onclick="Pages.industryDetail._filterByStock(\'' + id + '\', \'none\')">无库存</button>';
     content += '</div>';
@@ -1156,8 +1165,8 @@ Pages.industryDetail = {
           </div>
           <div style="text-align:right;">
             ${isCap ? `<div class="font-medium" style="color:var(--info);">产能型</div>
-            <div class="text-sm text-muted">/${ind.unit}</div>` : `<div class="font-medium">${State.formatMoney(cat.cost)}</div>
-            <div class="text-sm text-muted">/${ind.unit}${type === 'mining' && !hasMining ? '<br>+许可证 ' + State.formatMoney(cat.licenseCost) : ''}</div>`}
+            <div class="text-sm text-muted">/${ind.unit}</div>` : (type === 'mining' && !hasMining ? `<div class="font-medium" style="color:var(--primary);">首购 ${State.formatMoney(cat.cost + (cat.licenseCost || 0))}</div>
+            <div class="text-sm text-muted">${State.formatMoney(cat.cost)}/${ind.unit} + 许可 ${State.formatMoney(cat.licenseCost)}</div>` : `<div class="font-medium">${State.formatMoney(cat.cost)}<span class="text-sm text-muted">/${ind.unit}</span></div>`)}
           </div>
         </div>
         ${!_hasPrereq ? '<div class="text-sm" style="color:var(--warning);margin-top:6px;">' + _reqLabel + '</div>' : ''}
@@ -1385,7 +1394,7 @@ Pages.industryDetail = {
 
 
 
-const Industry = {
+export const Industry = {
 
   allocPlus(type, categoryCode) {
 
@@ -1570,6 +1579,8 @@ const Industry = {
       unitLabel: `${State.formatMoney(baseCost)}/${ind.unit} · 日入 ${State.formatMoney(cat.dailyIncome)}/${ind.unit}${licenseFee > 0 ? ' · 含许可证 ' + State.formatMoney(licenseFee) : ''}`,
 
       max: maxQty,
+
+      fixedFee: licenseFee,
 
 
       onConfirm: (qty) => {

@@ -1,4 +1,8 @@
 /* funds.js — 基金列表 + 详情 */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { DATA } from '../data.js';
+import { Router, UI } from '../ui.js';
 
 Pages.funds = {
   _currentTab: 'holdings',
@@ -285,7 +289,7 @@ Pages.fundDetail = {
   }
 };
 
-const Funds = {
+export const Funds = {
   showBuy(code) {
     const f = DATA.funds.find(x => x.code === code);
     const price = State.data.fundPrices[code] || f.basePrice;

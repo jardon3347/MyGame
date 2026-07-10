@@ -1,6 +1,10 @@
 ﻿/* futures.js — 期货贸易系统 */
+import { DATA } from './data.js';
+import { State } from './state.js';
+import { UI, Router } from './ui.js';
+import { Achievements } from './achievements.js';
 
-const Futures = {
+export const Futures = {
 
   /* ===== 期货品种 ===== */
   contracts: [

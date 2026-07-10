@@ -1,4 +1,16 @@
 ﻿/* overview.js — 集团概览（合并新闻 + 时间推进，单页常驻） */
+import { Pages, Home } from './home.js';
+import { State } from '../state.js';
+import { DATA, getNewsPool, NEWS_LIBRARY } from '../data.js';
+import { Employees } from '../employees.js';
+import { Engine } from '../engine.js';
+import { TimeManager } from '../time.js';
+import { FactoryProducts } from '../factoryProducts.js';
+import { LogisticsSystem } from '../logistics.js';
+import { Charts } from '../charts.js';
+import { Achievements } from '../achievements.js';
+import { Competitors } from '../competitors.js';
+import { Router, UI } from '../ui.js';
 
 Pages.overview = {
   _collapseRating: false, // 评级与成就默认折叠
@@ -397,7 +409,7 @@ Pages.overview = {
 window.Pages = window.Pages || {};
 window.Pages.overview = Pages.overview;
 
-const Overview = {
+export const Overview = {
   toggleTheme() {
     const html = document.documentElement;
     const isDark = html.getAttribute('data-theme') === 'dark';

@@ -5,8 +5,13 @@
  * Pages.home 现在仅作为兜底：访问 'home' 路由时直接渲染概览页。
  * Home.advance（时间推进 + 结算弹窗逻辑）保留在此文件，由概览页调用。
  */
+import { Engine } from '../engine.js';
+import { TimeManager } from '../time.js';
+import { State } from '../state.js';
+import { UI, Router } from '../ui.js';
+import { DisasterEvents } from '../events.js';
 
-const Pages = window.Pages || {};
+export const Pages = {};
 
 Pages.home = {
   /* 兜底：home → overview */
@@ -15,7 +20,7 @@ Pages.home = {
   }
 };
 
-const Home = {
+export const Home = {
   _advancing: false,
   advance(days) {
     // 僵尸锁自愈：若上次模态框被非正常途径关闭（页面导航/刷新/浏览器后退），

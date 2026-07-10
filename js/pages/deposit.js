@@ -1,4 +1,8 @@
 /* deposit.js — 银行页面（存款、贷款、信用评级、滑块操作） */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { DATA } from '../data.js';
+import { Router, UI } from '../ui.js';
 
 Pages.deposit = {
   render(app) {
@@ -149,7 +153,7 @@ Pages.deposit = {
   }
 };
 
-const Deposit = {
+export const Deposit = {
   showDeposit() {
     const max = State.data.cash;
     if (max <= 0) { UI.toast('现金不足'); return; }

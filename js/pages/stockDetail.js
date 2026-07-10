@@ -1,4 +1,8 @@
 /* stockDetail.js — 股票详情页（K线 + 简介 + 交易） */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { DATA } from '../data.js';
+import { Router, UI } from '../ui.js';
 
 Pages.stockDetail = {
   render(app, params) {

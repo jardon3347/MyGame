@@ -1,6 +1,9 @@
 /* time.js — 自然时间流逝：10 分钟/天，弹窗自动暂停 */
+import { Engine } from './engine.js';
+import { State } from './state.js';
+import { UI, Router } from './ui.js';
 
-const TimeManager = {
+export const TimeManager = {
   intervalId: null,
   factoryIntervalId: null,
   FACTORY_TICK_MS: 3000,  // 工厂每 3 秒生产一批

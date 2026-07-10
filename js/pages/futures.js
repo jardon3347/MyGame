@@ -1,4 +1,8 @@
 ﻿/* pages/futures.js - 期货交易页面 */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { Futures } from '../futures.js';
+import { Router, UI } from '../ui.js';
 
 Pages.futures = {
   

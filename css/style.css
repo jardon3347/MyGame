@@ -75,6 +75,28 @@ input { font-family: inherit; }
   background: var(--bg-card);
   color: var(--text-primary);
 }
+[data-theme="dark"] .tab.active {
+  background: var(--text-primary);
+  color: var(--bg-card);
+}
+[data-theme="dark"] .time-bar-fill {
+  background: linear-gradient(90deg, var(--info), #6bb5ff);
+}
+[data-theme="dark"] .modal-mask {
+  background: rgba(0, 0, 0, 0.6);
+}
+[data-theme="dark"] .np-slider::-webkit-slider-thumb {
+  background: var(--text-primary);
+}
+[data-theme="dark"] .np-slider::-moz-range-thumb {
+  background: var(--text-primary);
+}
+[data-theme="dark"] .toast {
+  background: rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text-primary);
+}
 
 /* ===== 布局 ===== */
 #app {

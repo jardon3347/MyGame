@@ -1,6 +1,10 @@
 ﻿/* logistics.js — 物流系统：自动买卖规则管理、结算 */
+import { DATA } from './data.js';
+import { State } from './state.js';
+import { Employees } from './employees.js';
+import { UI, Router } from './ui.js';
 
-const LogisticsSystem = {
+export const LogisticsSystem = {
 
   /* 等级效率加成：每升一级+20% */
   getLevelMultiplier(level) {

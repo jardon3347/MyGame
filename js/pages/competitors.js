@@ -1,4 +1,8 @@
 /* pages/competitors.js — 竞争对手与排行榜页面 v2 */
+import { Pages } from './home.js';
+import { State } from '../state.js';
+import { Competitors } from '../competitors.js';
+import { Router, UI } from '../ui.js';
 
 Pages.competitors = {
 

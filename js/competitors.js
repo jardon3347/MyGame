@@ -1,6 +1,9 @@
 /* competitors.js — 竞争对手与排名系统 v2：真实产业组合 + 策略AI */
+import { State } from './state.js';
+import { Employees } from './employees.js';
+import { DATA } from './data.js';
 
-const Competitors = {
+export const Competitors = {
 
   definitions: [
     {

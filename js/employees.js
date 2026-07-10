@@ -1,6 +1,11 @@
 ﻿/* employees.js — 员工系统：每人独立，有名字有加成 */
+import { DATA } from './data.js';
+import { State } from './state.js';
+import { Engine } from './engine.js';
+import { FactoryProducts } from './factoryProducts.js';
+import { UI, Router } from './ui.js';
 
-const Employees = {
+export const Employees = {
 
   /* 百家姓 */
   _surnames: ['王','李','张','刘','陈','杨','黄','赵','吴','周','徐','孙','马','胡','朱','郭','何','高','林','罗'],
@@ -172,11 +177,13 @@ const Employees = {
     return this.assignedCount(type, category) > 0;
   },
 
-  /* 每日员工薪水总额 */
+  /* 每日员工薪水总额（含难度系数） */
   totalSalary() {
     let s = 0;
     (State.data.employees || []).forEach(e => { s += Math.round(e.multiplier * 120); });
-    return s;
+    const diffCfg = State.getDifficultyConfig ? State.getDifficultyConfig() : null;
+    const mult = diffCfg ? diffCfg.salaryMult : 1.0;
+    return Math.round(s * mult);
   },
 
   /* 更新全体员工士气（每日调用） */
@@ -185,6 +192,10 @@ const Employees = {
     if (emps.length === 0) return;
     const phase = State.data.economicPhase || 'stable';
     const phaseCfg = DATA.economicCycle.phases.find(p => p.id === phase);
+    // 住宅最高等级（方案B：住宅品质士气恢复，已分配员工每日恢复 = 住宅等级）
+    const maxResLevel = (State.data.industries || [])
+      .filter(i => i.type === 'estate' && i.category === 'residential')
+      .reduce((max, i) => Math.max(max, i.level || 1), 0);
 
     emps.forEach(e => {
       if (e.morale == null) e.morale = 100;
@@ -200,8 +211,14 @@ const Employees = {
         e._noMoneyEvent = false;
       }
 
-      // 士气低于 30：每天 10% 概率自动离职
-      if (e.morale < 30 && Math.random() < 0.10) {
+      // 方案B：住宅品质士气恢复（仅已分配员工受惠于居住环境）
+      if (e.assign && maxResLevel > 0) {
+        change += maxResLevel;
+      }
+
+      // 士气低于 30：每天按概率自动离职（含经济周期倍率）
+      const resignMult = (phaseCfg ? phaseCfg.resignMult : 1.0);
+      if (e.morale < 30 && Math.random() < 0.10 * resignMult) {
         e._willResign = true;
       }
 
@@ -222,18 +239,31 @@ const Employees = {
     });
   },
 
-  /* 发放奖金：每人 +20 士气，花费 = 月薪 × 2 */
-  giveBonus() {
+  /* 发放奖金（多档）：small=月薪×0.5→+5, medium=月薪×2→+20, large=月薪×5→+50 */
+  giveBonus(tier) {
     const emps = State.data.employees || [];
     if (emps.length === 0) { UI.toast('没有员工'); return; }
+    const TIERS = {
+      small: { label: '小额激励', costMult: 0.5, morale: 5 },
+      medium: { label: '发奖金', costMult: 2.0, morale: 20 },
+      large: { label: '大额分红', costMult: 5.0, morale: 50 }
+    };
+    const t = TIERS[tier] || TIERS.medium;
     const monthlySalary = this.totalSalary() * 30;
-    const totalCost = monthlySalary * 2;
+    const totalCost = Math.round(monthlySalary * t.costMult);
     if (State.data.cash < totalCost) { UI.toast('现金不足，需要 ¥' + totalCost.toLocaleString('zh-CN')); return; }
     State.data.cash -= totalCost;
-    emps.forEach(e => { e.morale = Math.min(100, (e.morale || 100) + 20); });
+    emps.forEach(e => { e.morale = Math.min(100, (e.morale || 100) + t.morale); });
     State.save();
-    UI.toast('💖 发放奖金 ¥' + totalCost.toLocaleString('zh-CN') + '，全体员工士气 +20');
+    UI.toast('💖 ' + t.label + ' ¥' + totalCost.toLocaleString('zh-CN') + '，全体员工士气 +' + t.morale);
     Router.refresh();
+  },
+
+  /* 获取各档位奖金费用 */
+  getBonusCost(tier) {
+    const TIERS = { small: 0.5, medium: 2.0, large: 5.0 };
+    const mult = TIERS[tier] || 2.0;
+    return Math.round(this.totalSalary() * 30 * mult);
   },
 
   /* 获取平均士气 */
