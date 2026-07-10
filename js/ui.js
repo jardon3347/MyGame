@@ -51,16 +51,17 @@ const Router = {
 
   /* 刷新当前页（不压栈，用于交易后更新数据） */
   refresh() {
-    this.render();
-    // 记住当前滚动位置
+    // 先保存当前滚动位置（必须在 render 之前，否则 DOM 重绘后 scrollY 归零）
     if (this.current) {
       this.scrollPositions[this.current] = window.scrollY;
     }
-    // 恢复滚动位置
+    // 单次渲染
+    this.render();
+    // requestAnimationFrame 在浏览器 layout 完成后、paint 之前执行，
+    // 确保新 DOM 已就绪，滚动恢复无闪烁
     if (this.current) {
       const saved = this.scrollPositions[this.current] || 0;
-      // 使用setTimeout确保DOM已经渲染完成
-      setTimeout(() => window.scrollTo(0, saved), 50);
+      requestAnimationFrame(() => window.scrollTo(0, saved));
     }
   },
 
